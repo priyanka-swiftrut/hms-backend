@@ -1,7 +1,9 @@
+import { StatusCodes } from 'http-status-codes';
 import Hospital from '../models/Hospital.model.js';
 import sendResponse from '../services/response.services.js';
 
 class HospitalController {
+
     async createHospital(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
@@ -16,12 +18,12 @@ class HospitalController {
             const hospital = new Hospital(req.body);
             await hospital.save();
             if (hospital) {
-                return sendResponse(res, 200, "Hospital created successfully", 1, hospital);
+                return sendResponse(res, StatusCodes.OK, "Hospital created successfully", 1, hospital);
             } else {
-                return sendResponse(res, 400, "Failed to add Hospital", 0);
+                return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to add Hospital", 0);
             }
         } catch (error) {
-            return sendResponse(res, 400, error.message, 'error');
+            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 
@@ -30,21 +32,21 @@ class HospitalController {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
                 const hospitals = await Hospital.find();
                 if (hospitals) {
-                    return sendResponse(res, 200, "Hospitals fetched successfully", 1, hospitals);
+                    return sendResponse(res, StatusCodes.OK, "Hospitals fetched successfully", 1, hospitals);
                 } else {
-                    return sendResponse(res, 400, "Failed to fetch Hospitals", 0);
+                    return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to fetch Hospitals", 0);
                 }
             }
             else {
                 const hospital = await Hospital.findById(req.params.id);
                 if (hospital) {
-                    return sendResponse(res, 200, "Hospital fetched successfully", 1, hospital);
+                    return sendResponse(res, StatusCodes.OK, "Hospital fetched successfully", 1, hospital);
                 } else {
-                    return sendResponse(res, 400, "Failed to fetch Hospital", 0);
+                    return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to fetch Hospital", 0);
                 }
             }
         } catch (error) {
-            return sendResponse(res, 400, error.message, 'error');
+            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 }
