@@ -37,6 +37,10 @@ const hospitalSchema = new mongoose.Schema(
     worksiteLink: {
       type: String,
     },
+    hospitalLogo: {
+        type: String,
+        default: "https://vectorified.com/images/default-user-icon-33.jpg",
+    },
   },
   {
     timestamps: true,

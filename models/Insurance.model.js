@@ -31,6 +31,7 @@ const insuranceSchema = new mongoose.Schema(
     claimedAmount: {
       type: Number,
     },
+    
   },
   { timestamps: true }
 );
