@@ -7,7 +7,7 @@ import passport from "passport";
 import connectDB from "./config/db.js";
 import API from "./routes/index.js"
 import Models from './models/index.js';
-// import passportConfig from "./config/passport.js";
+import passportConfig from "./config/passport.js";
 
 dotenv.config();
 
@@ -18,15 +18,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors());
 
-// app.use(session({
-//   secret: process.env.COOKIE_SECRET,
-//   resave: false,
-//   saveUninitialized: false,
-//   cookie: { maxAge: 60000 },
-// }));
+app.use(session({
+  secret: process.env.COOKIE_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 60000 },
+}));
 
-// app.use(passport.initialize());
-// app.use(passport.session());
+app.use(passport.initialize());
+app.use(passport.session());
 
 connectDB();
 
