@@ -13,8 +13,8 @@ const router = express.Router();
 const adminController = new AdminController();
 const patientController = new PatientController();
 // No Authorization Apis
-router.post("/create", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.Register.bind(adminController));
-router.post("/patientcreate", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.Register.bind(patientController));
+router.post("/registerAdmin", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.Register.bind(adminController));
+router.post("/registerPatient", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.Register.bind(patientController));
 router.use("/auth", auth);
 
 router.use("/hospital", hospital); 

@@ -189,7 +189,7 @@ class PatientController {
                 }
             }
             else {
-                const patient = await User.findById( req.query.id, { role: 'patient' });
+                const patient = await User.findById({ _id: req.query.id, role: 'patient' });
                 if (patient) {
                     return sendResponse(res, StatusCodes.OK, "Patient fetched successfully", 1, patient);
                 } else {

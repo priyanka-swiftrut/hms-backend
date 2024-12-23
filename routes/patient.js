@@ -8,7 +8,7 @@ const patientController = new PatientController();
 // Authorization Apis
 router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.EditProfile.bind(patientController));      
 router.delete("/delete/:id", patientController.deleteProfile.bind(patientController));
-router.get("/patients", patientController.getPatients.bind(patientController));
+router.get("/getpatients", patientController.getPatients.bind(patientController));
 
 
 
