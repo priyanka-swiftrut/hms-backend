@@ -12,7 +12,6 @@ class PatientController {
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-
             const {
                 firstName,
                 lastName,

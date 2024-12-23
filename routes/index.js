@@ -12,10 +12,23 @@ const adminController = new AdminController();
 const patientController = new PatientController();
 // No Authorization Apis
 router.post("/create", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.Register.bind(adminController));
-
+router.post("/patientcreate", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.Register.bind(patientController));
 
 
 router.use("/hospital", hospital); 
 // Authorization Apis
-router.use("/admin", admin);
+
+router.use('/admin', (req, res, next) => {
+    Passport.authenticate('jwt', (err, user) => {
+        if (err || !user) { return sendResponse(res, 403, 'Unauthorized', 0); }
+        req.user = user; next();
+    })(req, res, next);
+}, adminRoutes);
+router.use('/patient', (req, res, next) => {
+    Passport.authenticate('Patient', (err, user) => {
+        if (err || !user) { return sendResponse(res, 403, 'Unauthorized', 0); }
+        req.user = user; next();
+    })(req, res, next);
+}, patient);
+
 export default router;
