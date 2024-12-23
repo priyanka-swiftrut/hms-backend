@@ -1,7 +1,7 @@
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../config/cloudinaryConfig');
-const path = require('path');
+import multer from 'multer';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import cloudinary from '../config/cloudinaryConfig.js';
+import path from 'path';
 const allowedFileTypes = ['.jpg', '.png', '.gif', '.pdf', '.jpeg', '.mp4', '.mp3', '.wav', '.ogg', '.flac'];
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
@@ -44,4 +44,4 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-module.exports = upload;
+export default upload;
