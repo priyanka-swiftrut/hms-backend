@@ -13,7 +13,7 @@ class AdminController {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             if (req.body.password !== "" && req.body.password === req.body.confirmPassword) {
-                let checkmail = await UserModel.findOne({ email: req.body.email });
+                let checkmail = await User.findOne({ email: req.body.email });
                 if (checkmail) {
                     return sendResponse(res, StatusCodes.BAD_REQUEST, "Email Already Exists", 0);
                 } else {
@@ -26,7 +26,7 @@ class AdminController {
                             req.body.profilePicture = req.files.profilePicture[0].path;
                         }
                     }
-                    let newUser = new UserModel(req.body);
+                    let newUser = new User(req.body);
                     await newUser.save();
                     if (newUser) {
                         try {
@@ -65,7 +65,7 @@ class AdminController {
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-            let user = await UserModel.findById(req.params.id);
+            let user = await User.findById(req.params.id);
             if (user) {
                 if (req.files) {
                     if (req.files) {
@@ -78,7 +78,7 @@ class AdminController {
                         }
                     }
                     req.body.fullName = req.body.firstname + " " + req.body.lastname;
-                    let updatedUser = await UserModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+                    let updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
                     if (updatedUser) {
                         return sendResponse(res, StatusCodes.OK, "Profile Updated Successfully", 1, updatedUser);
                     } else {
@@ -95,14 +95,14 @@ class AdminController {
 
     async deleteProfile(req, res) {
         try {
-            let user = await UserModel.findById(req.params.id);
+            let user = await User.findById(req.params.id);
             if (user) {
                 if (user.profilePicture) {
                     const publicId = user.profilePicture.split("/").pop().split(".")[0];
                     await cloudinaryConfig.uploader.destroy(`profileImages/${publicId}`);
                 }
                 req.body.isActive = false;
-                let deletedUser = await UserModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+                let deletedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
                 if (deletedUser) {
                     return sendResponse(res, StatusCodes.OK, "Profile Deleted Successfully", 1, deletedUser);
                 } else {
