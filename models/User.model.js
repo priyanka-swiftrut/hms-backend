@@ -70,7 +70,7 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Hospital",
         required: function () {
-            return this.role === "patient";
+            return this.role !== "patient";
         },
     },
     metaData: {
