@@ -1,4 +1,4 @@
-import UserModel from '../models/User.model.js';
+import User from '../models/User.model.js';
 import sendResponse from '../services/response.services.js';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
