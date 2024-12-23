@@ -17,6 +17,7 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
+        trim: true,
         match: [/^\+\d{1,3}\d{10}$/, "Please provide a valid phone number with country code"],
     },
     profilePicture: {
@@ -68,7 +69,9 @@ const UserSchema = new mongoose.Schema({
     hospitalId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Hospital",
-        required: true,
+        required: function () {
+            return this.role === "patient";
+        },
     },
     metaData: {
         doctorData: {
