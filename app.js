@@ -32,7 +32,7 @@ connectDB();
 
 // passportConfig(passport);
 
-app.use("/user",API );
+app.use("/api",API );
 
 const port = process.env.PORT || 5000;
 
