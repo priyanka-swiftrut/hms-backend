@@ -1,15 +1,9 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-const combinedSchema = new mongoose.Schema(
+const UserSchema = new mongoose.Schema(
   {
-    // Common fields required for all roles
-    firstName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    lastName: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -18,49 +12,125 @@ const combinedSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      trim: true,
-    },
-    password: {
-      type: String,
-      required: true,
-      minlength: [6, "Password must be at least 6 characters long"],
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
     },
     phone: {
       type: String,
       required: true,
       unique: true,
     },
+    profilePicture: {
+      type: String,
+      default: "https://vectorified.com/images/default-user-icon-33.jpg",
+    },
     gender: {
       type: String,
       enum: ["Male", "Female", "Other"],
     },
-    country: {
-      type: String,
-      required: true,
+    age: {
+      type: Number,
+      min: [0, "Age must be a positive number"],
     },
-    state: {
-      type: String,
-      required: true,
+    address: {
+      country: { type: String },
+      state: { type: String },
+      city: { type: String },
+      zipCode: { type: String },
+      fullAddress: { type: String },
     },
-    city: {
+    password: {
       type: String,
       required: true,
+      minlength: [6, "Password must be at least 6 characters long"],
     },
     role: {
       type: String,
       required: true,
       enum: ["admin", "doctor", "patient", "receptionist"],
     },
-    avatar: {
-      type: String,
-      default: "https://vectorified.com/images/default-user-icon-33.jpg",
+    hospitalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hospital",
+      required: function () {
+        return this.role !== "admin";
+      },
     },
-
-    // Fields specific to roles
-    roleData: {
-      type: Object,
-      required: false,
-      default: {},
+    metaData: {
+      // Admin-specific fields (if needed)
+      adminData: {
+        countryCode: { type: String },
+        twiloPhone: { type: String },
+      },
+      // Doctor-specific fields
+      doctorData: {
+        qualification: { type: String },
+        speciality: { type: String },
+        workingTime: { type: String },
+        breakTime: { type: String },
+        unavailableTimes: [
+          {
+            date: String,
+            timeRange: {
+              start: String,
+              end: String,
+            },
+            title: String,
+            reason: String,
+          },
+        ],
+        patientCheckupTime: { type: String },
+        experience: { type: Number },
+        doctorAddress: { type: String },
+        description: { type: String },
+        onlineConsultationRate: { type: Number },
+        worksiteLink: {
+          type: String,
+          match: [/^https?:\/\/.+$/, "Please provide a valid URL"],
+        },
+        emergencyContactNo: { type: String },
+        signature: { type: String },
+      },
+      // Patient-specific fields
+      patientData: {
+        diseaseName: { type: String },
+        appointmentId: [
+          {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Appointment",
+          },
+        ],
+        height: { type: Number },
+        weight: { type: Number },
+        bloodGroup: {
+          type: String,
+          enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+        },
+        dob: { type: Date },
+        insurance: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Insurance",
+        },
+      },
+      // Receptionist-specific fields
+      receptionistData: {
+        qualification: { type: String },
+        emergencyContactNo: { type: String },
+        workingTime: { type: String },
+        breakTime: { type: String },
+      },
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
     },
   },
   {
@@ -68,77 +138,20 @@ const combinedSchema = new mongoose.Schema(
   }
 );
 
-// Role-specific fields
-combinedSchema.statics.roleFields = {
-  admin: {
-    confirmPassword: { type: String, required: true },
-    hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: "Hospital" },
-  },
-  doctor: {
-    hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: "Hospital" },
-    qualification: { type: String },
-    speciality: { type: String },
-    workingTime: { type: String },
-    breakTime: { type: String },
-    unavailableTimes: { type: Array, default: [] },
-    patientCheckupTime: { type: String },
-    workingOn: { type: String, enum: ["Part-time", "Full-time", "Contract"] },
-    experience: { type: Number },
-    age: { type: Number },
-    description: { type: String },
-    onlineConsultationRate: { type: Number },
-    currentHospital: { type: String },
-    hospitalName: { type: String },
-    hospitalAddress: { type: String },
-    worksiteLink: { type: String },
-    emergencyContactNo: { type: String },
-    signature: { type: String },
-  },
-  patient: {
-    address: { type: String },
-    diseaseName: { type: String },
-    resetPasswordOtp: { type: String },
-    resetPasswordExpires: { type: Date },
-    age: { type: Number },
-    height: { type: Number },
-    weight: { type: Number },
-    bloodGroup: {
-      type: String,
-      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
-    },
-    dob: { type: Date },
-    doctor: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
-    insurance: { type: mongoose.Schema.Types.ObjectId, ref: "Insurance" },
-  },
-  receptionist: {
-    hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: "Hospital" },
-    qualification: { type: String },
-    emergencyContactNo: { type: String },
-    workingTime: { type: String },
-    breakTime: { type: String },
-    deviceToken: { type: String, default: "null" },
-  },
-};
+// Password hashing middleware
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
 
-// Middleware to validate role-specific fields
-combinedSchema.pre("save", function (next) {
-  const roleFields = combinedSchema.statics.roleFields[this.role];
-  if (roleFields) {
-    for (const field in roleFields) {
-      const fieldDef = roleFields[field];
-      if (fieldDef.required && !this.roleData[field]) {
-        return next(new Error(`${field} is required for role ${this.role}`));
-      }
-    }
-  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
 // Method to compare password for login
-combinedSchema.methods.matchPassword = async function (enteredPassword) {
+UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const CombinedModel = mongoose.model("User", combinedSchema);
+const UserModel = mongoose.model("User", UserSchema);
 
-export default CombinedModel;
+export default UserModel;
