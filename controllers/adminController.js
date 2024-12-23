@@ -1,7 +1,6 @@
 import User from '../models/User.model.js';
 import sendResponse from '../services/response.services.js';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { StatusCodes } from 'http-status-codes';
 import regestration from '../services/emailTemplate.js';
