@@ -11,21 +11,11 @@ const storage = new CloudinaryStorage({
     switch (file.fieldname) {
       case 'signature' :
         folderName = "signatureImages";
-      case 'uploadBill' :
-        folderName = 'expenseBill';
+      case 'hospitalLogo' :
+        folderName = 'hospitalLogoImages';
         break;
       case 'profilePicture':
         folderName = 'profileImages';
-        break;
-      case 'aadharImage_front':
-      case 'aadharImage_back':
-        folderName = 'aadharImages';
-        break;
-      case 'addressProofImage':
-        folderName = 'addressProofImages';
-        break;
-      case 'rentalAgreementImage':
-        folderName = 'rentalAgreementImages';
         break;
       default:
         folderName = 'others';

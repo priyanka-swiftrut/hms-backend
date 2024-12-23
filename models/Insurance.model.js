@@ -5,24 +5,18 @@ const insuranceSchema = new mongoose.Schema(
   {
     patientId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Patient",
+      ref: "User",
       required: true,
     },
     insuranceCompany: {
       type: String,
-      // required: true,
-      // enum: [
-      //   "HDFC Life Insurance",
-      //   "LIC Life Insurance",
-      //   "Aegon Life Insurance",
-      // ],
       trim: true,
+      required: true,
     },
     insurancePlan: {
       type: String,
-      // required: true,
-      // enum: ["Maternity", "Medical", "Health"],
-      // trim: true,
+      trim: true,
+      required: true,
     },
     claimAmount: {
       type: Number,
@@ -30,10 +24,16 @@ const insuranceSchema = new mongoose.Schema(
     },
     claimedAmount: {
       type: Number,
+      required: true,
     },
-    
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 const insuranceModel = mongoose.model("Insurance", insuranceSchema);
