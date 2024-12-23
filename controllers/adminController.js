@@ -19,6 +19,7 @@ class AdminController {
                 } else {
                     let pass = await bcrypt.hash(req.body.password, 10);
                     req.body.password = pass;
+                    req.body.role = "admin";
                     req.body.fullName = req.body.firstname + " " + req.body.lastname;
                     if (req.files) {
                         if (req.files?.profilePicture?.[0]?.path) {
