@@ -9,7 +9,7 @@ class HospitalController {
             }
             let existingHospital = await Hospital.findOne({ name: req.body.name });
             if (existingHospital) return sendResponse(res, 400, "Hospital name already exists", 0);
-            
+
             if (req.files && req.files.hospitalLogo && req.files.hospitalLogo[0] && req.files.hospitalLogo[0].path) {
                 req.body.hospitalLogo = req.files.hospitalLogo[0].path;
             }
@@ -19,6 +19,29 @@ class HospitalController {
                 return sendResponse(res, 200, "Hospital created successfully", 1, hospital);
             } else {
                 return sendResponse(res, 400, "Failed to add Hospital", 0);
+            }
+        } catch (error) {
+            return sendResponse(res, 400, error.message, 'error');
+        }
+    }
+
+    async getHospitals(req, res) {
+        try {
+            if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
+                const hospitals = await Hospital.find();
+                if (hospitals) {
+                    return sendResponse(res, 200, "Hospitals fetched successfully", 1, hospitals);
+                } else {
+                    return sendResponse(res, 400, "Failed to fetch Hospitals", 0);
+                }
+            }
+            else {
+                const hospital = await Hospital.findById(req.params.id);
+                if (hospital) {
+                    return sendResponse(res, 200, "Hospital fetched successfully", 1, hospital);
+                } else {
+                    return sendResponse(res, 400, "Failed to fetch Hospital", 0);
+                }
             }
         } catch (error) {
             return sendResponse(res, 400, error.message, 'error');
