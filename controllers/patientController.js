@@ -121,13 +121,15 @@ class PatientController {
 
     async EditProfile(req, res) {   
         try {
+            console.log(req.user, "req.user");
+            
             // Check if request body is empty
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
 
             // Find the patient by id
-            const patient = await User.findById(req.user.id);
+            const patient = await User.findById(req.user._id);
             if (!patient) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
@@ -140,7 +142,7 @@ class PatientController {
             }
 
             // Update the patient
-            const updatedPatient = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
+            const updatedPatient = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
             if (updatedPatient) {
                 return sendResponse(res, StatusCodes.OK, "Patient profile updated successfully", 1, updatedPatient);
             } else {
@@ -179,7 +181,7 @@ class PatientController {
     async getPatients(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
-                const patients = await User.find();
+                const patients = await User.find({ role: 'patient' });
                 if (patients) {
                     return sendResponse(res, StatusCodes.OK, "Patients fetched successfully", 1, patients);
                 } else {
@@ -187,7 +189,7 @@ class PatientController {
                 }
             }
             else {
-                const patient = await User.findById(req.params.id);
+                const patient = await User.findById( req.query.id, { role: 'patient' });
                 if (patient) {
                     return sendResponse(res, StatusCodes.OK, "Patient fetched successfully", 1, patient);
                 } else {
@@ -198,18 +200,7 @@ class PatientController {
             return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
-    async getonePatient(req, res) {
-        try {
-            const patient = await User.findById(req.user.id);
-            if (patient) {
-                return sendResponse(res, StatusCodes.OK, "Patient fetched successfully", 1, patient);
-            } else {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to fetch Patient", 0);
-            }
-        } catch (error) {
-            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
-        }
-    }
+
 }
 
 export default PatientController;

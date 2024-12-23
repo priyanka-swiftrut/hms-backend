@@ -4,7 +4,8 @@ import sendResponse from '../services/response.services.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
-this.OTP = "";
+
+
 
 class AuthController {
 
