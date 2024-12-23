@@ -33,13 +33,14 @@ const hospitalSchema = new mongoose.Schema(
     },
     emergencyContactNo: {
       type: String,
+      required: [true, "Emergency contact number is required"],
     },
     worksiteLink: {
       type: String,
     },
     hospitalLogo: {
         type: String,
-        default: "https://vectorified.com/images/default-user-icon-33.jpg",
+        required: [true, 'Hospital logo is required']
     },
   },
   {
