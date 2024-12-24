@@ -4,6 +4,15 @@ import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import { StatusCodes } from 'http-status-codes';
 import regestration from '../services/emailTemplate.js';
+import cloudinary from '../config/cloudinaryConfig.js';
+import crypto from 'crypto';
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 
 class ReceptionistController {
     async Register(req, res) {
@@ -14,9 +23,7 @@ class ReceptionistController {
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-            if (req.body.password !== req.body.confirmPassword) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
-            }
+ 
             // Ensure hospitalId exists in req.user
             const hospitalId = req.user.hospitalId;
             if (!hospitalId) {
@@ -26,7 +33,10 @@ class ReceptionistController {
             if (existingUser) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
-            const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+            const password = crypto.randomBytes(8).toString("hex");
+            const hashedPassword = await bcrypt.hash(password, 10);
+
             const newReceptionistData = {
                 fullName: `${req.body.firstName} ${req.body.lastName}`,
                 email: req.body.email,
@@ -67,7 +77,7 @@ class ReceptionistController {
                         pass: process.env.PASSWORD,
                     },
                 });
-                const htmlMessage = regestration(newReceptionistData.fullName, req.body.email, req.body.password);
+                const htmlMessage = regestration(newReceptionistData.fullName, req.body.email, password);
                 await transporter.sendMail({
                     from: process.env.EMAIL,
                     to: req.body.email,

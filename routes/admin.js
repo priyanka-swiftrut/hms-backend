@@ -10,7 +10,9 @@ const receptionistController = new ReceptionistController();
 router.post("/editAdmin", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.EditProfile.bind(adminController));
 router.delete("/delete/:id", adminController.deleteProfile.bind(adminController));
 
-
+// receptionist routes
 router.post("/createReceptionist", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.Register.bind(receptionistController));
+router.delete("/deleteReceptionist/:id", receptionistController.deleteProfile.bind(receptionistController));
+
 
 export default router;
