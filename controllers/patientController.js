@@ -121,27 +121,18 @@ class PatientController {
 
     async EditProfile(req, res) {   
         try {
-            console.log(req.user, "req.user");
-            
-            // Check if request body is empty
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-
-            // Find the patient by id
             const patient = await User.findById(req.user._id);
             if (!patient) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
-
-            // Check if profile picture is present
             if (req.files) {
                 if (req.files?.profilePicture?.[0]?.path) {
                     req.body.profilePicture = req.files.profilePicture[0].path;
                 }
             }
-
-            // Update the patient
             const updatedPatient = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
             if (updatedPatient) {
                 return sendResponse(res, StatusCodes.OK, "Patient profile updated successfully", 1, updatedPatient);
@@ -155,19 +146,14 @@ class PatientController {
 
     async deleteProfile(req, res) {
         try {
-            // Find the patient by id
             const patient = await User.findById(req.params.id);
             if (!patient) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
-
-            // Delete the patient profile picture
             if (patient.profilePicture) {
                 const publicId = patient.profilePicture.split("/").pop().split(".")[0];
                 await cloudinaryConfig.uploader.destroy(`profileImages/${publicId}`);
             }
-
-            // Update the patient
             const updatedPatient = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
             if (updatedPatient) {
                 return sendResponse(res, StatusCodes.OK, "Patient profile deleted successfully", 1, updatedPatient);
