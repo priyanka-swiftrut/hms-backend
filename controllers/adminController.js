@@ -90,7 +90,6 @@ class AdminController {
             return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
-
     async deleteProfile(req, res) {
         try {
             let user = await User.findById(req.params.id);
@@ -109,17 +108,6 @@ class AdminController {
             } else {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "User Not Found", 0);
             }
-        } catch (error) {
-            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
-        }
-    }
-
-    async RegisterDoctor(req, res) {
-        try {
-            if(!req.body || Object.keys(req.body).length === 0) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
-            }
-            
         } catch (error) {
             return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }

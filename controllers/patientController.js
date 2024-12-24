@@ -80,6 +80,7 @@ class PatientController {
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
+
             const patient = await User.findById(req.user._id);
             if (!patient) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);

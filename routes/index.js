@@ -2,6 +2,7 @@ import express from "express";
 import hospital from "./hospital.js";
 import admin from "./admin.js";
 import patient from "./patient.js";
+import receptionist from "./receptionist.js";
 import AdminController from "../controllers/adminController.js";
 import PatientController from "../controllers/patientController.js";
 import upload from "../services/multer.services.js";
@@ -32,5 +33,11 @@ router.use('/patient', (req, res, next) => {
         req.user = user; next();
     })(req, res, next);
 }, patient);
+router.use('/receptionist', (req, res, next) => {
+    passport.authenticate('Receptionist', (err, user) => {
+        if (err || !user) { return sendResponse(res, 403, 'Unauthorized', 0); }
+        req.user = user; next();
+    })(req, res, next);
+}, receptionist);
 
 export default router;
