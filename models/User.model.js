@@ -111,12 +111,6 @@ const UserSchema = new mongoose.Schema({
                     return this.role === "doctor";
                 },
             },
-            doctorAddress: {
-                type: String,
-                required: function () {
-                    return this.role === "doctor";
-                },
-            },
             description: {
                 type: String,
                 required: function () {

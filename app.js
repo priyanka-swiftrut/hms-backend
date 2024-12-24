@@ -4,10 +4,10 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
-import connectDB from "./src/config/db.js";
-import API from "./src/routes/index.js"
-import Models from './src/models/index.js';
-import passportConfig from "./src/config/passport.js";
+import connectDB from "./config/db.js";
+import API from "./routes/index.js"
+import Models from './models/index.js';
+import passportConfig from "./config/passport.js";
 
 dotenv.config();
 

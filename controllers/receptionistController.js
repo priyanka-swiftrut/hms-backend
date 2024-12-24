@@ -1,30 +1,31 @@
 import User from '../models/User.model.js';
-import sendResponse from '../services/response.services.js';
+import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import { StatusCodes } from 'http-status-codes';
-import regestration from '../services/emailTemplate.js';
+import EmailService from '../services/email.service.js';
+
 
 class ReceptionistController {
+
     async Register(req, res) {
         try {
             if (!req.user || req.user.role !== "admin") {
-                return sendResponse(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
+                return ResponseService.send(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
             }
             if (!req.body || Object.keys(req.body).length === 0) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             if (req.body.password !== req.body.confirmPassword) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
             }
-            // Ensure hospitalId exists in req.user
             const hospitalId = req.user.hospitalId;
             if (!hospitalId) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
             const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
             const hashedPassword = await bcrypt.hash(req.body.password, 10);
             const newReceptionistData = {
@@ -76,23 +77,23 @@ class ReceptionistController {
                     html: htmlMessage,
                 });
             } catch (emailError) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Receptionist registered, but email sending failed", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist registered, but email sending failed", 0);
             }
-            return sendResponse(res, StatusCodes.OK, "Receptionist registered successfully", 1, newReceptionist);
+            return ResponseService.send(res, StatusCodes.OK, "Receptionist registered successfully", 1, newReceptionist);
         } catch (error) {
-            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 
     async EditProfile(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
 
             const Receptionist = await User.findById(req.user._id);
             if (!Receptionist) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Receptionist not found", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist not found", 0);
             }
             if (req.files) {
                 if (req.files?.profilePicture?.[0]?.path) {
@@ -101,12 +102,12 @@ class ReceptionistController {
             }
             const updateReceptionist = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
             if (updateReceptionist) {
-                return sendResponse(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, updateReceptionist);
+                return ResponseService.send(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, updateReceptionist);
             } else {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to update Receptionist profile", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update Receptionist profile", 0);
             }
         } catch (error) {
-            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 
@@ -114,7 +115,7 @@ class ReceptionistController {
         try {
             const receptionist = await User.findById(req.params.id);
             if (!receptionist) {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "receptionist not found", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "receptionist not found", 0);
             }
             if (receptionist.profilePicture) {
                 const publicId = receptionist.profilePicture.split("/").pop().split(".")[0];
@@ -122,12 +123,12 @@ class ReceptionistController {
             }
             const updateReceptionist = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
             if (updateReceptionist) {
-                return sendResponse(res, StatusCodes.OK, "receptionist profile deleted successfully", 1, updateReceptionist);
+                return ResponseService.send(res, StatusCodes.OK, "receptionist profile deleted successfully", 1, updateReceptionist);
             } else {
-                return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to delete receptionist profile", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to delete receptionist profile", 0);
             }
         } catch (error) {
-            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
     async getreceptionist(req, res) {
@@ -135,21 +136,21 @@ class ReceptionistController {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
                 const receptionist = await User.find({ role: 'receptionist' });
                 if (receptionist) {
-                    return sendResponse(res, StatusCodes.OK, "receptionist fetched successfully", 1, receptionist);
+                    return ResponseService.send(res, StatusCodes.OK, "receptionist fetched successfully", 1, receptionist);
                 } else {
-                    return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to fetch receptionist", 0);
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch receptionist", 0);
                 }
             }
             else {
                 const receptionist = await User.findById({ _id: req.query.id, role: 'receptionist' });
                 if (receptionist) {
-                    return sendResponse(res, StatusCodes.OK, "receptionist fetched successfully", 1, receptionist);
+                    return ResponseService.send(res, StatusCodes.OK, "receptionist fetched successfully", 1, receptionist);
                 } else {
-                    return sendResponse(res, StatusCodes.BAD_REQUEST, "Failed to fetch receptionist", 0);
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch receptionist", 0);
                 }
             }
         } catch (error) {
-            return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 

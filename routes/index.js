@@ -9,7 +9,7 @@ import upload from "../services/multer.services.js";
 import  passport  from "passport";
 import adminRoutes from './admin.js';
 import auth from './auth.js';
-import sendResponse from "../services/response.services.js";
+import ResponseService from "../services/response.services.js";
 const router = express.Router();
 const adminController = new AdminController();
 const patientController = new PatientController();
@@ -23,19 +23,19 @@ router.use("/hospital", hospital);
 
 router.use('/admin', (req, res, next) => {
     passport.authenticate('jwt', (err, user) => {
-        if (err || !user) { return sendResponse(res, 403, 'Unauthorized', 0); }
+        if (err || !user) { return ResponseService.send(res, 403, 'Unauthorized', 0); }
         req.user = user; next();
     })(req, res, next);
 }, adminRoutes);
 router.use('/patient', (req, res, next) => {
     passport.authenticate('Patient', (err, user) => {
-        if (err || !user) { return sendResponse(res, 403, 'Unauthorized', 0); }
+        if (err || !user) { return ResponseService.send(res, 403, 'Unauthorized', 0); }
         req.user = user; next();
     })(req, res, next);
 }, patient);
 router.use('/receptionist', (req, res, next) => {
     passport.authenticate('Receptionist', (err, user) => {
-        if (err || !user) { return sendResponse(res, 403, 'Unauthorized', 0); }
+        if (err || !user) { return ResponseService.send(res, 403, 'Unauthorized', 0); }
         req.user = user; next();
     })(req, res, next);
 }, receptionist);
