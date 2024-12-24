@@ -1,9 +1,7 @@
 import User from '../models/User.model.js';
 import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import { StatusCodes } from 'http-status-codes';
-import regestration from '../services/emailTemplate.js';
 import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
 import EmailService from '../services/email.service.js';
@@ -18,11 +16,6 @@ class ReceptionistController {
             }
             if (!req.body || Object.keys(req.body).length === 0) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
-            }
- 
-            // Ensure hospitalId exists in req.user
-            if (req.body.password !== req.body.confirmPassword) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
             }
             const hospitalId = req.user.hospitalId;
             if (!hospitalId) {
@@ -67,23 +60,8 @@ class ReceptionistController {
             const newReceptionist = new User(newReceptionistData);
             await newReceptionist.save();
             try {
-                const transporter = nodemailer.createTransport({
-                    host: "smtp.gmail.com",
-                    port: 465,
-                    secure: true,
-                    auth: {
-                        user: process.env.EMAIL,
-                        pass: process.env.PASSWORD,
-                    },
-                });
-                const htmlMessage = regestration(newReceptionistData.fullName, req.body.email, password);
-                await transporter.sendMail({
-                    from: process.env.EMAIL,
-                    to: req.body.email,
-                    subject: "Registration Successful ✔",
-                    text: `Hello ${newReceptionistData.fullName}, You've successfully registered as a Receptionist.`,
-                    html: htmlMessage,
-                });
+                const emailHtml = EmailService.registrationTemplate(newReceptionist.fullName, newReceptionist.email, req.body.password);
+                await EmailService.sendEmail(newReceptionist.email, "Registration Successful ✔", emailHtml);
             } catch (emailError) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist registered, but email sending failed", 0);
             }
@@ -105,6 +83,10 @@ class ReceptionistController {
             }
             if (req.files) {
                 if (req.files?.profilePicture?.[0]?.path) {
+                    if (Receptionist.profilePicture && Receptionist.profilePicture !== "") {
+                        const publicId = Receptionist.profilePicture.split("/").pop().split(".")[0];
+                        await cloudinary.uploader.destroy(`profileImages/${publicId}`);
+                    }
                     req.body.profilePicture = req.files.profilePicture[0].path;
                 }
             }
@@ -125,10 +107,6 @@ class ReceptionistController {
             if (!receptionist) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "receptionist not found", 0);
             }
-            if (receptionist.profilePicture) {
-                const publicId = receptionist.profilePicture.split("/").pop().split(".")[0];
-                await cloudinaryConfig.uploader.destroy(`profileImages/${publicId}`);
-            }
             const updateReceptionist = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
             if (updateReceptionist) {
                 return ResponseService.send(res, StatusCodes.OK, "receptionist profile deleted successfully", 1, updateReceptionist);
@@ -142,7 +120,7 @@ class ReceptionistController {
     async getreceptionist(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
-                const receptionist = await User.find({ role: 'receptionist' });
+                const receptionist = await User.find({ role: 'receptionist', isActive: true });
                 if (receptionist) {
                     return ResponseService.send(res, StatusCodes.OK, "receptionist fetched successfully", 1, receptionist);
                 } else {

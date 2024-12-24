@@ -1,9 +1,8 @@
 import User from '../models/User.model.js';
 import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import { StatusCodes } from 'http-status-codes';
-import regestration from '../services/emailTemplate.js';
+import EmailService from '../services/email.service.js';
 
 class PatientController {
     async Register(req, res) {
@@ -49,23 +48,8 @@ class PatientController {
             const newPatient = new User(newPatientData);
             await newPatient.save();
             try {
-                const transporter = nodemailer.createTransport({
-                    host: "smtp.gmail.com",
-                    port: 465,
-                    secure: true,
-                    auth: {
-                        user: process.env.EMAIL,
-                        pass: process.env.PASSWORD,
-                    },
-                });
-                const htmlMessage = regestration(newPatientData.fullName, req.body.email, req.body.password);
-                await transporter.sendMail({
-                    from: process.env.EMAIL,
-                    to: req.body.email,
-                    subject: "Registration Successful ✔",
-                    text: `Hello ${newPatientData.fullName}, You've successfully registered as a patient.`,
-                    html: htmlMessage,
-                });
+                const emailHtml = EmailService.registrationTemplate(newPatient.fullName, newPatient.email, req.body.password);
+                await EmailService.sendEmail(newPatient.email, "Registration Successful ✔", emailHtml);
             } catch (emailError) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient registered, but email sending failed", 0);
             }
@@ -87,6 +71,10 @@ class PatientController {
             }
             if (req.files) {
                 if (req.files?.profilePicture?.[0]?.path) {
+                    if (patient.profilePicture && patient.profilePicture !== "") {
+                        const publicId = patient.profilePicture.split("/").pop().split(".")[0];
+                        await cloudinary.uploader.destroy(`profileImages/${publicId}`);
+                    }
                     req.body.profilePicture = req.files.profilePicture[0].path;
                 }
             }
@@ -124,7 +112,7 @@ class PatientController {
     async getPatients(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
-                const patients = await User.find({ role: 'patient' });
+                const patients = await User.find({ role: 'patient', isActive: true });
                 if (patients) {
                     return ResponseService.send(res, StatusCodes.OK, "Patients fetched successfully", 1, patients);
                 } else {
@@ -132,7 +120,7 @@ class PatientController {
                 }
             }
             else {
-                const patient = await User.findById({ _id: req.query.id, role: 'patient' });
+                const patient = await User.findById({ _id: req.query.id, role: 'patient', isActive: true });
                 if (patient) {
                     return ResponseService.send(res, StatusCodes.OK, "Patient fetched successfully", 1, patient);
                 } else {

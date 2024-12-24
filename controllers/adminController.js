@@ -1,12 +1,12 @@
 import User from '../models/User.model.js';
 import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
 import crypto from 'crypto';
 
 class AdminController {
+
     async Register(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
@@ -30,8 +30,8 @@ class AdminController {
                     await newUser.save();
                     if (newUser) {
                         try {
-                            const emailHtml = EmailService.registrationTemplate(userData.fullName, userData.email, req.body.password);
-                            await EmailService.sendEmail(userData.email, "Registration Successful ✔", emailHtml);
+                            const emailHtml = EmailService.registrationTemplate(newUser.fullName, newUser.email, req.body.password);
+                            await EmailService.sendEmail(newUser.email, "Registration Successful ✔", emailHtml);
                         } catch (emailError) {
                             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User registered, but email sending failed", 0);
                         }
@@ -165,6 +165,23 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.OK, "Doctor Registered Successfully", 1, doctor);
             } else {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Something went wrong", 0);
+            }
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+        }
+    }
+
+    async deleteDoctor(req, res) {
+        try {
+            const doctor = await User.findById(req.params.id);
+            if (!doctor) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found", 0);
+            }
+            const updateDoctor = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+            if (updateDoctor) {
+                return ResponseService.send(res, StatusCodes.OK, "Doctor profile deleted successfully", 1, updateDoctor);
+            } else {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to delete Doctor profile", 0);
             }
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');

@@ -30,8 +30,6 @@ app.use(passport.session());
 
 connectDB();
 
-// passportConfig(passport);
-
 app.use("/api",API );
 
 const port = process.env.PORT || 5000;
