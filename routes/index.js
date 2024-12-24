@@ -2,6 +2,7 @@ import express from "express";
 import hospital from "./hospital.js";
 import admin from "./admin.js";
 import patient from "./patient.js";
+import doctor from "./doctor.js";
 import receptionist from "./receptionist.js";
 import AdminController from "../controllers/adminController.js";
 import PatientController from "../controllers/patientController.js";
@@ -39,5 +40,12 @@ router.use('/receptionist', (req, res, next) => {
         req.user = user; next();
     })(req, res, next);
 }, receptionist);
+
+router.use('/doctor', (req, res, next) => {
+    passport.authenticate('Doctor', (err, user) => {
+        if (err || !user) { return ResponseService.send(res, 403, 'Unauthorized', 0); }
+        req.user = user; next();
+    })(req, res, next);
+}, doctor);
 
 export default router;

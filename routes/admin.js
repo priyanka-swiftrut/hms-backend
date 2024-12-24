@@ -15,6 +15,6 @@ router.post("/createReceptionist", upload.fields([{ name: 'profilePicture', maxC
 router.delete("/deleteReceptionist/:id", receptionistController.deleteProfile.bind(receptionistController));
 
 
-router.post('/createDoctor', upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.createDoctor.bind(adminController));
+router.post('/createDoctor', upload.fields([{ name: 'profilePicture', maxCount: 1 } , { name: 'signature', maxCount: 1 }]), adminController.createDoctor.bind(adminController));
 router.delete('/deleteDoctor/:id', adminController.deleteDoctor.bind(adminController));
 export default router;

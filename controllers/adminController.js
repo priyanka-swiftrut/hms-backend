@@ -6,7 +6,7 @@ import EmailService from '../services/email.service.js';
 import crypto from 'crypto';
 
 class AdminController {
-
+    
     async Register(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
@@ -105,12 +105,19 @@ class AdminController {
 
     async createDoctor(req, res) {
         try {
+            if (!req.user || req.user.role !== "admin") {
+                return ResponseService.send(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
+            }
             if (!req.body || Object.keys(req.body).length === 0) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
+            }
+            const hospitalId = req.user.hospitalId;
+            if (!hospitalId) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
             const password = crypto.randomBytes(8).toString("hex");
             const hashedPassword = await bcrypt.hash(password, 10);

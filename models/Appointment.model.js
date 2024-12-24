@@ -35,7 +35,7 @@ const appointmentSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      // enum: ["in-person", "teleconsultation"],
+      enum: ["onsite", "online"],
       required: [true, "Appointment type is required"],
     },
     patient_issue: {
@@ -44,21 +44,6 @@ const appointmentSchema = new mongoose.Schema(
     },
     dieseas_name: {
       type: String,
-      trim: true,
-    },
-    city: {
-      type: String,
-      required: [true, "City is required"],
-      trim: true,
-    },
-    state: {
-      type: String,
-      required: [true, "State is required"],
-      trim: true,
-    },
-    country: {
-      type: String,
-      required: [true, "Country is required"],
       trim: true,
     },
     status: {
