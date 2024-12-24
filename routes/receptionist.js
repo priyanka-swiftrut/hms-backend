@@ -7,7 +7,6 @@ const receptionistController = new ReceptionistController();
 
 // Authorization Apis
 router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.EditProfile.bind(receptionistController));      
-router.delete("/delete/:id", receptionistController.deleteProfile.bind(receptionistController));
 router.get("/getReceptionist", receptionistController.getreceptionist.bind(receptionistController));
 
 
