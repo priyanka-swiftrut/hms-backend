@@ -6,13 +6,6 @@ import { StatusCodes } from 'http-status-codes';
 import regestration from '../services/emailTemplate.js';
 import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
-
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 import EmailService from '../services/email.service.js';
 
 
