@@ -8,83 +8,46 @@ import regestration from '../services/emailTemplate.js';
 class PatientController {
     async Register(req, res) {
         try {
-            // Check if request body is empty
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-            const {
-                firstName,
-                lastName,
-                email,
-                phone,
-                age,
-                height,
-                weight,
-                gender,
-                bloodGroup,
-                dob,
-                country,
-                state,
-                city,
-                fullAddress,
-                password,
-                confirmPassword,
-            } = req.body;
-
-            // Password and confirm password validation
-            if (password !== confirmPassword) {
+            if (req.body.password !== req.body.confirmPassword) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
             }
-
-            // Check if email already exists
-            const existingUser = await User.findOne({ email });
+            const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
-
-            // Hash the password
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Process profile picture
-            let profilePicture = "https://vectorified.com/images/default-user-icon-33.jpg"; // Default profile picture
-            if (req.files) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    req.body.profilePicture = req.files.profilePicture[0].path;
-                }
-            }
-
-            // Prepare the patient data
-            const patientData = {
-                fullName: `${firstName} ${lastName}`,
-                email,
-                phone,
-                age,
-                gender,
-                profilePicture,
+            const hashedPassword = await bcrypt.hash(req.body.password, 10);
+            const newPatientData = {
+                fullName: `${req.body.firstName} ${req.body.lastName}`,
+                email: req.body.email,
+                phone: req.body.phone,
+                age: req.body.age,
+                gender: req.body.gender,
                 address: {
-                    country,
-                    state,
-                    city,
+                    country: req.body.country,
+                    state: req.body.state,
+                    city: req.body.city,
                     zipCode: req.body.zipCode,
-                    fullAddress,
+                    fullAddress: req.body.fullAddress,
                 },
                 role: "patient",
                 password: hashedPassword,
                 metaData: {
                     patientData: {
-                        height,
-                        weight,
-                        bloodGroup,
-                        dob,
+                        height: req.body.height,
+                        weight: req.body.weight,
+                        bloodGroup: req.body.bloodGroup,
+                        dob: req.body.dob,
                     },
                 },
             };
-
-            // Save the new patient
-            const newPatient = new User(patientData);
+            if (req.files?.profilePicture?.[0]?.path) {
+                newPatientData.profilePicture = req.files.profilePicture[0].path;
+            }
+            const newPatient = new User(newPatientData);
             await newPatient.save();
-
-            // Send registration email
             try {
                 const transporter = nodemailer.createTransport({
                     host: "smtp.gmail.com",
@@ -95,53 +58,37 @@ class PatientController {
                         pass: process.env.PASSWORD,
                     },
                 });
-                const htmlMessage = regestration(`${firstName} ${lastName}`, email, password);
+                const htmlMessage = regestration(newPatientData.fullName, req.body.email, req.body.password);
                 await transporter.sendMail({
                     from: process.env.EMAIL,
-                    to: email,
+                    to: req.body.email,
                     subject: "Registration Successful ✔",
-                    text: `Hello ${firstName} ${lastName}, You've successfully registered as a patient.`,
+                    text: `Hello ${newPatientData.fullName}, You've successfully registered as a patient.`,
                     html: htmlMessage,
                 });
             } catch (emailError) {
-                return sendResponse(
-                    res,
-                    StatusCodes.BAD_REQUEST,
-                    "Patient registered, but email sending failed",
-                    0
-                );
+                return sendResponse(res, StatusCodes.BAD_REQUEST, "Patient registered, but email sending failed", 0);
             }
-
-            // Response on successful registration
             return sendResponse(res, StatusCodes.OK, "Patient registered successfully", 1, newPatient);
         } catch (error) {
             return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 
-    async EditProfile(req, res) {   
+    async EditProfile(req, res) {
         try {
-            console.log(req.user, "req.user");
-            
-            // Check if request body is empty
             if (!req.body || Object.keys(req.body).length === 0) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-
-            // Find the patient by id
             const patient = await User.findById(req.user._id);
             if (!patient) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
-
-            // Check if profile picture is present
             if (req.files) {
                 if (req.files?.profilePicture?.[0]?.path) {
                     req.body.profilePicture = req.files.profilePicture[0].path;
                 }
             }
-
-            // Update the patient
             const updatedPatient = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
             if (updatedPatient) {
                 return sendResponse(res, StatusCodes.OK, "Patient profile updated successfully", 1, updatedPatient);
@@ -151,23 +98,18 @@ class PatientController {
         } catch (error) {
             return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
-    }   
+    }
 
     async deleteProfile(req, res) {
         try {
-            // Find the patient by id
             const patient = await User.findById(req.params.id);
             if (!patient) {
                 return sendResponse(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
-
-            // Delete the patient profile picture
             if (patient.profilePicture) {
                 const publicId = patient.profilePicture.split("/").pop().split(".")[0];
                 await cloudinaryConfig.uploader.destroy(`profileImages/${publicId}`);
             }
-
-            // Update the patient
             const updatedPatient = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
             if (updatedPatient) {
                 return sendResponse(res, StatusCodes.OK, "Patient profile deleted successfully", 1, updatedPatient);
@@ -177,7 +119,7 @@ class PatientController {
         } catch (error) {
             return sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
-    }    
+    }
     async getPatients(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
