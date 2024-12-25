@@ -6,7 +6,8 @@ const doctorController = new DoctorController();
 // No Authorization Apis
 
 // Authorization Apis
-router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController));      
+router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
+router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
 
 
 

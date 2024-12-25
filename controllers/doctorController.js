@@ -40,6 +40,28 @@ class DoctorController {
         }
     }
 
+    async getdoctor (req, res) {
+        try {
+            if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
+                const doctor = await User.find({ role: 'doctor', isActive: true });
+                if (doctor) {
+                    return ResponseService.send(res, StatusCodes.OK, "doctor fetched successfully", 1, doctor);
+                } else {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch doctor", 0);
+                }
+            }
+            else {
+                const doctor = await User.findById({ _id: req.query.id, role: 'doctor' });
+                if (doctor) {
+                    return ResponseService.send(res, StatusCodes.OK, "doctor fetched successfully", 1, doctor);
+                } else {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch doctor", 0);
+                }
+            }
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+        }
+    }
 
 }
 

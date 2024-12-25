@@ -128,6 +128,7 @@ class AdminController {
                 age: req.body.age,
                 gender: req.body.gender,
                 hospitalId: hospitalId,
+                workon:req.body.workon,
                 address: {
                     country: req.body.country,
                     state: req.body.state,

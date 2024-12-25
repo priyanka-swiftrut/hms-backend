@@ -130,6 +130,14 @@ const UserSchema = new mongoose.Schema({
                     return this.role === "doctor";
                 },
             },
+            workon: {
+                type: String,
+                enum: ["Online", "Onsite", "Both"],
+                default: "Both",
+                required: function () {
+                    return this.role === "doctor";
+                },
+            },
             emergencyContactNo: {
                 type: String,
                 required: function () {
