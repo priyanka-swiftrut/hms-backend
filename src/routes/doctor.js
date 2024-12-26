@@ -18,8 +18,8 @@ router.get("/getAppointment", appointmentController.getAppointments.bind(appoint
 
     
 
-router.post("/createPrescription", prescriptionController.createPrescription.bind(prescriptionController));
+router.post("/createPrescription/appointmentId", prescriptionController.createPrescription.bind(prescriptionController));
 router.get("/getPrescription", prescriptionController.getPrescriptions.bind(prescriptionController));
-router.post("/editPrescription", prescriptionController.editPrescription.bind(prescriptionController));
+router.post("/editPrescription/prescriptionId", prescriptionController.editPrescription.bind(prescriptionController));
 
 export default router;
