@@ -32,9 +32,13 @@ const billSchema = new mongoose.Schema(
       required: false,
     },
     description: {
-      type: String,
+      type: [
+        {
+          key: { type: String, required: true },
+          value: { type: String, required: true },
+        },
+      ],
       required: false,
-      trim: true,
     },
     paymentType: {
       type: String,

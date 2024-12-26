@@ -13,7 +13,7 @@ class BillController {
     async editBill(req, res) {
         try {
             const { billId } = req.params;
-            const { amount, discount, tax, paymentType, insuranceDetails, status } = req.body;
+            const { amount, discount, tax, paymentType, insuranceDetails, description, status } = req.body;
     
             // Validate the bill exists
             const bill = await Bill.findById(billId);
@@ -21,7 +21,7 @@ class BillController {
                 return ResponseService.sendResponse(res, StatusCodes.NOT_FOUND, "Bill not found.", 0);
             }
     
-            // Validate and update the fields
+            // Update amount, discount, and tax
             if (amount !== undefined) bill.amount = amount;
             if (discount !== undefined) {
                 if (discount < 0 || discount > 100) {
@@ -35,8 +35,14 @@ class BillController {
                 }
                 bill.tax = tax;
             }
+    
+            // Update description (extra charges)
+            if (description && Array.isArray(description)) {
+                bill.description = description; // Replace existing description with new array
+            }
+    
+            // Handle payment type and insurance creation
             if (paymentType === "Insurance") {
-                // Check if insurance details are provided
                 if (!insuranceDetails || !insuranceDetails.insuranceCompany || !insuranceDetails.insurancePlan || !insuranceDetails.claimAmount || !insuranceDetails.claimedAmount) {
                     return ResponseService.sendResponse(
                         res,
@@ -46,19 +52,16 @@ class BillController {
                     );
                 }
     
-                // Create a new insurance record
                 const newInsurance = new Insurance({
                     patientId: bill.patientId,
                     insuranceCompany: insuranceDetails.insuranceCompany,
                     insurancePlan: insuranceDetails.insurancePlan,
                     claimAmount: insuranceDetails.claimAmount,
                     claimedAmount: insuranceDetails.claimedAmount,
-                    isActive: true, // Default to active
+                    isActive: true,
                 });
     
                 const savedInsurance = await newInsurance.save();
-    
-                // Attach the insurance ID to the bill
                 bill.insuranceId = savedInsurance._id;
             }
     

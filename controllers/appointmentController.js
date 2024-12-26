@@ -71,6 +71,56 @@ class AppointmentController {
             return null;
         }
     }
+
+    async getAppointments(req, res) {
+        try {
+
+            if(!req.user.id) {
+                return ResponseService.sendResponse(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
+            }
+            if(req.user.role === "doctor") {
+                const appointments = await Appointment.find({ doctorId: req.user.id });
+                return ResponseService.sendResponse(res, StatusCodes.OK, "Appointments retrieved successfully", 1, { appointments });
+            }
+            if(req.user.role === "patient") {
+                const appointments = await Appointment.find({ patientId: req.user.id });
+                return ResponseService.sendResponse(res, StatusCodes.OK, "Appointments retrieved successfully", 1, { appointments });
+            }
+            const appointments = await Appointment.find();
+            return ResponseService.sendResponse(res, StatusCodes.OK, "Appointments retrieved successfully", 1, { appointments });
+        } catch (error) {
+
+            return ResponseService.sendResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+
+        }
+    }
+
+    async editAppointment(req, res) {
+        try {
+            const { id } = req.params;
+            const { patient_issue, dieseas_name, city, state, country, status } = req.body;
+    
+            // Ensure the appointment exists
+            const appointment = await Appointment.findById(id);
+            if (!appointment) {
+                return ResponseService.sendResponse(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
+            }
+    
+            // Update the appointment data if provided
+            if (patient_issue !== undefined) appointment.patient_issue = patient_issue;
+            if (dieseas_name !== undefined) appointment.dieseas_name = dieseas_name;
+            if (city !== undefined) appointment.city = city;
+            if (state !== undefined) appointment.state = state;
+            if (country !== undefined) appointment.country = country;
+            if (status !== undefined) appointment.status = status;
+    
+            await appointment.save();
+    
+            return ResponseService.send(res, StatusCodes.OK, "Appointment updated successfully", 1, { appointment });
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+        }
+    }
 }
 
 export default AppointmentController;
