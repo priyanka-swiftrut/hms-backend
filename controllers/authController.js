@@ -117,7 +117,12 @@ class AuthController {
         try {
             res.clearCookie("otp");
             res.clearCookie("email");
-            return ResponseService.send(res, StatusCodes.OK, "Logged Out Successfully", 1);
+            req.session.destroy((err) => {
+                if (err) {
+                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to Log out", 0);
+                }
+                return ResponseService.send(res, StatusCodes.OK, "Logged Out Successfully", 1);
+            });
         } catch (error) {
             console.error(error.message);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);

@@ -12,17 +12,29 @@ class ReceptionistController {
     async Register(req, res) {
         try {
             if (!req.user || req.user.role !== "admin") {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
             }
             if (!req.body || Object.keys(req.body).length === 0) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             const hospitalId = req.user.hospitalId;
             if (!hospitalId) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
             const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
 
@@ -67,6 +79,7 @@ class ReceptionistController {
             }
             return ResponseService.send(res, StatusCodes.OK, "Receptionist registered successfully", 1, newReceptionist);
         } catch (error) {
+            this.deleteImage(req.files?.profilePicture?.[0]?.path);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
@@ -74,11 +87,17 @@ class ReceptionistController {
     async EditProfile(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
 
             const Receptionist = await User.findById(req.user._id);
             if (!Receptionist) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist not found", 0);
             }
             if (req.files) {
@@ -94,9 +113,15 @@ class ReceptionistController {
             if (updateReceptionist) {
                 return ResponseService.send(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, updateReceptionist);
             } else {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update Receptionist profile", 0);
             }
         } catch (error) {
+            if (req.files?.profilePicture?.[0]?.path) {
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+            }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
@@ -139,6 +164,13 @@ class ReceptionistController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+
+    async deleteImage(path) {
+        if (path) {
+            const publicId = path.split("/").pop().split(".")[0];
+            await cloudinary.uploader.destroy(`profileImages/${publicId}`);
+        }
+    };
 
 }
 

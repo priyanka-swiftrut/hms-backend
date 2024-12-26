@@ -15,33 +15,31 @@ class BillController {
             const { billId } = req.params;
             const { amount, discount, tax, paymentType, insuranceDetails, description, status } = req.body;
     
-            // Validate the bill exists
             const bill = await Bill.findById(billId);
             if (!bill) {
                 return ResponseService.sendResponse(res, StatusCodes.NOT_FOUND, "Bill not found.", 0);
             }
-    
-            // Update amount, discount, and tax
+
             if (amount !== undefined) bill.amount = amount;
+
             if (discount !== undefined) {
                 if (discount < 0 || discount > 100) {
                     return ResponseService.sendResponse(res, StatusCodes.BAD_REQUEST, "Discount must be between 0 and 100.", 0);
                 }
                 bill.discount = discount;
             }
+
             if (tax !== undefined) {
                 if (tax < 0) {
                     return ResponseService.sendResponse(res, StatusCodes.BAD_REQUEST, "Tax cannot be negative.", 0);
                 }
                 bill.tax = tax;
             }
-    
-            // Update description (extra charges)
+
             if (description && Array.isArray(description)) {
-                bill.description = description; // Replace existing description with new array
+                bill.description = description;
             }
-    
-            // Handle payment type and insurance creation
+            
             if (paymentType === "Insurance") {
                 if (!insuranceDetails || !insuranceDetails.insuranceCompany || !insuranceDetails.insurancePlan || !insuranceDetails.claimAmount || !insuranceDetails.claimedAmount) {
                     return ResponseService.sendResponse(
@@ -58,7 +56,6 @@ class BillController {
                     insurancePlan: insuranceDetails.insurancePlan,
                     claimAmount: insuranceDetails.claimAmount,
                     claimedAmount: insuranceDetails.claimedAmount,
-                    isActive: true,
                 });
     
                 const savedInsurance = await newInsurance.save();
@@ -72,7 +69,6 @@ class BillController {
                 bill.status = status;
             }
     
-            // Recalculate the totalAmount
             if (amount !== undefined || discount !== undefined || tax !== undefined) {
                 const discountedAmount = amount - (amount * (bill.discount || 0)) / 100;
                 bill.totalAmount = discountedAmount + (discountedAmount * (bill.tax || 0)) / 100;
@@ -91,7 +87,6 @@ class BillController {
         try {
             const { id } = req.query;
 
-            // Fetch all bills if no specific ID is provided
             if (!id || id.trim() === '') {
                 const bills = await Bill.find()
                     .populate('patientId', 'fullName email phone age gender address') // Populate patient details
@@ -105,7 +100,6 @@ class BillController {
                 }
             }
 
-            // Fetch a specific bill by ID
             const bill = await Bill.findById(id)
                 .populate('patientId', 'name email')
                 .populate('doctorId', 'name specialization')

@@ -4,27 +4,27 @@ import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
 
-const deleteImage = async (path) => {
-    if (path) {
-        const publicId = path.split("/").pop().split(".")[0];
-        await cloudinary.uploader.destroy(`profileImages/${publicId}`);
-    }
-};
 
 class PatientController {
     async Register(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             if (req.body.password !== req.body.confirmPassword) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
             }
             const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
             const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -72,13 +72,17 @@ class PatientController {
     async EditProfile(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
 
             const patient = await User.findById(req.user._id);
             if (!patient) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
             if (req.files) {
@@ -94,10 +98,17 @@ class PatientController {
             if (updatedPatient) {
                 return ResponseService.send(res, StatusCodes.OK, "Patient profile updated successfully", 1, updatedPatient);
             } else {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update patient profile", 0);
             }
         } catch (error) {
+            if (req.files?.profilePicture?.[0]?.path) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
+            }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
@@ -144,6 +155,13 @@ class PatientController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+
+    async deleteImage(path) {
+        if (path) {
+            const publicId = path.split("/").pop().split(".")[0];
+            await cloudinary.uploader.destroy(`profileImages/${publicId}`);
+        }
+    };
 
 }
 

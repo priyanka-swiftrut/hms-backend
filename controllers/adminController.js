@@ -5,29 +5,22 @@ import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
 import crypto from 'crypto';
 
-const deleteImage = async (path , folder , folder2) => {
-    if (path) {
-        const publicId = path.split("/").pop().split(".")[0];
-        if(folder === "profileImages"){
-            await cloudinary.uploader.destroy(`profileImages/${publicId}`);
-        }
-        if(folder2 === "signatureImages"){
-            await cloudinary.uploader.destroy(`signatureImages/${publicId}`);
-        }
-    }
-    
-};
-
 class AdminController {
-    
+
     async Register(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             if (req.body.password !== "" && req.body.password === req.body.confirmPassword) {
                 let checkmail = await User.findOne({ email: req.body.email });
                 if (checkmail) {
+                    if (req.files?.profilePicture?.[0]?.path) {
+                        await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                    }
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email Already Exists", 0);
                 } else {
                     let pass = await bcrypt.hash(req.body.password, 10);
@@ -50,13 +43,22 @@ class AdminController {
                         }
                         return ResponseService.send(res, StatusCodes.OK, "Admin Registered Successfully", 1, newUser);
                     } else {
+                        if (req.files?.profilePicture?.[0]?.path) {
+                            await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                        }
                         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Something went wrong", 0);
                     }
                 }
             } else {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                }
                 return ResponseService.send(res, 400, "Password and Confirm Password is Not Matched", 0);
             }
         } catch (error) {
+            if (req.files?.profilePicture?.[0]?.path) {
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+            }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
@@ -64,15 +66,17 @@ class AdminController {
     async EditProfile(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages");
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
-                
+
             }
             let user = await User.findById(req.user._id);
             if (user) {
                 if (req.files) {
                     if (req.files?.profilePicture?.[0]?.path) {
-                        await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages");
+                        await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
                         req.body.profilePicture = req.files.profilePicture[0].path;
                     }
                 }
@@ -81,13 +85,22 @@ class AdminController {
                 if (updatedUser) {
                     return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, updatedUser);
                 } else {
+                    if (req.files?.profilePicture?.[0]?.path) {
+                        await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                    }
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to Update Profile", 0);
                 }
             }
             else {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User Not Found", 0);
             }
         } catch (error) {
+            if (req.files?.profilePicture?.[0]?.path) {
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+            }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
@@ -118,21 +131,38 @@ class AdminController {
     async createDoctor(req, res) {
         try {
             if (!req.user || req.user.role !== "admin") {
-                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                } if (req.files?.signature?.[0]?.path) {
+                    await this.deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
+                }
                 return ResponseService.send(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
             }
             if (!req.body || Object.keys(req.body).length === 0) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                } if (req.files?.signature?.[0]?.path) {
+                    await this.deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                } if (req.files?.signature?.[0]?.path) {
+                    await this.deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
             const hospitalId = req.user.hospitalId;
             if (!hospitalId) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                }
+                if (req.files?.signature?.[0]?.path) {
+                    await this.deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
             const password = crypto.randomBytes(8).toString("hex");
@@ -144,7 +174,7 @@ class AdminController {
                 age: req.body.age,
                 gender: req.body.gender,
                 hospitalId: hospitalId,
-                workon:req.body.workon,
+                workon: req.body.workon,
                 address: {
                     country: req.body.country,
                     state: req.body.state,
@@ -188,9 +218,19 @@ class AdminController {
                 }
                 return ResponseService.send(res, StatusCodes.OK, "Doctor Registered Successfully", 1, doctor);
             } else {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                } if (req.files?.signature?.[0]?.path) {
+                    await this.deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Something went wrong", 0);
             }
         } catch (error) {
+            if (req.files?.profilePicture?.[0]?.path) {
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+            } if (req.files?.signature?.[0]?.path) {
+                await this.deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
+            }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
@@ -211,5 +251,16 @@ class AdminController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+
+    async deleteImage(path, folder) {
+        if (path) {
+            const publicId = path.split("/").pop().split(".")[0];
+            if (folder) {
+                await cloudinary.uploader.destroy(`${folder}/${publicId}`);
+            }
+        }
+    }
 }
+
+
 export default AdminController;

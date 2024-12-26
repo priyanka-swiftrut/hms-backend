@@ -1,31 +1,22 @@
 import User from '../models/User.model.js';
 import ResponseService from '../services/response.services.js';
-import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import cloudinary from '../config/cloudinaryConfig.js';
-import crypto from 'crypto';
-import EmailService from '../services/email.service.js';
 
-const deleteImage = async (path) => {
-    if (path) {
-        const publicId = path.split("/").pop().split(".")[0];
-        await cloudinary.uploader.destroy(`profileImages/${publicId}`);
-    }
-};
 
 class DoctorController {
 
-    
+
     async EditProfile(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
 
             const doctor = await User.findById(req.user._id);
             if (!doctor) {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "doctor not found", 0);
             }
             if (req.files) {
@@ -41,15 +32,16 @@ class DoctorController {
             if (updatedoctor) {
                 return ResponseService.send(res, StatusCodes.OK, "doctor profile updated successfully", 1, updatedoctor);
             } else {
-                await deleteImage(req.files?.profilePicture?.[0]?.path);
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update doctor profile", 0);
             }
         } catch (error) {
+            await this.deleteImage(req.files?.profilePicture?.[0]?.path);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 
-    async getdoctor (req, res) {
+    async getdoctor(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
                 const doctor = await User.find({ role: 'doctor', isActive: true });
@@ -71,6 +63,13 @@ class DoctorController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+
+    async deleteImage(path) {
+        if (path) {
+            const publicId = path.split("/").pop().split(".")[0];
+            await cloudinary.uploader.destroy(`profileImages/${publicId}`);
+        }
+    };
 
 }
 
