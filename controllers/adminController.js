@@ -5,6 +5,19 @@ import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
 import crypto from 'crypto';
 
+const deleteImage = async (path , folder , folder2) => {
+    if (path) {
+        const publicId = path.split("/").pop().split(".")[0];
+        if(folder === "profileImages"){
+            await cloudinary.uploader.destroy(`profileImages/${publicId}`);
+        }
+        if(folder2 === "signatureImages"){
+            await cloudinary.uploader.destroy(`signatureImages/${publicId}`);
+        }
+    }
+    
+};
+
 class AdminController {
     
     async Register(req, res) {
@@ -51,16 +64,15 @@ class AdminController {
     async EditProfile(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
+                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages");
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
+                
             }
             let user = await User.findById(req.user._id);
             if (user) {
                 if (req.files) {
                     if (req.files?.profilePicture?.[0]?.path) {
-                        if (user.profilePicture) {
-                            const publicId = user.profilePicture.split("/").pop().split(".")[0];
-                            await cloudinaryConfig.uploader.destroy(`profileImages/${publicId}`);
-                        }
+                        await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages");
                         req.body.profilePicture = req.files.profilePicture[0].path;
                     }
                 }
@@ -106,17 +118,21 @@ class AdminController {
     async createDoctor(req, res) {
         try {
             if (!req.user || req.user.role !== "admin") {
+                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
                 return ResponseService.send(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
             }
             if (!req.body || Object.keys(req.body).length === 0) {
+                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
+                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
             const hospitalId = req.user.hospitalId;
             if (!hospitalId) {
+                await deleteImage(req.files?.profilePicture?.[0]?.path , "profileImages" , "signatureImages");
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
             const password = crypto.randomBytes(8).toString("hex");
