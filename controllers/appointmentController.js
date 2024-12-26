@@ -74,7 +74,7 @@ class AppointmentController {
 
     async getAppointments(req, res) {
         try {
-
+            
             if(!req.user.id) {
                 return ResponseService.sendResponse(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }

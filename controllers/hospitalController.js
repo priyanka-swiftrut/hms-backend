@@ -10,8 +10,17 @@ class HospitalController {
                 return res.status(400).json({ message: "Request body is empty", status: 0 });
             }
             let existingHospital = await Hospital.findOne({ name: req.body.name });
+            
+            if (existingHospital){
+                if (req.files) {
+                    if (req.files?.hospitalLogo?.[0]?.path) {
+                            const publicId = req.files?.hospitalLogo[0]?.path.split("/").pop().split(".")[0];
+                            await cloudinary.uploader.destroy(`hospitalLogoImages/${publicId}`);
+                    }
+                }
+            }
+            
             if (existingHospital) return ResponseService.send(res, 400, "Hospital name already exists", 0);
-
             if (req.files && req.files.hospitalLogo && req.files.hospitalLogo[0] && req.files.hospitalLogo[0].path) {
                 req.body.hospitalLogo = req.files.hospitalLogo[0].path;
             }

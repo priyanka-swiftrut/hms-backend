@@ -11,13 +11,15 @@ import Models from './models/index.js';
 import passportConfig from "./config/passport.js";
 
 dotenv.config();
-
+  
 const app = express();
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors());
+
+
 
 app.use(session({
   secret: process.env.COOKIE_SECRET,
