@@ -10,4 +10,7 @@ router.post("/scheduleAppointment", appointmentController.ScheduleAppointment.bi
 router.post("/cancelAppointment", appointmentController.CancelAppointment.bind(appointmentController));
 router.post("/completeAppointment", appointmentController.CompleteAppointment.bind(appointmentController));      
 
+
+router.get("/getdoctor", appointmentController.getDoctor.bind(appointmentController));
+
 export default router;      

@@ -262,6 +262,20 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+
+
+    async getDoctor(req, res) {
+        try {
+            const { doctorId } = req.params;
+            const doctor = await User.findById(doctorId);
+            if (!doctor) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
+            }
+            
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+        }
+    }
 }
 
 export default AppointmentController;
