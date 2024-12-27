@@ -54,6 +54,10 @@ const billSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    notes: {
+      type: String,
+      required: false,
+    },
     amount: {
       type: Number,
       required: [false, "Amount is required"],
@@ -81,9 +85,8 @@ const billSchema = new mongoose.Schema(
       required: false,
     },
     status: {
-      type: String,
-      enum: ["Unpaid", "Paid"],
-      default: "Unpaid",
+      type: Boolean,
+      default: false,
     },
   },
   {

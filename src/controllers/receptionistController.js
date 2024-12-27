@@ -86,45 +86,53 @@ class ReceptionistController {
 
     async EditProfile(req, res) {
         try {
+            // Validate request body
             if (!req.body || Object.keys(req.body).length === 0) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await this.deleteImage(req.files.profilePicture[0].path);
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-
-            const Receptionist = await User.findById(req.user._id);
-            if (!Receptionist) {
+    
+            // Determine user ID based on role
+            const userId = req.user.role === "admin" ? req.params.id : req.user._id;
+    
+            // Find the receptionist by ID
+            const receptionist = await User.findById(userId);
+            if (!receptionist) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await this.deleteImage(req.files.profilePicture[0].path);
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist not found", 0);
             }
-            if (req.files) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    if (Receptionist.profilePicture && Receptionist.profilePicture !== "") {
-                        const publicId = Receptionist.profilePicture.split("/").pop().split(".")[0];
-                        await cloudinary.uploader.destroy(`profileImages/${publicId}`);
-                    }
-                    req.body.profilePicture = req.files.profilePicture[0].path;
+    
+            // Handle profile picture update
+            if (req.files?.profilePicture?.[0]?.path) {
+                if (receptionist.profilePicture && receptionist.profilePicture !== "") {
+                    const publicId = receptionist.profilePicture.split("/").pop().split(".")[0];
+                    await cloudinary.uploader.destroy(`profileImages/${publicId}`);
                 }
+                req.body.profilePicture = req.files.profilePicture[0].path;
             }
-            const updateReceptionist = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
-            if (updateReceptionist) {
-                return ResponseService.send(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, updateReceptionist);
+    
+            // Update the receptionist profile
+            const updatedReceptionist = await User.findByIdAndUpdate(userId, req.body, { new: true });
+            if (updatedReceptionist) {
+                return ResponseService.send(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, updatedReceptionist);
             } else {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await this.deleteImage(req.files.profilePicture[0].path);
                 }
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update Receptionist profile", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update receptionist profile", 0);
             }
         } catch (error) {
             if (req.files?.profilePicture?.[0]?.path) {
-                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                await this.deleteImage(req.files.profilePicture[0].path);
             }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+    
 
     async deleteProfile(req, res) {
         try {

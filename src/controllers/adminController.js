@@ -3,6 +3,7 @@ import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
+import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
 
 class AdminController {
@@ -195,7 +196,9 @@ class AdminController {
                         description: req.body.description,
                         onlineConsultationRate: req.body.onlineConsultationRate,
                         worksiteLink: req.body.worksiteLink,
+                        consultationRate: req.body.consultationRate,
                         emergencyContactNo: req.body.emergencyContactNo,
+                        workOn: req.body.workOn,
                     }
                 }
             }

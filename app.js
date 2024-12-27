@@ -19,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors());
 
-
+  
 
 app.use(session({
   secret: process.env.COOKIE_SECRET,

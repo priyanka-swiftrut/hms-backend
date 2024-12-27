@@ -13,24 +13,30 @@ class DoctorController {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-
-            const doctor = await User.findById(req.user._id);
+    
+            // Determine the user ID based on the role
+            const userId = req.user.role === "admin" ? req.params.id : req.user._id;
+    
+            // Find the user (doctor) by the determined ID
+            const doctor = await User.findById(userId);
             if (!doctor) {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "doctor not found", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found", 0);
             }
-            if (req.files) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    if (doctor.profilePicture && doctor.profilePicture !== "") {
-                        const publicId = doctor.profilePicture.split("/").pop().split(".")[0];
-                        await cloudinary.uploader.destroy(`profileImages/${publicId}`);
-                    }
-                    req.body.profilePicture = req.files.profilePicture[0].path;
+    
+            // Handle profile picture update
+            if (req.files?.profilePicture?.[0]?.path) {
+                if (doctor.profilePicture && doctor.profilePicture !== "") {
+                    const publicId = doctor.profilePicture.split("/").pop().split(".")[0];
+                    await cloudinary.uploader.destroy(`profileImages/${publicId}`);
                 }
+                req.body.profilePicture = req.files.profilePicture[0].path;
             }
-            const updatedoctor = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
-            if (updatedoctor) {
-                return ResponseService.send(res, StatusCodes.OK, "doctor profile updated successfully", 1, updatedoctor);
+    
+            // Update the doctor profile
+            const updatedDoctor = await User.findByIdAndUpdate(userId, req.body, { new: true });
+            if (updatedDoctor) {
+                return ResponseService.send(res, StatusCodes.OK, "Doctor profile updated successfully", 1, updatedDoctor);
             } else {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update doctor profile", 0);
@@ -40,7 +46,6 @@ class DoctorController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
-
     async getdoctor(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {

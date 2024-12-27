@@ -123,6 +123,12 @@ const UserSchema = new mongoose.Schema({
                     return this.role === "doctor";
                 },
             },
+            consultationRate: {
+                type: Number,
+                required: function () {
+                    return this.role === "doctor";
+                },
+            },
             worksiteLink: {
                 type: String,
                 match: [/^https?:\/\/.+$/, "Please provide a valid URL"],
@@ -130,7 +136,7 @@ const UserSchema = new mongoose.Schema({
                     return this.role === "doctor";
                 },
             },
-            workon: {
+            workOn: {
                 type: String,
                 enum: ["Online", "Onsite", "Both"],
                 default: "Both",
