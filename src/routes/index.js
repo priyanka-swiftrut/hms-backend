@@ -6,6 +6,7 @@ import doctor from "./doctor.js";
 import receptionist from "./receptionist.js";
 import AdminController from "../controllers/adminController.js";
 import PatientController from "../controllers/patientController.js";
+import AppointmentController from "../controllers/appointmentController.js";
 import upload from "../services/multer.services.js";
 import  passport  from "passport";
 import adminRoutes from './admin.js';
@@ -47,5 +48,7 @@ router.use('/doctor', (req, res, next) => {
         req.user = user; next();
     })(req, res, next);
 }, doctor);
+
+
 
 export default router;

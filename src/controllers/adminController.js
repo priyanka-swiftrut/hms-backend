@@ -106,6 +106,19 @@ class AdminController {
         }
     }
 
+    async getAdmin(req, res) {
+        try {
+            const user = await User.findById(req.user._id);
+            if (user) {
+                return ResponseService.send(res, StatusCodes.OK, "Admin fetched successfully", 1, user);
+            } else {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Admin not found", 0);
+            }
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+        }
+    }   
+
     async deleteProfile(req, res) {
         try {
             let user = await User.findById(req.params.id);
@@ -263,6 +276,51 @@ class AdminController {
             }
         }
     }
+
+    async searchData(req, res) {
+        try {
+          const { query, role } = req.query;
+      
+          // Check if the query parameter is provided
+          if (!query) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
+          }
+      
+          // Define default roles if no specific role is passed
+          const defaultRoles = ['doctor', 'patient', 'receptionist'];
+      
+          // Build the query dynamically
+          const searchCriteria = {
+            fullName: { $regex: query, $options: 'i' } // Case-insensitive search on fullName
+          };
+      
+          // Add the role filter based on the presence of the role parameter
+          if (role) {
+            searchCriteria.role = role; // Use the specified role
+          } else {
+            searchCriteria.role = { $in: defaultRoles }; // Use default roles
+          }
+      
+          // Perform the search
+          const results = await User.find(searchCriteria);
+      
+          // Check if any results were found
+          if (results.length === 0) {
+            return ResponseService.send(res, StatusCodes.NOT_FOUND, "No results found", 0);
+          }
+      
+          // Return the found results
+          return ResponseService.send(res, StatusCodes.OK, results, 1);
+      
+        } catch (error) {
+          // Handle unexpected errors
+          console.error("Error in searchData:", error);
+          return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
+        }
+      }
+      
+
+
 }
 
 

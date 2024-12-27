@@ -15,6 +15,7 @@ const appointmentController = new AppointmentController();
 
 router.post("/editAdmin", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.EditProfile.bind(adminController));
 router.delete("/delete/:id", adminController.deleteProfile.bind(adminController));
+router.get("/getAdmin", adminController.getAdmin.bind(adminController));
 
 
 router.post("/createReceptionist", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.Register.bind(receptionistController));
@@ -29,8 +30,9 @@ router.delete('/deleteDoctor/:id', adminController.deleteDoctor.bind(adminContro
 router.get('/getDoctor', doctorController.getdoctor.bind(doctorController));
 router.post("/editDoctor/:id", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
 
+
     
-    
+
 
 router.post("/createBill", billController.createBillManualy.bind(billController));
 router.post("/editBill/:billId", billController.editBill.bind(billController));
@@ -39,6 +41,10 @@ router.get("/getBill", billController.getBill.bind(billController));
 
 
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
+
+
+
+router.get("/searchData", adminController.searchData.bind(adminController));
     
 
 

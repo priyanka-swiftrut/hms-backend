@@ -4,6 +4,7 @@ import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import User from '../models/User.model.js';
 import Insurance from '../models/Insurance.model.js';
+import moment from 'moment';
 
 class AppointmentController {
     // async createAppointment(req, res) {
@@ -239,7 +240,6 @@ class AppointmentController {
     async editAppointment(req, res) {
         try {
             const { id } = req.params;
-            const { patient_issue, dieseas_name, city, state, country, status } = req.body;
     
             // Ensure the appointment exists
             const appointment = await Appointment.findById(id);
@@ -264,18 +264,89 @@ class AppointmentController {
     }
 
 
-    async getDoctor(req, res) {
+    async getDoctorSession(req, res) {
         try {
             const { doctorId } = req.params;
+            const { date } = req.query; // Get the date from the query params
+            const targetDate = date || moment().format("YYYY-MM-DD"); // Use the provided date or default to today
+    
             const doctor = await User.findById(doctorId);
             if (!doctor) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
             }
-            
+    
+            const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
+            if (!morning || !evening || !timeduration) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
+            }
+    
+            const parseSession = (sessionString) => {
+                const [start, end] = sessionString.split(" to ");
+                return { start, end };
+            };
+    
+            const morningSession = parseSession(morning);
+            const eveningSession = parseSession(evening);
+    
+            const generateSlots = (session, duration) => {
+                const slots = [];
+                let startTime = moment(session.start, "HH:mm");
+                const endTime = moment(session.end, "HH:mm");
+    
+                while (startTime < endTime) {
+                    const slotEndTime = moment(startTime).add(duration, "minutes");
+                    slots.push({
+                        start: startTime.format("HH:mm"),
+                        end: slotEndTime.format("HH:mm"),
+                        available: true
+                    });
+                    startTime = slotEndTime;
+                }
+    
+                return slots;
+            };
+    
+            const morningSlots = generateSlots(morningSession, timeduration);
+            const eveningSlots = generateSlots(eveningSession, timeduration);
+    
+            // Define the start and end of the target date for filtering
+            const startOfDay = moment(targetDate).startOf("day").toISOString();
+            const endOfDay = moment(targetDate).endOf("day").toISOString();
+    
+            const appointments = await Appointment.find({
+                doctorId,
+                date: { $gte: startOfDay, $lt: endOfDay } // Match appointments within the target date range
+            });
+    
+            const checkAvailability = (slots, appointments) => {
+                slots.forEach(slot => {
+                    appointments.forEach(appointment => {
+                        if (
+                            moment(appointment.appointmentTime, "HH:mm").isBetween(
+                                moment(slot.start, "HH:mm"),
+                                moment(slot.end, "HH:mm"),
+                                null,
+                                "[)"
+                            )
+                        ) {
+                            slot.available = false;
+                        }
+                    });
+                });
+            };
+    
+            checkAvailability(morningSlots, appointments);
+            checkAvailability(eveningSlots, appointments);
+    
+            return ResponseService.send(res, StatusCodes.OK, { morningSlots, eveningSlots }, 1);
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
         }
     }
+    
+    
+    
+    
 }
 
 export default AppointmentController;

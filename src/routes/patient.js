@@ -17,6 +17,7 @@ router.get("/getpatients", patientController.getPatients.bind(patientController)
 router.post("/createAppointment", appointmentController.createAppointment.bind(appointmentController));
 router.post("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
+router.get("/getDoctorSession/:doctorId", appointmentController.getDoctorSession.bind(appointmentController));
 
 
 router.get("/getPrescription", prescriptionController.getPrescriptions.bind(prescriptionController));
