@@ -32,8 +32,6 @@ class AuthController {
                     secret,
                     { expiresIn: "1d" }
                 );
-                console.log(user);
-                
                 return res.status(StatusCodes.OK).json({ message: "You're Logged In Successfully 🎉", status: 1, data: token, role: user.role, });
             } else {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid Password", 0);

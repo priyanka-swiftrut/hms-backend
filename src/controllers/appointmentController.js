@@ -102,7 +102,7 @@ class AppointmentController {
             if (!["onsite", "online"].includes(appointmentType)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid appointment type.", 0);
             }
-            if (!["cash", "online", "Insurance"].includes(paymentType)) {
+            if (!["Cash", "Online", "Insurance"].includes(paymentType)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
             }
     

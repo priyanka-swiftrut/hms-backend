@@ -40,6 +40,7 @@ router.get("/getBill", billController.getBill.bind(billController));
 
 
 
+
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 
 
@@ -47,6 +48,7 @@ router.get("/getAppointment", appointmentController.getAppointments.bind(appoint
 router.get("/searchData", adminController.searchData.bind(adminController));
 router.get("/getDashboardData", adminController.getDashboardData.bind(adminController));
 router.get("/getPaginatedAppointments", adminController.getPaginatedAppointments.bind(adminController));
+router.get("/getBillsMonitor", adminController.getBills.bind(adminController));
     
 
 

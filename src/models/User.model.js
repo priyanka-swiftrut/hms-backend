@@ -155,6 +155,18 @@ const UserSchema = new mongoose.Schema({
                     return this.role === "doctor";
                 },
             },
+            hospitalName: {
+                type: String,
+                required: function () {
+                    return this.role === "doctor";
+                },
+            },
+            hospitalAddress: {
+                type: String,
+                required: function () {
+                    return this.role === "doctor";
+                },
+            },
         },
         patientData: {
             height: {
