@@ -139,7 +139,6 @@ const UserSchema = new mongoose.Schema({
             workOn: {
                 type: String,
                 enum: ["Online", "Onsite", "Both"],
-                default: "Both",
                 required: function () {
                     return this.role === "doctor";
                 },
