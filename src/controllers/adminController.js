@@ -470,10 +470,8 @@ class AdminController {
 
     async getBills(req, res) {
         try {
-            console.log(req.query);
           const { hospitalId } = req.user; // Get hospitalId from authenticated user
-          const { type } = req.query; // Check if "insurance" query param exists
-            console.log(type);
+          const { type } = req.query;
             
           if (!hospitalId) {
             return res.status(StatusCodes.BAD_REQUEST).json({
