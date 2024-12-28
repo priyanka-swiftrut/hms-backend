@@ -319,9 +319,125 @@ class AdminController {
         }
       }
       
+    async getDashboardData(req, res) {
+    try {
+        // 1. Total Patients and Doctors
+        const totalPatients = await UserModel.countDocuments({ role: "patient", isActive: true });
+        const totalDoctors = await UserModel.countDocuments({ role: "doctor", isActive: true });
 
+        // 2. Patient Summary: Last 10 Days vs Old Patients
+        const now = new Date();
+        const last10Days = new Date(now.setDate(now.getDate() - 10));
+
+        const newPatients = await UserModel.countDocuments({
+        role: "patient",
+        isActive: true,
+        createdAt: { $gte: last10Days },
+        });
+
+        const oldPatients = await UserModel.countDocuments({
+        role: "patient",
+        isActive: true,
+        createdAt: { $lt: last10Days },
+        });
+
+        const patientSummary = {
+        newPatients,
+        oldPatients,
+        totalPatients,
+        };
+
+        // 3. Patient Statistics: Year, Month, Week
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+
+        const patientStats = {
+        year: await UserModel.countDocuments({
+            role: "patient",
+            isActive: true,
+            createdAt: { $gte: startOfYear },
+        }),
+        month: await UserModel.countDocuments({
+            role: "patient",
+            isActive: true,
+            createdAt: { $gte: startOfMonth },
+        }),
+        week: await UserModel.countDocuments({
+            role: "patient",
+            isActive: true,
+            createdAt: { $gte: startOfWeek },
+        }),
+        };
+
+        // Combine all data
+        const dashboardData = {
+        totalPatients,
+        totalDoctors,
+        patientSummary,
+        patientStats,
+        };
+
+        // Send Response
+        return res.status(StatusCodes.OK).json({
+        success: true,
+        data: dashboardData,
+        message: "Dashboard data retrieved successfully",
+        });
+    } catch (error) {
+        console.error("Error in getDashboardData:", error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "An error occurred while retrieving dashboard data",
+        });
+    }
+    }
+
+    async getPaginatedAppointments(req, res) {
+    try {
+        // Extract query params
+        const { page = 1 } = req.query; // Default to page 1 if not provided
+        const limit = 10; // Limit to 10 appointments per page
+        const skip = (page - 1) * limit;
+
+        // Fetch paginated appointments
+        const appointments = await AppointmentModel.find()
+        .populate("patientId", "fullName") // Fetch patient name
+        .populate("doctorId", "fullName") // Fetch doctor name
+        .sort({ date: -1 }) // Sort by date (descending)
+        .skip(skip)
+        .limit(limit)
+        .select("type dieseas_name appointmentTime patientId doctorId");
+
+        // Map appointments to required fields
+        const formattedAppointments = appointments.map((appointment) => ({
+        patientName: appointment.patientId?.fullName || "Unknown",
+        appointmentType: appointment.type,
+        doctorName: appointment.doctorId?.fullName || "Unknown",
+        diseaseName: appointment.dieseas_name || "N/A",
+        appointmentTime: appointment.appointmentTime,
+        }));
+
+        // Send response
+        return res.status(StatusCodes.OK).json({
+        success: true,
+        data: {
+            appointments: formattedAppointments,
+            currentPage: parseInt(page, 10),
+            limit,
+        },
+        message: "Appointments retrieved successfully",
+        });
+    } catch (error) {
+        console.error("Error in getPaginatedAppointments:", error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "An error occurred while retrieving appointments",
+        });
+    }
+    }
 
 }
 
 
-export default AdminController;
+export default AdminController; 

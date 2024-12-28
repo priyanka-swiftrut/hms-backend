@@ -249,7 +249,7 @@ class BillController {
                     return ResponseService.send(res, StatusCodes.NOT_FOUND, "No bills found", 0);
                 }
             }
-
+ 
             const bill = await Bill.findById(id)
                 .populate('patientId', 'name email')
                 .populate('doctorId', 'name specialization')

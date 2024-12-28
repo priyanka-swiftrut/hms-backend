@@ -45,6 +45,8 @@ router.get("/getAppointment", appointmentController.getAppointments.bind(appoint
 
 
 router.get("/searchData", adminController.searchData.bind(adminController));
+router.get("/getDashboardData", adminController.getDashboardData.bind(adminController));
+router.get("/getPaginatedAppointments", adminController.getPaginatedAppointments.bind(adminController));
     
 
 
