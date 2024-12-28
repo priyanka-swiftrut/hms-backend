@@ -24,6 +24,7 @@ class AdminController {
                     }
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email Already Exists", 0);
                 } else {
+                    const password = req.body.password;
                     let pass = await bcrypt.hash(req.body.password, 10);
                     req.body.password = pass;
                     req.body.role = "admin";
@@ -37,7 +38,7 @@ class AdminController {
                     await newUser.save();
                     if (newUser) {
                         try {
-                            const emailHtml = EmailService.registrationTemplate(newUser.fullName, newUser.email, req.body.password);
+                            const emailHtml = EmailService.registrationTemplate(newUser.fullName, newUser.email, password);
                             await EmailService.sendEmail(newUser.email, "Registration Successful ✔", emailHtml);
                         } catch (emailError) {
                             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User registered, but email sending failed", 0);
