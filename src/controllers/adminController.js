@@ -330,10 +330,10 @@ class AdminController {
             const { hospitalId } = req.user;
     
             // 1. Total Patients and Doctors
+            const doctorFilter = { role: "doctor", isActive: true };
             if (hospitalId) doctorFilter.hospitalId = hospitalId;
-            const doctorFilter = { role: "doctor", isActive: true , hospitalId};
-            
-            const totalDoctors = await UserModel.countDocuments(doctorFilter);
+    
+            const totalDoctors = await User.countDocuments(doctorFilter);
     
             // Fetch unique patient IDs from appointments
             const appointmentFilter = {};
@@ -347,13 +347,13 @@ class AdminController {
             const now = new Date();
             const last10Days = new Date(now.setDate(now.getDate() - 10));
     
-            const newPatients = await UserModel.countDocuments({
+            const newPatients = await User.countDocuments({
                 _id: { $in: uniquePatientIds },
                 isActive: true,
                 createdAt: { $gte: last10Days },
             });
     
-            const oldPatients = await UserModel.countDocuments({
+            const oldPatients = await User.countDocuments({
                 _id: { $in: uniquePatientIds },
                 isActive: true,
                 createdAt: { $lt: last10Days },
@@ -371,17 +371,17 @@ class AdminController {
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
     
             const patientStats = {
-                year: await UserModel.countDocuments({
+                year: await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfYear },
                 }),
-                month: await UserModel.countDocuments({
+                month: await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfMonth },
                 }),
-                week: await UserModel.countDocuments({
+                week: await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfWeek },
@@ -409,11 +409,10 @@ class AdminController {
             };
     
             // Send Response
-            return res.status(StatusCodes.OK).json({
-                success: true,
-                data: dashboardData,
-                message: "Dashboard data retrieved successfully",
-            });
+            return ResponseService.send(res, StatusCodes.OK, dashboardData, 1);
+            return res.status(StatusCodes.OK).json({success: true,data: dashboardData,message: "Dashboard data retrieved successfully",},1);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
+        
         } catch (error) {
             console.error("Error in getDashboardData:", error);
             return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
