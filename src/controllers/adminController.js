@@ -121,7 +121,7 @@ class AdminController {
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
-    }   
+    }
 
     async deleteProfile(req, res) {
         try {
@@ -285,254 +285,201 @@ class AdminController {
 
     async searchData(req, res) {
         try {
-          const { query, role } = req.query;
-      
-          // Check if the query parameter is provided
-          if (!query) {
-            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
-          }
-      
-          // Define default roles if no specific role is passed
-          const defaultRoles = ['doctor', 'patient', 'receptionist'];
-      
-          // Build the query dynamically
-          const searchCriteria = {
-            fullName: { $regex: query, $options: 'i' } // Case-insensitive search on fullName
-          };
-      
-          // Add the role filter based on the presence of the role parameter
-          if (role) {
-            searchCriteria.role = role; // Use the specified role
-          } else {
-            searchCriteria.role = { $in: defaultRoles }; // Use default roles
-          }
-      
-          // Perform the search
-          const results = await User.find(searchCriteria);
-      
-          // Check if any results were found
-          if (results.length === 0) {
-            return ResponseService.send(res, StatusCodes.NOT_FOUND, "No results found", 0);
-          }
-      
-          // Return the found results
-          return ResponseService.send(res, StatusCodes.OK, results, 1);
-      
+            const { query, role } = req.query;
+            if (!query) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
+            }
+            const defaultRoles = ['doctor', 'patient', 'receptionist'];
+
+            const searchCriteria = {
+                fullName: { $regex: query, $options: 'i' }
+            };
+
+            if (role) {
+                searchCriteria.role = role;
+            } else {
+                searchCriteria.role = { $in: defaultRoles };
+            }
+
+            const results = await User.find(searchCriteria);
+
+            if (results.length === 0) {
+                return ResponseService.send(res, StatusCodes.NOT_FOUND, "No results found", 0);
+            }
+
+            return ResponseService.send(res, StatusCodes.OK, results, 1);
+
         } catch (error) {
-          // Handle unexpected errors
-          console.error("Error in searchData:", error);
-          return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
+            console.error("Error in searchData:", error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
-      }
-      
-      async getDashboardData(req, res) {
+    }
+
+    async getDashboardData(req, res) {
         try {
             const { hospitalId } = req.user;
-    
-            // 1. Total Patients and Doctors
-            const doctorFilter = { role: "doctor", isActive: true };
+
             if (hospitalId) doctorFilter.hospitalId = hospitalId;
-    
-            const totalDoctors = await User.countDocuments(doctorFilter);
-    
-            // Fetch unique patient IDs from appointments
+            const doctorFilter = { role: "doctor", isActive: true, hospitalId };
+
+            const totalDoctors = await UserModel.countDocuments(doctorFilter);
+
             const appointmentFilter = {};
             if (hospitalId) appointmentFilter.hospitalId = hospitalId;
-    
+
             const uniquePatientIds = await AppointmentModel.distinct("patientId", appointmentFilter);
-    
+
             const totalPatients = uniquePatientIds.length;
-    
-            // 2. Patient Summary: Last 10 Days vs Old Patients
+
             const now = new Date();
             const last10Days = new Date(now.setDate(now.getDate() - 10));
-    
-            const newPatients = await User.countDocuments({
+
+            const newPatients = await UserModel.countDocuments({
                 _id: { $in: uniquePatientIds },
                 isActive: true,
                 createdAt: { $gte: last10Days },
             });
-    
-            const oldPatients = await User.countDocuments({
+
+            const oldPatients = await UserModel.countDocuments({
                 _id: { $in: uniquePatientIds },
                 isActive: true,
                 createdAt: { $lt: last10Days },
             });
-    
+
             const patientSummary = {
                 newPatients,
                 oldPatients,
                 totalPatients,
             };
-    
-            // 3. Patient Statistics: Year, Month, Week
+
             const startOfYear = new Date(now.getFullYear(), 0, 1);
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    
+
             const patientStats = {
-                year: await User.countDocuments({
+                year: await UserModel.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfYear },
                 }),
-                month: await User.countDocuments({
+                month: await UserModel.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfMonth },
                 }),
-                week: await User.countDocuments({
+                week: await UserModel.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfWeek },
                 }),
             };
-    
-            // 4. Appointments with Pagination (Default Page: 1, 10 items per page)
+
             const { page = 1 } = req.query;
             const limit = 10;
             const skip = (page - 1) * limit;
-    
+
             const appointments = await AppointmentModel.find(appointmentFilter)
                 .populate("patientId", "fullName")
                 .populate("doctorId", "fullName")
                 .select("type dieseas_name appointmentTime")
                 .skip(skip)
                 .limit(limit);
-    
-            // Combine all data
+
             const dashboardData = {
                 totalDoctors,
                 patientSummary,
                 patientStats,
                 appointments,
             };
-    
-            // Send Response
-            return ResponseService.send(res, StatusCodes.OK, dashboardData, 1);
-            return res.status(StatusCodes.OK).json({success: true,data: dashboardData,message: "Dashboard data retrieved successfully",},1);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
-        
+
+            return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
         } catch (error) {
             console.error("Error in getDashboardData:", error);
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                success: false,
-                message: "An error occurred while retrieving dashboard data",
-            });
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
     }
-    
 
     async getPaginatedAppointments(req, res) {
-    try {
-        // Extract query params
-        const { page = 1 } = req.query; // Default to page 1 if not provided
-        const limit = 10; // Limit to 10 appointments per page
-        const skip = (page - 1) * limit;
+        try {
+            const { page = 1 } = req.query;
+            const limit = 10;
+            const skip = (page - 1) * limit;
 
-        // Fetch paginated appointments
-        const appointments = await AppointmentModel.find()
-        .populate("patientId", "fullName") // Fetch patient name
-        .populate("doctorId", "fullName") // Fetch doctor name
-        .sort({ date: -1 }) // Sort by date (descending)
-        .skip(skip)
-        .limit(limit)
-        .select("type dieseas_name appointmentTime patientId doctorId");
+            const appointments = await AppointmentModel.find()
+                .populate("patientId", "fullName")
+                .populate("doctorId", "fullName")
+                .sort({ date: -1 })
+                .skip(skip)
+                .limit(limit)
+                .select("type dieseas_name appointmentTime patientId doctorId");
 
-        // Map appointments to required fields
-        const formattedAppointments = appointments.map((appointment) => ({
-        patientName: appointment.patientId?.fullName || "Unknown",
-        appointmentType: appointment.type,
-        doctorName: appointment.doctorId?.fullName || "Unknown",
-        diseaseName: appointment.dieseas_name || "N/A",
-        appointmentTime: appointment.appointmentTime,
-        }));
+            const formattedAppointments = appointments.map((appointment) => ({
+                patientName: appointment.patientId?.fullName || "Unknown",
+                appointmentType: appointment.type,
+                doctorName: appointment.doctorId?.fullName || "Unknown",
+                diseaseName: appointment.dieseas_name || "N/A",
+                appointmentTime: appointment.appointmentTime,
+            }));
 
-        // Send response
-        return res.status(StatusCodes.OK).json({
-        success: true,
-        data: {
-            appointments: formattedAppointments,
-            currentPage: parseInt(page, 10),
-            limit,
-        },
-        message: "Appointments retrieved successfully",
-        });
-    } catch (error) {
-        console.error("Error in getPaginatedAppointments:", error);
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "An error occurred while retrieving appointments",
-        });
-    }
+            return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, formattedAppointments);
+        } catch (error) {
+            console.error("Error in getPaginatedAppointments:", error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
+        }
     }
 
     async getBills(req, res) {
         try {
-          const { hospitalId } = req.user; // Get hospitalId from authenticated user
-          const { type } = req.query;
-            
-          if (!hospitalId) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
-              success: false,
-              message: "Hospital ID is required",
-            });
-          }
-    
-          // Fetch bills based on query
-          let bills = [];
-          if (type) {
-            // Fetch data with insurance details
-            bills = await BillModel.find({ hospitalId, paymentType: type })
-              .populate("doctorId", "fullName")
-              .populate("patientId", "fullName")
-              .populate("appointmentId", "dieseas_name")
-              .populate("insuranceId", "insuranceCompany insurancePlan")
-              .select("billNumber date")
-              .lean();
-    
-            bills = bills.map((bill) => ({
-              billNumber: bill.billNumber,
-              doctorName: bill.doctorId?.fullName || "N/A",
-              patientName: bill.patientId?.fullName || "N/A",
-              diseaseName: bill.appointmentId?.dieseas_name || "N/A",
-              insuranceCompany: bill.insuranceId?.insuranceCompany || "N/A",
-              insurancePlan: bill.insuranceId?.insurancePlan || "N/A",
-              date: bill.date,
-            }));
-          } else {
-            // Default fetch without insurance details
-            bills = await BillModel.find({ hospitalId })
-              .populate("patientId", "fullName phone")
-              .populate("appointmentId", "dieseas_name")
-              .select("billNumber status date time")
-              .lean();
-    
-            bills = bills.map((bill) => ({
-              billNumber: bill.billNumber,
-              patientName: bill.patientId?.fullName || "N/A",
-              diseaseName: bill.appointmentId?.dieseas_name || "N/A",
-              phoneNumber: bill.patientId?.phone || "N/A",
-              status: bill.status,
-              date: bill.date,
-              time: bill.time,
-            }));
-          }
-    
-          // Send the response
-          return res.status(StatusCodes.OK).json({
-            success: true,
-            data: bills,
-            message: "Bills retrieved successfully",
-          });
+            const { hospitalId } = req.user;
+            const { type } = req.query;
+
+            if (!hospitalId) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
+            }
+
+            let bills = [];
+            if (type) {
+                bills = await BillModel.find({ hospitalId, paymentType: type })
+                    .populate("doctorId", "fullName")
+                    .populate("patientId", "fullName")
+                    .populate("appointmentId", "dieseas_name")
+                    .populate("insuranceId", "insuranceCompany insurancePlan")
+                    .select("billNumber date")
+                    .lean();
+
+                bills = bills.map((bill) => ({
+                    billNumber: bill.billNumber,
+                    doctorName: bill.doctorId?.fullName || "N/A",
+                    patientName: bill.patientId?.fullName || "N/A",
+                    diseaseName: bill.appointmentId?.dieseas_name || "N/A",
+                    insuranceCompany: bill.insuranceId?.insuranceCompany || "N/A",
+                    insurancePlan: bill.insuranceId?.insurancePlan || "N/A",
+                    date: bill.date,
+                }));
+
+            } else {
+                bills = await BillModel.find({ hospitalId })
+                    .populate("patientId", "fullName phone")
+                    .populate("appointmentId", "dieseas_name")
+                    .select("billNumber status date time")
+                    .lean();
+
+                bills = bills.map((bill) => ({
+                    billNumber: bill.billNumber,
+                    patientName: bill.patientId?.fullName || "N/A",
+                    diseaseName: bill.appointmentId?.dieseas_name || "N/A",
+                    phoneNumber: bill.patientId?.phone || "N/A",
+                    status: bill.status,
+                    date: bill.date,
+                    time: bill.time,
+                }));
+            }
+            return ResponseService.send(res, StatusCodes.OK, "Bills retrieved successfully", 1, bills);
         } catch (error) {
-          console.error("Error fetching bills:", error);
-          return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            success: false,
-            message: "An error occurred while retrieving bills",
-          });
+            console.error("Error fetching bills:", error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
-      }
+    }
 
 }
 
