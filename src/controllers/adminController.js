@@ -332,7 +332,7 @@ class AdminController {
             const endOfDay = new Date(now.setHours(23, 59, 59, 999));
             appointmentFilter.date = { $gte: startOfDay, $lte: endOfDay };
 
-            const uniquePatientIds = await AppointmentModel.distinct("patientId", appointmentFilter);
+            const uniquePatientIds = await AppointmentModel.distinct("patientId");
             const totalPatients = uniquePatientIds.length;
 
             const last10Days = new Date(now.setDate(now.getDate() - 10));
@@ -484,7 +484,154 @@ class AdminController {
         }
     }
 
+    async getDashboardDatademo(req, res) {
+        try {
+            const { hospitalId } = req.user;
+            
+    
+            const doctorFilter = { role: "doctor", isActive: true };
+            if (hospitalId) doctorFilter.hospitalId = hospitalId;
+            const totalDoctors = await User.countDocuments(doctorFilter);
+    
+            const appointmentFilter = {};
+            if (hospitalId) appointmentFilter.hospitalId = hospitalId;
+            
+            const billfilter = await BillModel.find({ hospitalId })
+            .populate("appointmentId", "dieseas_name")
+            .populate("patientId", "fullName")
+            .select("billNumber status date time patientId appointmentId")
+            .lean();
+
+            const billdata = billfilter.map((bill) => ({            
+            "billsNo": bill.billNumber,
+            "patientName": bill.patientId?.fullName || "Unknown", // Safe navigation
+            "diseaseName": bill.appointmentId?.dieseas_name || "Unknown", // Safe navigation
+            "status": bill.status ? "Paid" : "Unpaid", // Convert Boolean to readable string
+            }));  
+
+            const UnpaindBills = billfilter.filter((bill) => !bill.status).length;
+
+            const now = new Date();
+            const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+            const endOfDay = new Date(now.setHours(23, 59, 59, 999));
+    
+            appointmentFilter.date = { $gte: startOfDay, $lte: endOfDay };
+            
+            // Fetch distinct patientIds for the current day
+            const uniquePatientIds = await AppointmentModel.distinct("patientId");
+            
+            const totalPatients = uniquePatientIds.length;
+    
+            const last10Days = new Date(now.setDate(now.getDate() - 10));
+    
+            const newPatients = await User.countDocuments({
+                _id: { $in: uniquePatientIds },
+                isActive: true,
+                createdAt: { $gte: last10Days },
+            });
+    
+            const oldPatients = await User.countDocuments({
+                _id: { $in: uniquePatientIds },
+                isActive: true,
+                createdAt: { $lt: last10Days },
+            });
+    
+            const patientSummary = {
+                newPatients,
+                oldPatients,
+                totalPatients,
+            };
+    
+            // Adjust the dates for different time ranges
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+    
+            const getPatientChartData = async (uniquePatientIds, startDate, type) => {
+                const data = [];
+                const categories = [];
+
+                if (type === "year") {
+                    for (let i = 0; i < 12; i++) {
+                        const monthStart = new Date(startDate.getFullYear(), i, 1);
+                        const monthEnd = new Date(startDate.getFullYear(), i + 1, 0);
+                        categories.push(monthStart.toLocaleString('default', { month: 'short' }));
+                        data.push(
+                            await User.countDocuments({
+                                _id: { $in: uniquePatientIds },
+                                isActive: true,
+                                createdAt: { $gte: monthStart, $lt: monthEnd },
+                            })
+                        );
+                    }
+                } else if (type === "month") {
+                    const weeksInMonth = 4;
+                    for (let i = 0; i < weeksInMonth; i++) {
+                        const weekStart = new Date(startDate.getFullYear(), startDate.getMonth(), i * 7 + 1);
+                        const weekEnd = new Date(startDate.getFullYear(), startDate.getMonth(), (i + 1) * 7);
+                        categories.push(`Week ${i + 1}`);
+                        data.push(
+                            await User.countDocuments({
+                                _id: { $in: uniquePatientIds },
+                                isActive: true,
+                                createdAt: { $gte: weekStart, $lt: weekEnd },
+                            })
+                        );
+                    }
+                } else if (type === "week") {
+                    for (let i = 0; i < 7; i++) {
+                        const dayStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
+                        const dayEnd = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i + 1);
+                        categories.push(dayStart.toLocaleString('default', { weekday: 'short' }));
+                        data.push(
+                            await User.countDocuments({
+                                _id: { $in: uniquePatientIds },
+                                isActive: true,
+                                createdAt: { $gte: dayStart, $lt: dayEnd },
+                            })
+                        );
+                    }
+                }
+                return { categories, data };
+            };
+            const patientStats = {
+                year: await getPatientChartData(uniquePatientIds, startOfYear, "year"),
+                month: await getPatientChartData(uniquePatientIds, startOfMonth, "month"),
+                week: await getPatientChartData(uniquePatientIds, startOfWeek, "week"),
+            };
+            const { page = 1 } = req.query;
+            const limit = 10;
+            const skip = (page - 1) * limit;
+    
+            const appointments = await AppointmentModel.find(appointmentFilter)
+                .populate("patientId", "fullName")
+                .populate("doctorId", "fullName")
+                .select("type dieseas_name appointmentTime ")
+                .skip(skip)
+                .limit(limit);
+
+                const todayAppointments = await AppointmentModel.countDocuments(appointmentFilter);
+
+            const dashboardData = {
+                totalDoctors,
+                patientSummary,
+                patientStats,
+                appointments,
+                billdata,
+                UnpaindBills,
+                todayAppointments,
+            };
+    
+            return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
+        } catch (error) {
+            console.error("Error in getDashboardDatademo:", error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
+        }
+    }
+    
 }
+
 
 
 export default AdminController; 

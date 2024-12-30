@@ -6,7 +6,7 @@ import { Strategy as jwtStrategy, ExtractJwt } from 'passport-jwt';
 dotenv.config();
 
 const opts = {
-    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken() || req.cookies.token,
     secretOrKey: process.env.JWT_SECRET_ADMIN,
 };
 

@@ -1,4 +1,5 @@
 import User from '../models/User.model.js';
+import Appointment from '../models/Appointment.model.js';
 import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import cloudinary from '../config/cloudinaryConfig.js';
@@ -76,6 +77,47 @@ class DoctorController {
         }
     };
 
+
+    async getPatientRecord (req, res){
+    try {
+        // Extract the doctor's ID from the request (assuming it's passed as a query parameter)
+        const Doctorid = req.user._id;
+        console.log(Doctorid);
+        
+        // Get the appointments related to the specific doctor
+        const appointments = await Appointment.find({ doctorId: Doctorid })
+        .populate("patientId", "fullName age gender") // Populate patient info from the User model
+        .limit(10); // Limit to the last 10 appointments, or as needed
+        
+        // If no appointments are found
+        if (!appointments || appointments.length === 0) {
+        return res.status(404).json({ message: "No appointments found for this doctor" });
+        }
+
+        // Format the data to return
+        const patientRecords = appointments.map((appointment) => {
+        const patient = appointment.patientId;
+
+        return {
+            patientName: patient.fullName,
+            diseaseName: appointment.dieseas_name,
+            patientIssue: appointment.patient_issue,
+            lastAppointmentDate: appointment.date.toDateString(),
+            lastAppointmentTime: appointment.appointmentTime,
+            age: patient.age,
+            gender: patient.gender,
+        };
+        });
+
+        // Return the formatted patient records
+        res.status(200).json(patientRecords);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+    }
+
+    
 }
 
 export default DoctorController;

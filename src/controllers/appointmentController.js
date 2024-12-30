@@ -74,6 +74,7 @@ class AppointmentController {
     //     }
     // }
 
+    
 
     async createAppointment(req, res) {
         try {
@@ -216,26 +217,67 @@ class AppointmentController {
 
     async getAppointments(req, res) {
         try {
-            
-            if(!req.user.id) {
+            // Validate user ID
+            if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
-            if(req.user.role === "doctor") {
-                const appointments = await Appointment.find({ doctorId: req.user.id });
-                return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, { appointments });
+    
+            const { filter, page = 1, limit = 15 } = req.query;
+            const paginationLimit = parseInt(limit, 10);
+            const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
+    
+            const filters = {};
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of the day
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+    
+            // Apply role-based filters
+            if (req.user.role === "doctor") {
+                filters.doctorId = req.user.id;
+            } else if (req.user.role === "patient") {
+                filters.patientId = req.user.id;
             }
-            if(req.user.role === "patient") {
-                const appointments = await Appointment.find({ patientId: req.user.id });
-                return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, { appointments });
+    
+            // Apply date-based filters
+            if (filter === "today") {
+                filters.date = { $gte: today, $lt: tomorrow };
+            } else if (filter === "upcoming") {
+                filters.date = { $gt: today };
+            } else if (filter === "previous") {
+                filters.date = { $lt: today };
             }
-            const appointments = await Appointment.find();
-            return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, { appointments });
+    
+            // Apply status filter for canceled appointments
+            if (filter === "cancel") {
+                filters.status = "canceled";
+            }
+    
+            // Fetch appointments with pagination
+            const appointments = await Appointment.find(filters)
+                .skip(paginationSkip)
+                .limit(paginationLimit)
+                .sort({ date: 1 }) // Sort by date (ascending)
+                .populate("doctorId", "name email") // Populate related fields as needed
+                .populate("patientId", "name email")
+                .populate("hospitalId", "name");
+    
+            const totalAppointments = await Appointment.countDocuments(filters);
+    
+            return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
+                appointments,
+                pagination: {
+                    total: totalAppointments,
+                    page: parseInt(page, 10),
+                    limit: paginationLimit,
+                    totalPages: Math.ceil(totalAppointments / paginationLimit),
+                },
+            });
         } catch (error) {
-
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
-
         }
     }
+    
 
     async editAppointment(req, res) {
         try {
@@ -262,6 +304,7 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+
 
 
     async getDoctorSession(req, res) {
@@ -344,6 +387,7 @@ class AppointmentController {
         }
     }
     
+
     
     
     
