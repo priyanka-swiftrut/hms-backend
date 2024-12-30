@@ -319,28 +319,31 @@ class AdminController {
         try {
             const { hospitalId } = req.user;
 
+            const doctorFilter = { role: "doctor", isActive: true };
             if (hospitalId) doctorFilter.hospitalId = hospitalId;
-            const doctorFilter = { role: "doctor", isActive: true, hospitalId };
-
-            const totalDoctors = await UserModel.countDocuments(doctorFilter);
+            const totalDoctors = await User.countDocuments(doctorFilter);
 
             const appointmentFilter = {};
             if (hospitalId) appointmentFilter.hospitalId = hospitalId;
 
-            const uniquePatientIds = await AppointmentModel.distinct("patientId", appointmentFilter);
+            // Match appointments for the current date
+            const now = new Date();
+            const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+            const endOfDay = new Date(now.setHours(23, 59, 59, 999));
+            appointmentFilter.date = { $gte: startOfDay, $lte: endOfDay };
 
+            const uniquePatientIds = await AppointmentModel.distinct("patientId", appointmentFilter);
             const totalPatients = uniquePatientIds.length;
 
-            const now = new Date();
             const last10Days = new Date(now.setDate(now.getDate() - 10));
 
-            const newPatients = await UserModel.countDocuments({
+            const newPatients = await User.countDocuments({
                 _id: { $in: uniquePatientIds },
                 isActive: true,
                 createdAt: { $gte: last10Days },
             });
 
-            const oldPatients = await UserModel.countDocuments({
+            const oldPatients = await User.countDocuments({
                 _id: { $in: uniquePatientIds },
                 isActive: true,
                 createdAt: { $lt: last10Days },
@@ -357,17 +360,17 @@ class AdminController {
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
 
             const patientStats = {
-                year: await UserModel.countDocuments({
+                year: await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfYear },
                 }),
-                month: await UserModel.countDocuments({
+                month: await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfMonth },
                 }),
-                week: await UserModel.countDocuments({
+                week: await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: startOfWeek },

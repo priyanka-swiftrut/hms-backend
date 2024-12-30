@@ -28,10 +28,6 @@ const appointmentSchema = new mongoose.Schema(
     appointmentTime: {
       type: String,
       required: [true, "Appointment time is required"],
-      // match: [
-      //   /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-      //   "Please enter a valid time in HH:MM format",
-      // ],
     },
     type: {
       type: String,
@@ -70,7 +66,6 @@ const appointmentSchema = new mongoose.Schema(
     },
     amount: {
       type: Number,
-      // required: true
       required: false,
     },
     city: {
