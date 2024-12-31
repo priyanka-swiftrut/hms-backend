@@ -14,17 +14,17 @@ class DoctorController {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-    
+
             // Determine the user ID based on the role
             const userId = req.user.role === "admin" ? req.params.id : req.user._id;
-    
+
             // Find the user (doctor) by the determined ID
             const doctor = await User.findById(userId);
             if (!doctor) {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found", 0);
             }
-    
+
             // Handle profile picture update
             if (req.files?.profilePicture?.[0]?.path) {
                 if (doctor.profilePicture && doctor.profilePicture !== "") {
@@ -33,7 +33,7 @@ class DoctorController {
                 }
                 req.body.profilePicture = req.files.profilePicture[0].path;
             }
-    
+
             // Update the doctor profile
             const updatedDoctor = await User.findByIdAndUpdate(userId, req.body, { new: true });
             if (updatedDoctor) {
@@ -78,46 +78,46 @@ class DoctorController {
     };
 
 
-    async getPatientRecord (req, res){
-    try {
-        // Extract the doctor's ID from the request (assuming it's passed as a query parameter)
-        const Doctorid = req.user._id;
-        console.log(Doctorid);
-        
-        // Get the appointments related to the specific doctor
-        const appointments = await Appointment.find({ doctorId: Doctorid })
-        .populate("patientId", "fullName age gender") // Populate patient info from the User model
-        .limit(10); // Limit to the last 10 appointments, or as needed
-        
-        // If no appointments are found
-        if (!appointments || appointments.length === 0) {
-        return res.status(404).json({ message: "No appointments found for this doctor" },0);
+    async getPatientRecord(req, res) {
+        try {
+            // Extract the doctor's ID from the request (assuming it's passed as a query parameter)
+            const Doctorid = req.user._id;
+            console.log(Doctorid);
+
+            // Get the appointments related to the specific doctor
+            const appointments = await Appointment.find({ doctorId: Doctorid })
+                .populate("patientId", "fullName age gender") // Populate patient info from the User model
+                .limit(10); // Limit to the last 10 appointments, or as needed
+
+            // If no appointments are found
+            if (!appointments || appointments.length === 0) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "No appointments found for this doctor", 0);
+            }
+
+            // Format the data to return
+            const patientRecords = appointments.map((appointment) => {
+                const patient = appointment.patientId;
+
+                return {
+                    patientName: patient.fullName,
+                    diseaseName: appointment.dieseas_name,
+                    patientIssue: appointment.patient_issue,
+                    lastAppointmentDate: appointment.date.toDateString(),
+                    lastAppointmentTime: appointment.appointmentTime,
+                    age: patient.age,
+                    gender: patient.gender,
+                };
+            });
+
+            // Return the formatted patient records
+            res.status(200).json(patientRecords);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Internal server error" }, 0);
         }
-
-        // Format the data to return
-        const patientRecords = appointments.map((appointment) => {
-        const patient = appointment.patientId;
-
-        return {
-            patientName: patient.fullName,
-            diseaseName: appointment.dieseas_name,
-            patientIssue: appointment.patient_issue,
-            lastAppointmentDate: appointment.date.toDateString(),
-            lastAppointmentTime: appointment.appointmentTime,
-            age: patient.age,
-            gender: patient.gender,
-        };
-        });
-
-        // Return the formatted patient records
-        res.status(200).json(patientRecords);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Internal server error" },0);
-    }
     }
 
-    
+
 }
 
 export default DoctorController;

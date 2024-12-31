@@ -10,7 +10,7 @@ class HospitalController {
                 if (req.files?.hospitalLogo?.[0]?.path) {
                     await this.deleteImage(req.files?.hospitalLogo?.[0]?.path);
                 }
-                return res.status(400).json({ message: "Request body is empty", status: 0 });
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
             let existingHospital = await Hospital.findOne({ name: req.body.name });
 
@@ -25,7 +25,6 @@ class HospitalController {
             }
 
             if (existingHospital) {
-
                 return ResponseService.send(res, 400, "Hospital name already exists", 0);
             }
             const hospital = new Hospital(req.body);
