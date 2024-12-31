@@ -17,6 +17,11 @@ const prescriptionSchema = new mongoose.Schema(
       ref: "Appointment",
       required: true,
     },
+    hospitalId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Hospital",
+          required: [true, "Hospital ID is required"],
+    },
     medications: [
       {
         medicineName: {
