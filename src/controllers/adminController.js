@@ -630,8 +630,152 @@ class AdminController {
         }
     }
 
+    async reportandanalysis(req, res) {
+        try {
+            // Initialize an empty result object to store all the data
+            let reportData = {};
+        
+            // Fetch Total Patients
+            const totalPatients = await AppointmentModel.distinct("patientId");
+            reportData.totalPatients = totalPatients.length;
+        
+            // Fetch Repeat Patients
+            const repeatPatients = await AppointmentModel.aggregate([
+              { $group: { _id: "$patientId", count: { $sum: 1 } } },
+              { $match: { count: { $gt: 1 } } }
+            ]);
+            reportData.repeatPatients = repeatPatients.length;
+        
+            // Fetch Appointment Chart Data (Year and Month Wise)
+            const appointmentData = await AppointmentModel.aggregate([
+              {
+                $group: {
+                  _id: {
+                    year: { $year: "$date" },
+                    month: { $month: "$date" },
+                    type: "$type",
+                  },
+                  count: { $sum: 1 },
+                },
+              },
+            ]);
+        
+            // Process Year-wise and Month-wise Appointment Data
+            reportData.appointmentData = {
+              yearWiseData: appointmentData.reduce((acc, cur) => {
+                const yearIndex = acc.findIndex(item => item.year === cur._id.year);
+                const typeKey = cur._id.type === "online" ? "onlineConsultation" : "otherAppointment";
+                if (yearIndex === -1) {
+                  acc.push({ year: cur._id.year, [typeKey]: cur.count });
+                } else {
+                  acc[yearIndex][typeKey] = (acc[yearIndex][typeKey] || 0) + cur.count;
+                }
+                return acc;
+              }, []),
+              monthWiseData: appointmentData.reduce((acc, cur) => {
+                const monthKey = `${cur._id.year}-${cur._id.month}`;
+                acc[monthKey] = acc[monthKey] || { onlineConsultation: 0, otherAppointment: 0 };
+                acc[monthKey][cur._id.type === "online" ? "onlineConsultation" : "otherAppointment"] += cur.count;
+                return acc;
+              }, {}),
+            };
+        
+            // Fetch Patient Summary Data (Week Wise and Day Wise)
+            const summary = await AppointmentModel.aggregate([
+              {
+                $project: {
+                  dayOfWeek: { $dayOfWeek: "$date" },
+                  patientId: 1,
+                },
+              },
+              {
+                $group: {
+                  _id: "$dayOfWeek",
+                  newPatients: { $addToSet: "$patientId" },
+                  totalPatients: { $sum: 1 },
+                },
+              },
+            ]);
+        
+            const weekData = Array(7).fill(0);
+            summary.forEach(({ _id, totalPatients }) => {
+              weekData[_id - 1] = totalPatients;
+            });
+        
+            reportData.patientSummary = {
+              week: {
+                categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+                data: weekData,
+              },
+            };
+        
+            // Fetch Patient Count by Department
+            const departmentData = await AppointmentModel.aggregate([
+              {
+                $lookup: {
+                  from: "users",
+                  localField: "doctorId",
+                  foreignField: "_id",
+                  as: "doctorData",
+                },
+              },
+              { $unwind: "$doctorData" },
+              {
+                $group: {
+                  _id: "$doctorData.metaData.speciality",
+                  count: { $sum: 1 },
+                },
+              },
+            ]);
+        
+            reportData.patientDepartmentData = departmentData.map((item, index) => ({
+              key: `${index + 1}`,
+              name: item._id,
+              count: item.count.toString(),
+            }));
+        
+            // Fetch Doctor Count by Department
+            const doctorData = await User.aggregate([
+              { $match: { role: "doctor" } },
+              {
+                $group: {
+                  _id: "$metaData.speciality",
+                  count: { $sum: 1 },
+                },
+              },
+            ]);
+        
+            reportData.doctorDepartmentData = doctorData.map((item, index) => ({
+              key: `${index + 1}`,
+              name: item._id,
+              count: item.count.toString(),
+            }));
+        
+            // Fetch Patient Age Distribution
+            const ageGroups = [
+              { range: "0-2 Years", min: 0, max: 2 },
+              { range: "3-12 Years", min: 3, max: 12 },
+              { range: "13-19 Years", min: 13, max: 19 },
+              { range: "20-39 Years", min: 20, max: 39 },
+              { range: "40-59 Years", min: 40, max: 59 },
+              { range: "60 And Above", min: 60, max: Infinity },
+            ];
+        
+            const patientData = await User.find({ role: "patient" }, "age");
+            reportData.patientAgeDistribution = ageGroups.map(group => ({
+              age: group.range,
+              value: patientData.filter(p => p.age >= group.min && p.age <= group.max).length,
+              color: "#"+Math.floor(Math.random()*16777215).toString(16), // Random color for each range
+            }));
+        
+            // Send the final aggregated report
+            res.json(reportData);
+        
+          } catch (error) {
+            res.status(500).json({ error: error.message });
+          }
+    }
     
-
 }
 
  

@@ -54,6 +54,7 @@ router.get("/getDashboardData", adminController.getDashboardData.bind(adminContr
 router.get("/getPaginatedAppointments", adminController.getPaginatedAppointments.bind(adminController));
 router.get("/getBillsMonitor", adminController.getBills.bind(adminController));
     
+router.get("/reportandanalysis", adminController.reportandanalysis.bind(adminController));
 
 
 export default router;
