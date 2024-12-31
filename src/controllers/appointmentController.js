@@ -258,8 +258,8 @@ class AppointmentController {
                 .skip(paginationSkip)
                 .limit(paginationLimit)
                 .sort({ date: 1 }) // Sort by date (ascending)
-                .populate("doctorId", "name email") // Populate related fields as needed
-                .populate("patientId", "name email")
+                .populate("doctorId", "fullName email profilePicture") // Populate related fields as needed
+                .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
     
             const totalAppointments = await Appointment.countDocuments(filters);

@@ -22,7 +22,7 @@ const UserSchema = new mongoose.Schema({
     },
     profilePicture: {
         type: String,
-        default: "https://vectorified.com/images/default-user-icon-33.jpg",
+        required : false
     },
     gender: {
         type: String,
