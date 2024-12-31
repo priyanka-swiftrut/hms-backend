@@ -1,6 +1,7 @@
 import Appointment from '../models/Appointment.model.js';
 import Prescription from '../models/priscription.model.js';
 import ResponseService from '../services/response.services.js';
+import mongoose from "mongoose";
 import { StatusCodes } from 'http-status-codes';
 import User from '../models/User.model.js';
 
@@ -68,7 +69,6 @@ class PrescriptionController {
           if (!req.user.id) {
             return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
           }
-      
           // Retrieve query parameters for filtering
           const { dateFilter, prescriptionId } = req.query; // 'today' or 'older', or prescriptionId
           const currentDate = new Date();
@@ -162,6 +162,76 @@ class PrescriptionController {
         }
     }
 
+    async getpatientdetails(req, res) {
+      try {
+        const { prescriptionId } = req.params; // Prescription ID from route params
+        const { dateFilter, prescriptionId: queryPrescriptionId } = req.query; // Query params for filtering
+        const currentDate = new Date();
+        const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0)); // Start of today
+        const endOfDay = new Date(currentDate.setHours(23, 59, 59, 999)); // End of today
+    
+        // Initialize query object
+        let prescriptionQuery = {};
+    
+        // Apply role-based filters
+        if (req.user.role === "doctor") {
+          prescriptionQuery.doctorId = req.user.id;
+        } else if (req.user.role === "patient") {
+          prescriptionQuery.patientId = req.user.id;
+        }
+    
+        // Apply date-based filters
+        if (dateFilter === "today") {
+          prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay };
+        } else if (dateFilter === "older") {
+          prescriptionQuery.date = { $lt: startOfDay };
+        }
+    
+        // Filter by prescription ID if provided in the query
+        if (queryPrescriptionId) {
+          prescriptionQuery._id = queryPrescriptionId;
+        }
+    
+        // Default behavior: Fetch all prescriptions for the user's hospital if no specific filters are provided
+        if (!dateFilter && !queryPrescriptionId) {
+          prescriptionQuery.hospitalId = req.user.hospitalId;
+        }
+    
+        // Fetch prescriptions from the database
+        const prescriptions = await Prescription.find(prescriptionQuery).populate({
+          path: "patientId",
+          select: "name phone age gender",
+        });
+    
+        // Check if prescriptions exist
+        if (!prescriptions || prescriptions.length === 0) {
+          return ResponseService.send(
+            res,
+            StatusCodes.NOT_FOUND,
+            "No prescriptions found.",
+            0
+          );
+        }
+    
+        // Respond with the prescriptions
+        return ResponseService.send(
+          res,
+          StatusCodes.OK,
+          "Prescriptions retrieved successfully",
+          1,
+          { prescriptions }
+        );
+      } catch (error) {
+        console.error("Error fetching prescriptions:", error);
+        return ResponseService.send(
+          res,
+          StatusCodes.INTERNAL_SERVER_ERROR,
+          error.message,
+          "error"
+        );
+      }
+    }
+    
 
 }
 

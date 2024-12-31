@@ -91,7 +91,7 @@ class DoctorController {
         
         // If no appointments are found
         if (!appointments || appointments.length === 0) {
-        return res.status(404).json({ message: "No appointments found for this doctor" });
+        return res.status(404).json({ message: "No appointments found for this doctor" },0);
         }
 
         // Format the data to return
@@ -113,7 +113,7 @@ class DoctorController {
         res.status(200).json(patientRecords);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal server error" },0);
     }
     }
 
