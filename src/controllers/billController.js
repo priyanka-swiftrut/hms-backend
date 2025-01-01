@@ -40,15 +40,8 @@ class BillController {
 
 
       if (!appointment) {
-        return ResponseService.send(
-          res,
-          StatusCodes.NOT_FOUND,
-          "Appointment not found.",
-          0
-        );
+        return ResponseService.send(res,StatusCodes.NOT_FOUND,"Appointment not found.",0);
       }
-  
-
 
       const { patientId, doctorId, hospitalId } = appointment;
   
@@ -68,12 +61,7 @@ class BillController {
           if (typeof item.value === "number") {
             extraCharges += item.value;
           } else {
-            return ResponseService.send(
-              res,
-              StatusCodes.BAD_REQUEST,
-              "Each description entry must have a numeric value.",
-              0
-            );
+            return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Each description entry must have a numeric value.",0);
           }
         });
       }
@@ -90,21 +78,11 @@ class BillController {
           claimAmount === undefined ||
           claimedAmount === undefined
         ) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",0);
         }
   
         if (claimAmount < claimedAmount) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Claim amount cannot be less than claimed amount.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Claim amount cannot be less than claimed amount.",0);
         }
   
         // Create insurance entry
@@ -145,21 +123,10 @@ class BillController {
       const newBill = new Bill(billData);
       await newBill.save();
   
-      return ResponseService.send(
-        res,
-        StatusCodes.CREATED,
-        "Bill created successfully.",
-        1,
-        newBill
-      );
+      return ResponseService.send(res,StatusCodes.CREATED,"Bill created successfully.",1,newBill);
     } catch (error) {
       console.error("Error creating bill manually:", error);
-      return ResponseService.send(
-        res,
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        error.message,
-        "error"
-      );
+      return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
     }
   }
   
@@ -200,12 +167,7 @@ class BillController {
       // Update amount
       if (amount !== undefined) {
         if (amount < 0) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Amount cannot be negative.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Amount cannot be negative.",0);
         }
         bill.amount = amount;
       }
@@ -213,12 +175,7 @@ class BillController {
       // Update discount
       if (discount !== undefined) {
         if (discount < 0 || discount > 100) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Discount must be between 0 and 100.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Discount must be between 0 and 100.",0);
         }
         bill.discount = discount;
       }
@@ -226,12 +183,7 @@ class BillController {
       // Update tax
       if (tax !== undefined) {
         if (tax < 0) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Tax cannot be negative.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Tax cannot be negative.",0);
         }
         bill.tax = tax;
       }
@@ -239,21 +191,11 @@ class BillController {
       // Update description
       if (description !== undefined) {
         if (!Array.isArray(description)) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Description must be an array of key-value pairs.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Description must be an array of key-value pairs.",0);
         }
         description.forEach((item) => {
           if (!item.key || !item.value) {
-            return ResponseService.send(
-              res,
-              StatusCodes.BAD_REQUEST,
-              "Each description entry must have both 'key' and 'value'.",
-              0
-            );
+            return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Each description entry must have both 'key' and 'value'.",0);
           }
         });
         bill.description = description;
@@ -268,21 +210,11 @@ class BillController {
           insuranceDetails.claimAmount === undefined ||
           insuranceDetails.claimedAmount === undefined
         ) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",0);
         }
   
         if (insuranceDetails.claimAmount < insuranceDetails.claimedAmount) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Claim amount cannot be less than claimed amount.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Claim amount cannot be less than claimed amount.",0);
         }
   
         const newInsurance = new Insurance({
@@ -300,12 +232,7 @@ class BillController {
       // Update payment type
       if (paymentType !== undefined) {
         if (!["Online", "Cash", "Insurance"].includes(paymentType)) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Invalid payment type. Allowed values: Online, Cash, Insurance.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Invalid payment type. Allowed values: Online, Cash, Insurance.",0);
         }
         bill.paymentType = paymentType;
       }
@@ -313,12 +240,7 @@ class BillController {
       // Update status
       if (status !== undefined) {
         if (!["Unpaid", "Paid"].includes(status)) {
-          return ResponseService.send(
-            res,
-            StatusCodes.BAD_REQUEST,
-            "Invalid status value. Allowed values: Unpaid, Paid.",
-            0
-          );
+          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Invalid status value. Allowed values: Unpaid, Paid.",0);
         }
         bill.status = status;
       }
@@ -336,21 +258,10 @@ class BillController {
       // Save updated bill
       await bill.save();
   
-      return ResponseService.send(
-        res,
-        StatusCodes.OK,
-        "Bill updated successfully.",
-        1,
-        bill
-      );
+      return ResponseService.send(res,StatusCodes.OK,"Bill updated successfully.",1,bill);
     } catch (error) {
       console.error("Error updating bill:", error);
-      return ResponseService.send(
-        res,
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        error.message,
-        "error"
-      );
+      return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
     }
   }
 
@@ -401,14 +312,11 @@ class BillController {
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "Bill not found", 0);
       }
     } catch (error) {
-      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
   }
   
-  
-  
-  
-  
+
 }
 
 export default BillController;

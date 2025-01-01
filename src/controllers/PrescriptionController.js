@@ -197,30 +197,14 @@ class PrescriptionController {
 
       // Check if prescriptions exist
       if (!prescriptions || prescriptions.length === 0) {
-        return ResponseService.send(
-          res,
-          StatusCodes.NOT_FOUND,
-          "No prescriptions found.",
-          0
-        );
+        return ResponseService.send(res,StatusCodes.NOT_FOUND,"No prescriptions found.",0);
       }
 
       // Respond with the prescriptions
-      return ResponseService.send(
-        res,
-        StatusCodes.OK,
-        "Prescriptions retrieved successfully",
-        1,
-        { prescriptions }
-      );
+      return ResponseService.send(res,StatusCodes.OK,"Prescriptions retrieved successfully",1,{ prescriptions });
     } catch (error) {
       console.error("Error fetching prescriptions:", error);
-      return ResponseService.send(
-        res,
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        error.message,
-        "error"
-      );
+      return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
     }
   }
 

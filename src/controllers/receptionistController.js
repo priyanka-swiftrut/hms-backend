@@ -80,7 +80,7 @@ class ReceptionistController {
             return ResponseService.send(res, StatusCodes.OK, "Receptionist registered successfully", 1, newReceptionist);
         } catch (error) {
             this.deleteImage(req.files?.profilePicture?.[0]?.path);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -129,7 +129,7 @@ class ReceptionistController {
             if (req.files?.profilePicture?.[0]?.path) {
                 await this.deleteImage(req.files.profilePicture[0].path);
             }
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
     
@@ -147,7 +147,7 @@ class ReceptionistController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to delete receptionist profile", 0);
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
     async getreceptionist(req, res) {
@@ -169,7 +169,7 @@ class ReceptionistController {
                 }
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 

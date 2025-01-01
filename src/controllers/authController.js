@@ -25,7 +25,7 @@ class AuthController {
                         : user.role === 'patient' ? process.env.JWT_SECRET_PATIENT
                             : process.env.JWT_SECRET_RECEPTIONIST;
                 if (!secret) {
-                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "JWT secret is not defined", 'error');
+                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "JWT secret is not defined", 0);
                 }
                 let token = await jwt.sign(
                     { userData: user },
@@ -37,7 +37,7 @@ class AuthController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid Password", 0);
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 

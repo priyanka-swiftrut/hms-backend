@@ -119,7 +119,7 @@ const getPatientDepartmentData = async (req, res) => {
       }))
     );
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
   }
 };
 
@@ -143,7 +143,7 @@ const getDoctorDepartmentData = async (req, res) => {
       }))
     );
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
   }
 };
 
@@ -166,7 +166,7 @@ const getPatientAgeDistribution = async (req, res) => {
 
     res.json(distribution);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
   }
 };
 

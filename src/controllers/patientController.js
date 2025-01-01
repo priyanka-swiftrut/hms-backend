@@ -171,7 +171,7 @@ class PatientController {
     
             // Validate input
             if (!id) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient ID is required", "error");
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient ID is required", 0);
             }
     
             // Build the query object
@@ -180,7 +180,7 @@ class PatientController {
             // If a status is provided, add it to the query
             if (status) {
                 if (status !== "paid" && status !== "unpaid") {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid status value", "error");
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid status value", 0);
                 }
                 query.status = status === "paid"; // `true` for paid, `false` for unpaid
             }
@@ -188,26 +188,34 @@ class PatientController {
             // Fetch bills based on the query
             const billsData = await billModel.find(query)
                 .sort({ createdAt: -1 }) // Optional: Sort by newest first
-                .populate("hospitalId", "name") // Populate hospitalId with hospital name
-    
+                .populate("hospitalId", "name")
+                .populate("patientId", "fullName email phone age gender address")
+            
             // Map the data to return in a structured format
             const bills = billsData.map((bill) => ({
                 billNumber: bill.billNumber,
                 billId: bill._id,
-                status: bill.status ? "Paid" : "Unpaid", 
-                date: bill.date,
+                status: bill.status ? "Paid" : "Unpaid",
+                date: new Date(bill.date).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                }), // Format the date to "2 Jan, 2022"
                 time: bill.time,
                 totalAmount: bill.totalAmount,
                 hospitalName: bill.hospitalId?.name || "N/A",
+                patientName: bill.patientId?.fullName || "N/A",
             }));
     
             // Return the result
-            return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", "success", bills);
+            return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, bills );
         } catch (error) {
             console.error("Error fetching bills:", error);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
+    
     
     
     

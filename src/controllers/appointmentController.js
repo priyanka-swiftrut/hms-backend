@@ -90,37 +90,38 @@ class AppointmentController {
                 status,
                 insuranceDetails
             } = req.body;
-
+    
             // Validate doctor existence
             const doctor = await User.findById(doctorId);
             if (!doctor) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
             }
-            if(req.user.role !== "receptionist"  && paymentType === "cash" && appointmentType === "online"){
-                response.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
+    
+            // Validate payment type and appointment type
+            if (req.user.role !== "receptionist" && paymentType === "cash" && appointmentType === "online") {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
             }
-            // Validate required fields
             if (!["onsite", "online"].includes(appointmentType)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid appointment type.", 0);
             }
             if (!["Cash", "Online", "Insurance"].includes(paymentType)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
             }
-            
-            let isAppoitement = false;
+    
+            // Check for duplicate appointments
+            let isAppointment = false;
             if (appointmentTime) {
-                const isDoctorAppoitemnt = await Appointment.find({ doctorId, date, appointmentTime });
-                if (isDoctorAppoitemnt.length > 0) {
-                    isAppoitement = true;
-                }
-                const isPatientAppoitemnt = await Appointment.find({ patientId: req.user.id, date, appointmentTime });
-                if (isPatientAppoitemnt.length > 0) {
-                    isAppoitement = true;
+                const isDoctorAppointment = await Appointment.find({ doctorId, date, appointmentTime });
+                const isPatientAppointment = await Appointment.find({ patientId: req.user.id, date, appointmentTime });
+    
+                if (isDoctorAppointment.length > 0 || isPatientAppointment.length > 0) {
+                    isAppointment = true;
                 }
             }
-            if (isAppoitement) {
+            if (isAppointment) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment already exists.", 0);
             }
+    
             // Prepare appointment data
             const appointmentData = {
                 patientId: req.user.id,
@@ -136,40 +137,42 @@ class AppointmentController {
                 country,
                 status: "scheduled",
             };
-
+    
             const newAppointment = new Appointment(appointmentData);
             await newAppointment.save();
-
-            // Conditional bill creation based on `status`
+    
+            // Conditional bill creation
             if (status) {
-                const bill = await this.createBill(newAppointment, paymentType, appointmentType, insuranceDetails);
+                const bill = await this.createBill(req, newAppointment, paymentType, appointmentType, insuranceDetails);
                 if (!bill) {
-                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Appointment Booked but Error Genrating bill.", 0);
+                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Appointment booked but error generating bill.", 0);
                 }
                 return ResponseService.send(res, StatusCodes.CREATED, "Appointment and bill created successfully.", 1, { appointment: newAppointment, bill });
             }
-
+    
             return ResponseService.send(res, StatusCodes.CREATED, "Appointment created successfully without a bill.", 1, { appointment: newAppointment });
         } catch (error) {
             console.error("Error creating appointment:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
 
-    async createBill(appointment, paymentType, appointmentType, insuranceDetails) {
+
+    async createBill(req, appointment, paymentType, appointmentType, insuranceDetails) {
         try {
             const { doctorId, patientId, hospitalId, _id: appointmentId } = appointment;
-
+    
             // Fetch consultation rate based on appointmentType
             const doctor = await User.findById(doctorId);
             if (!doctor) {
                 throw new Error("Doctor not found.");
             }
-            if(req.user.role !== "receptionist"  && paymentType === "cash" && appointmentType === "online"){
-                response.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
+    
+            if (req.user.role !== "receptionist" && paymentType === "cash" && appointmentType === "online") {
+                throw new Error("Invalid payment type.");
             }
-
-            console.log(doctor);
+    
             let amount = 0;
             if (appointmentType === "onsite") {
                 amount = doctor.metaData.doctorData.consultationRate || 0;
@@ -178,11 +181,11 @@ class AppointmentController {
             } else {
                 throw new Error("Invalid appointment type.");
             }
-            
+    
             // Calculate tax and total amount
             const tax = amount * 0.18; // 18% tax
             const totalAmount = amount + tax;
-
+    
             // Handle insurance details if paymentType is "insurance"
             let insuranceId = null;
             if (paymentType === "Insurance") {
@@ -193,7 +196,7 @@ class AppointmentController {
                 if (claimAmount < claimedAmount) {
                     throw new Error("Claim amount cannot be less than claimed amount.");
                 }
-
+    
                 // Create insurance entry
                 const newInsurance = new Insurance({
                     patientId,
@@ -205,7 +208,7 @@ class AppointmentController {
                 const savedInsurance = await newInsurance.save();
                 insuranceId = savedInsurance._id;
             }
-
+    
             // Create bill data
             const billData = {
                 patientId,
@@ -222,15 +225,16 @@ class AppointmentController {
                 time: new Date().toLocaleTimeString(),
                 status: true, // Status is true since we are creating the bill
             };
-
+    
             const newBill = new Bill(billData);
             await newBill.save();
             return newBill;
         } catch (error) {
-            console.error("Error creating bill:", error );
+            console.error("Error creating bill:", error);
             return null;
         }
     }
+    
 
     async getAppointments(req, res) {
         try {
@@ -238,24 +242,24 @@ class AppointmentController {
             if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
-
+    
             const { filter, page = 1, limit = 15 } = req.query;
             const paginationLimit = parseInt(limit, 10);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
-
+    
             const filters = {};
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of the day
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
-
+    
             // Apply role-based filters
             if (req.user.role === "doctor") {
                 filters.doctorId = req.user.id;
             } else if (req.user.role === "patient") {
                 filters.patientId = req.user.id;
             }
-
+    
             // Apply date-based filters
             if (filter === "today") {
                 filters.date = { $gte: today, $lt: tomorrow };
@@ -264,25 +268,38 @@ class AppointmentController {
             } else if (filter === "previous") {
                 filters.date = { $lt: today };
             }
-
+    
             // Apply status filter for canceled appointments
             if (filter === "cancel") {
                 filters.status = "canceled";
             }
-
+    
             // Fetch appointments with pagination
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
                 .limit(paginationLimit)
                 .sort({ date: 1 }) // Sort by date (ascending)
-                .populate("doctorId", "fullName email profilePicture phone age gender address") // Populate related fields as needed
+                .populate("doctorId", "fullName email profilePicture phone age gender address")
                 .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
-
+    
+            // Format the date field
+            const formattedAppointments = appointments.map((appointment) => {
+                const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                });
+                return {
+                    ...appointment.toObject(),
+                    date: formattedDate,
+                };
+            });
+    
             const totalAppointments = await Appointment.countDocuments(filters);
-
+    
             return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
-                appointments,
+                appointments: formattedAppointments,
                 pagination: {
                     total: totalAppointments,
                     page: parseInt(page, 10),
@@ -291,9 +308,57 @@ class AppointmentController {
                 },
             });
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
+
+    async getpatientfromappointment(req, res) {
+        try {
+            const { id } = req.params;
+    
+            // Ensure the appointment exists
+            const appointment = await Appointment.findById(id)
+                .populate("patientId", "fullName phone age gender address")
+                .populate("doctorId", "fullName");
+    
+            if (!appointment) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
+            }
+    
+            // Format the patient's address into a string
+            if (appointment.patientId && appointment.patientId.address) {
+                const address = appointment.patientId.address;
+                const formattedAddress = `${address.fullAddress}, ${address.city}, ${address.state}, ${address.country}, ${address.zipCode}`;
+                appointment.patientId.formattedAddress = formattedAddress; // Add the formatted address to the response
+            }
+    
+            // Format the date field
+            if (appointment.date) {
+                appointment.formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                }); // Convert the date to "2 Jan, 2025"
+            }
+    
+            // Return the response
+            return ResponseService.send(res, StatusCodes.OK, "Appointment fetched successfully", 1, {
+                appointment: {
+                    ...appointment.toObject(),
+                    patientId: {
+                        ...appointment.patientId.toObject(),
+                        address: appointment.patientId.formattedAddress, // Send formatted address
+                    },
+                    date: appointment.formattedDate, // Send formatted date
+                },
+            });
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+        }
+    }
+    
+    
 
     async editAppointment(req, res) {
         try {
@@ -317,7 +382,7 @@ class AppointmentController {
 
             return ResponseService.send(res, StatusCodes.OK, "Appointment updated successfully", 1, { appointment });
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -397,7 +462,7 @@ class AppointmentController {
 
             return ResponseService.send(res, StatusCodes.OK, { morningSlots, eveningSlots }, 1);
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 }

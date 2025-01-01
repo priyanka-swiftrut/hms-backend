@@ -44,7 +44,7 @@ class DoctorController {
             }
         } catch (error) {
             await this.deleteImage(req.files?.profilePicture?.[0]?.path);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
     async getdoctor(req, res) {
@@ -66,7 +66,7 @@ class DoctorController {
                 }
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -115,10 +115,10 @@ class DoctorController {
             });
     
             // Respond with the formatted records
-            return res.status(200).json(patientRecords);
+            return ResponseService.send(res,StatusCodes.OK,"Patient records fetched successfully","success",patientRecords , 1);
         } catch (error) {
             console.error("Error fetching patient records:", error.message);
-            return res.status(500).json({ message: "Internal server error" });
+            return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,"An error occurred while fetching patient records",0);
         }
     }
     
@@ -138,7 +138,7 @@ class DoctorController {
     
             // If no appointment is found
             if (!latestAppointment) {
-                return res.status(404).json({ message: "No appointment found for this patient." });
+                return ResponseService.send(res,StatusCodes.NOT_FOUND,"No appointment found for this patient",0);
             }
     
             const patient = latestAppointment.patientId;
@@ -204,16 +204,12 @@ class DoctorController {
             };
     
             // Send the response
-            res.status(200).json(response);
+            return ResponseService.send(res,StatusCodes.OK,"Patient record fetched successfully","success",response , 1);
         } catch (error) {
             console.error("Error fetching patient record:", error);
-            res.status(500).json({ message: "Internal server error" });
+            return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,"An error occurred while fetching patient record",0);
         }
     }
-    
-    
-    
-
 
 }
 

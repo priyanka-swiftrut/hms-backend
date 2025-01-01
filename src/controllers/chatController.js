@@ -11,13 +11,13 @@ class ChatController {
         try {
             const { from, to } = req.query;
             if (!from || !to) {
-                return res.status(400).json({ error: "Missing 'from' or 'to' query parameters" });
+                return res.status(400).json({ error: "Missing 'from' or 'to' query parameters" }, 0);
             }
             const messages = await chatService.getMessages(from, to);
             return sendResponse(res, 200, "Messages fetched successfully", 1, messages);
         } catch (error) {
             console.error("Error fetching messages:", error);
-            res.status(500).json({ error: "Failed to fetch messages" });
+            res.status(500).json({ error: "Failed to fetch messages" } , 0);
         }
     }
 
@@ -36,14 +36,14 @@ class ChatController {
             }
 
             if (!from || !to || !message) {
-                return res.status(400).json({ error: "Missing required fields" });
+                return res.status(400).json({ error: "Missing required fields" } , 0);
             }
 
             const savedMessage = await chatService.saveMessage({ from, to, message, type });
             return sendResponse(res, 200, "Message sent successfully", 1, savedMessage);
         } catch (error) {
             console.error("Error saving message:", error);
-            res.status(500).json({ error: "Failed to send message" });
+            res.status(500).json({ error: "Failed to send message" } , 0);
         }
     }
 
@@ -60,13 +60,13 @@ class ChatController {
             const updatedMessage = await chatService.markAsRead(messageId);
 
             if (!updatedMessage) {
-                return res.status(404).json({ message: "Message not found" });
+                return res.status(404).json({ message: "Message not found" } , 0);
             }
 
             return sendResponse(res, 200, "Message marked as read", 1, updatedMessage);
         } catch (error) {
             console.error("Error marking message as read:", error);
-            return res.status(500).json({ message: "Server error" });
+            return res.status(500).json({ message: "Server error" } , 0);
         }
     }
 }

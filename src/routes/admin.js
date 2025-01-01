@@ -46,7 +46,7 @@ router.get("/getBill", billController.getBill.bind(billController));
 //today , privious , upcoming , all
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getDashboardDatademo", adminController.getDashboardDatademo.bind(adminController));
-
+router.get("/getpatientfromappointment/:id", appointmentController.getpatientfromappointment.bind(appointmentController));
 
 
 router.get("/searchData", adminController.searchData.bind(adminController));

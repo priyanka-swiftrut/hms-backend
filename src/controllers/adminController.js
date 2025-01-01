@@ -66,7 +66,7 @@ class AdminController {
             if (req.files?.profilePicture?.[0]?.path) {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
             }
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -108,7 +108,7 @@ class AdminController {
             if (req.files?.profilePicture?.[0]?.path) {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
             }
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -121,7 +121,7 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Admin not found", 0);
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -144,7 +144,7 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User Not Found", 0);
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -255,7 +255,7 @@ class AdminController {
             } if (req.files?.signature?.[0]?.path) {
                 await this.deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
             }
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -272,7 +272,7 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to delete Doctor profile", 0);
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -664,25 +664,12 @@ class AdminController {
                     };
             
                     // Return success response with dashboard data
-                    return ResponseService.send(
-                        res,
-                        StatusCodes.OK,
-                        "Dashboard data fetched successfully",
-                        "success",
-                        dashboardData
-                    );
-                } catch (error) {
-                    console.error("Error fetching patient dashboard data:", error);
-                    return ResponseService.send(
-                        res,
-                        StatusCodes.INTERNAL_SERVER_ERROR,
-                        "An error occurred while fetching patient dashboard data",
-                        "error"
-                    );
+                    return ResponseService.send(res,StatusCodes.OK,"Dashboard data fetched successfully","success",dashboardData);
+                } catch (error) {console.error("Error fetching patient dashboard data:", error);
+                    return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,"An error occurred while fetching patient dashboard data",0);
                 }
             }
-            
-            
+
         } catch (error) {
             console.error("Error in getDashboardDatademo:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
@@ -1071,14 +1058,10 @@ class AdminController {
             res.json(reportData);
     
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: error.message }, 0);
         }
     }
     
-    
-    
-    
-
 }
 
 
