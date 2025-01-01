@@ -65,37 +65,31 @@ class PrescriptionController {
 
   async getPrescriptions(req, res) {
     try {
-      // Ensure the user is authenticated
       if (!req.user?.id) {
         return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
       }
 
-      // Destructure query parameters
       const { dateFilter, prescriptionId } = req.query;
       let prescriptionQuery = {};
-      // Initialize query and date boundaries
       const currentDate = new Date();
-      const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0)); // Start of today
-      const endOfDay = new Date(currentDate.setHours(23, 59, 59, 999)); // End of today
+      const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(currentDate.setHours(23, 59, 59, 999));
       if (req.user.role !== "patient") {
         prescriptionQuery = { hospitalId: req.user.hospitalId }
       };
 
-      // Role-based filters
       if (req.user.role === "doctor") {
         prescriptionQuery.doctorId = req.user.id;
       } else if (req.user.role === "patient") {
         prescriptionQuery.patientId = req.user.id;
       }
 
-      // Apply date filter if specified
       if (dateFilter === "today") {
         prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay };
       } else if (dateFilter === "older") {
         prescriptionQuery.date = { $lt: startOfDay };
       }
 
-      // Validate and apply prescriptionId filter
       if (prescriptionId) {
         if (mongoose.isValidObjectId(prescriptionId)) {
           prescriptionQuery._id = prescriptionId;
@@ -103,26 +97,16 @@ class PrescriptionController {
           return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid prescription ID format", "error");
         }
       }
-      // Fetch prescriptions based on the query
       const prescriptions = await Prescription.find(prescriptionQuery)
         .populate("patientId", "fullName gender address age")
         .populate("doctorId", "fullName");
 
-      // Handle no results found
       if (!prescriptions.length) {
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
       }
 
-      // Return successful response
-      return ResponseService.send(
-        res,
-        StatusCodes.OK,
-        "Prescriptions retrieved successfully",
-        1,
-        { prescriptions }
-      );
+      return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, prescriptions);
     } catch (error) {
-      // Handle unexpected errors
       console.error("Error fetching prescriptions:", error);
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred.", "error");
     }
