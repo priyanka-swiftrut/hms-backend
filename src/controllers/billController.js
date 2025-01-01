@@ -7,11 +7,9 @@ class BillController {
 
 
   async createBillManualy(req, res) {
-
     try {
       const {
-        patientId,
-        doctorId,
+        appointmentId,
         amount,
         discount,
         tax,
@@ -20,14 +18,40 @@ class BillController {
         insuranceDetails,
         notes,
       } = req.body;
-
+  
       // Ensure required fields are provided
-      if (!patientId || !doctorId || !amount) {return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Missing required fields: patientId, doctorId, or amount.",0);}
-
-      if (discount && (discount < 0 || discount > 100)) {return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Discount must be between 0 and 100.",0);}
-
-      if (tax && tax < 0) {return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Tax cannot be negative.",0);}
-
+      if (!appointmentId || !amount) {
+        return ResponseService.send(
+          res,
+          StatusCodes.BAD_REQUEST,
+          "Missing required fields: appointmentId or amount.",
+          0
+        );
+      }
+  
+      // Fetch appointment details from the AppointmentModel using appointmentId
+      const appointment = await AppointmentModel.findById(appointmentId).populate('patientId doctorId');
+  
+      if (!appointment) {
+        return ResponseService.send(
+          res,
+          StatusCodes.NOT_FOUND,
+          "Appointment not found.",
+          0
+        );
+      }
+  
+      const { patientId, doctorId, hospitalId } = appointment;
+  
+      // Validate the discount and tax values
+      if (discount && (discount < 0 || discount > 100)) {
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Discount must be between 0 and 100.", 0);
+      }
+  
+      if (tax && tax < 0) {
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Tax cannot be negative.", 0);
+      }
+  
       // Validate and calculate extra charges from description
       let extraCharges = 0;
       if (description && Array.isArray(description)) {
@@ -44,13 +68,13 @@ class BillController {
           }
         });
       }
-
+  
       // Validate insurance details if payment type is "Insurance"
       let insuranceId = null;
       if (paymentType === "Insurance") {
         const { insuranceCompany, insurancePlan, claimAmount, claimedAmount } =
           insuranceDetails || {};
-
+  
         if (
           !insuranceCompany ||
           !insurancePlan ||
@@ -64,7 +88,7 @@ class BillController {
             0
           );
         }
-
+  
         if (claimAmount < claimedAmount) {
           return ResponseService.send(
             res,
@@ -73,7 +97,7 @@ class BillController {
             0
           );
         }
-
+  
         // Create insurance entry
         const newInsurance = new Insurance({
           patientId,
@@ -82,20 +106,20 @@ class BillController {
           claimAmount,
           claimedAmount,
         });
-
+  
         const savedInsurance = await newInsurance.save();
         insuranceId = savedInsurance._id;
       }
-
+  
       // Calculate total amount
       const discountedAmount = (amount + extraCharges) - ((amount + extraCharges) * (discount || 0)) / 100;
       const totalAmount = discountedAmount + (discountedAmount * (tax || 0)) / 100;
-
+  
       // Create bill
       const billData = {
         patientId,
         doctorId,
-        hospitalId: req.user.hospitalId,
+        hospitalId: appointment.hospitalId,
         amount,
         discount,
         tax,
@@ -108,10 +132,10 @@ class BillController {
         date: new Date(),
         time: new Date().toLocaleTimeString(),
       };
-
+  
       const newBill = new Bill(billData);
       await newBill.save();
-
+  
       return ResponseService.send(
         res,
         StatusCodes.CREATED,
@@ -128,8 +152,8 @@ class BillController {
         "error"
       );
     }
-
   }
+  
 
 
 
@@ -326,27 +350,44 @@ class BillController {
   async getBill(req, res) {
     try {
       const { id } = req.query;
-
+  
+      // Case where no bill ID is provided, fetch all bills
       if (!id || id.trim() === '') {
         const bills = await Bill.find()
-          .populate('patientId', 'fullName email phone age gender address') // Populate patient details
-          .populate('doctorId', 'fullName specialization onlineConsultationRate description') // Populate doctor details
-          .populate('insuranceId') // Populate doctor details
-          .populate('appointmentId', 'date appointmentTime status  dieseas_name'); // Populate appointment details
+          .populate('patientId', 'fullName email phone age gender address') 
+          .populate('doctorId', 'fullName specialization onlineConsultationRate description') 
+          .populate('insuranceId') 
+          .populate('appointmentId', 'date appointmentTime status dieseas_name');
+  
         if (bills && bills.length > 0) {
           return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, bills);
         } else {
           return ResponseService.send(res, StatusCodes.NOT_FOUND, "No bills found", 0);
         }
       }
-
-      const bill = await Bill.findById(id)
-        .populate('patientId', 'name email')
-        .populate('doctorId', 'name specialization')
-        .populate('appointmentId', 'date appointmentTime status');
-
+  
+      // Fetch the bill by billNumber
+      const bill = await Bill.findOne({ billNumber: id })
+        .populate('patientId', 'fullName email gender age phone address')
+        .populate('doctorId', 'fullName metadata.doctorData.specialization metadata.doctorData.description metadata.doctorData.onlineConsultationRate metadata.doctorData.consultationRate')
+        .populate('appointmentId', 'date appointmentTime status dieseas_name');
+  
+      let formattedAddress = null;
+      if (bill && bill.patientId && bill.patientId.address) {
+        const address = bill.patientId.address;
+        formattedAddress = `${address.fullAddress}, ${address.city}, ${address.state}, ${address.country}, ${address.zipCode}`;
+        
+        // Optionally remove the original address field
+        delete bill.patientId.address;  
+      }
+  
+      // Send response with formattedAddress as top-level data
       if (bill) {
-        return ResponseService.send(res, StatusCodes.OK, "Bill fetched successfully", 1, bill);
+        const responseData = {
+          ...bill.toObject(), // Convert bill object to plain JS object
+          formattedAddress // Include formattedAddress in top-level data
+        };
+        return ResponseService.send(res, StatusCodes.OK, "Bill fetched successfully", 1, responseData);
       } else {
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "Bill not found", 0);
       }
@@ -354,6 +395,11 @@ class BillController {
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
     }
   }
+  
+  
+  
+  
+  
 }
 
 export default BillController;

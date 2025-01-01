@@ -77,45 +77,142 @@ class DoctorController {
         }
     };
 
-
     async getPatientRecord(req, res) {
         try {
-            // Extract the doctor's ID from the request (assuming it's passed as a query parameter)
+            // Extract the doctor's ID from the request (assume authentication middleware sets req.user)
             const Doctorid = req.user._id;
-            console.log(Doctorid);
-
-            // Get the appointments related to the specific doctor
+    
+            // Fetch the doctor's appointments with populated patient details
             const appointments = await Appointment.find({ doctorId: Doctorid })
-                .populate("patientId", "fullName age gender") // Populate patient info from the User model
-                .limit(10); // Limit to the last 10 appointments, or as needed
-
-            // If no appointments are found
+                .populate("patientId", "fullName age gender profilePicture") // Populate specific fields
+                .limit(10); // Consider making this limit configurable
+    
+            // Handle case where no appointments exist for the doctor
             if (!appointments || appointments.length === 0) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "No appointments found for this doctor", 0);
             }
-
-            // Format the data to return
-            const patientRecords = appointments.map((appointment) => {
+    
+            // Map and format the patient records
+            const patientRecords = appointments.map((appointment, index) => {
                 const patient = appointment.patientId;
-
+    
                 return {
-                    patientName: patient.fullName,
-                    diseaseName: appointment.dieseas_name,
-                    patientIssue: appointment.patient_issue,
-                    lastAppointmentDate: appointment.date.toDateString(),
-                    lastAppointmentTime: appointment.appointmentTime,
-                    age: patient.age,
-                    gender: patient.gender,
+                    key: (index + 1).toString(), // Generate a unique key for each record
+                    patientName: patient?.fullName || "N/A",
+                    patientId: patient?._id || "N/A",
+                    avatar: patient?.profilePicture || "https://vectorified.com/images/default-user-icon-33.jpg",
+                    diseaseName: appointment.dieseas_name || "N/A",
+                    patientIssue: appointment.patient_issue || "N/A",
+                    lastAppointmentDate: new Date(appointment.date).toLocaleDateString("en-US", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                    }),
+                    lastAppointmentTime: appointment.appointmentTime || "N/A",
+                    age: patient?.age ? `${patient.age} Years` : "N/A",
+                    gender: patient?.gender || "N/A",
                 };
             });
-
-            // Return the formatted patient records
-            res.status(200).json(patientRecords);
+    
+            // Respond with the formatted records
+            return res.status(200).json(patientRecords);
         } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: "Internal server error" }, 0);
+            console.error("Error fetching patient records:", error.message);
+            return res.status(500).json({ message: "Internal server error" });
         }
     }
+    
+    async getsinglepatientrecord(req, res) {
+        try {
+            const { patientId } = req.params;
+    
+            // Fetch the most recent appointment for the patient
+            const latestAppointment = await Appointment.findOne({ patientId })
+                .populate(
+                    "patientId",
+                    "fullName phone profilePicture gender age address metaData.patientData.dob metaData.patientData.weight metaData.patientData.height metaData.patientData.bloodGroup"
+                )
+                .populate("doctorId", "fullName")
+                .sort({ date: -1 })
+                .exec();
+    
+            // If no appointment is found
+            if (!latestAppointment) {
+                return res.status(404).json({ message: "No appointment found for this patient." });
+            }
+    
+            const patient = latestAppointment.patientId;
+            const doctor = latestAppointment.doctorId;
+    
+            // Reformat address to a single-line string
+            const address = patient.address
+                ? `${patient.address.fullAddress || ""}, ${patient.address.city || ""}, ${
+                      patient.address.state || ""
+                  }, ${patient.address.country || ""}, ${patient.address.zipCode || ""}`
+                      .replace(/,\s*,/g, ",")
+                      .trim(", ")
+                : "N/A";
+    
+            // Fetch all appointments for the patient with the current doctor
+            const allAppointments = await Appointment.find({ patientId, doctorId: req.user._id }).select(
+                "dieseas_name patient_issue date appointmentTime type"
+            );
+    
+            // Format response
+            const response = {
+                profilePicture: patient.profilePicture || "https://vectorified.com/images/default-user-icon-33.jpg",
+                patientFullName: patient.fullName || "N/A",
+                phone: patient.phone || "N/A",
+                patientIssue: latestAppointment.patient_issue || "N/A",
+                gender: patient.gender || "N/A",
+                lastAppointmentDate: latestAppointment.date
+                    ? new Date(latestAppointment.date).toLocaleDateString("en-US", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                      })
+                    : "N/A",
+                doctorName: doctor.fullName || "N/A",
+                age: patient.age ? `${patient.age} Years` : "N/A",
+                height: patient.metaData.patientData.height ? `${patient.metaData.patientData.height} cm` : "N/A",
+                weight: patient.metaData.patientData.weight ? `${patient.metaData.patientData.weight} kg` : "N/A",
+                bloodGroup: patient.metaData.patientData.bloodGroup || "N/A",
+                dob: patient.metaData.patientData.dob
+                    ? new Date(patient.dob).toLocaleDateString("en-US", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                      })
+                    : "N/A",
+                appointmentType: latestAppointment.type || "N/A",
+                address,
+                lastAppointmentTime: latestAppointment.appointmentTime || "N/A",
+                allAppointments: allAppointments.map((appointment) => ({
+                    dieseasName: appointment.dieseas_name || "N/A",
+                    patientIssue: appointment.patient_issue || "N/A",
+                    appointmentDate: appointment.date
+                        ? new Date(appointment.date).toLocaleDateString("en-US", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                          })
+                        : "N/A",
+                    appointmentTime: appointment.appointmentTime || "N/A",
+                    appointmentType: appointment.type || "N/A",
+                    appointmentId: appointment._id,
+                })),
+            };
+    
+            // Send the response
+            res.status(200).json(response);
+        } catch (error) {
+            console.error("Error fetching patient record:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+    
+    
+    
 
 
 }

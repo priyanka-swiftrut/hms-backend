@@ -28,6 +28,7 @@ router.get("/getpatientdetails", prescriptionController.getpatientdetails.bind(p
 
 
 router.get("/getPatientRecord", doctorController.getPatientRecord.bind(doctorController));
-router.get("getSinglepatients", patientController.getPatients.bind(patientController));
+router.get("/getSinglepatients", patientController.getPatients.bind(patientController));
+router.get("/getsinglepatientrecord/:patientId", doctorController.getsinglepatientrecord.bind(doctorController));
 
 export default router;

@@ -104,6 +104,7 @@ class AppointmentController {
             if (!["Cash", "Online", "Insurance"].includes(paymentType)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
             }
+
             let isAppoitement = false;
             if (appointmentTime) {
                 const isDoctorAppoitemnt = await Appointment.find({ doctorId, date, appointmentTime });
@@ -163,16 +164,19 @@ class AppointmentController {
             if (!doctor) {
                 throw new Error("Doctor not found.");
             }
-
+            if(paymentType === "cash" && paymentType === "online"){
+                response.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
+            }
+            console.log(doctor);
             let amount = 0;
             if (appointmentType === "onsite") {
-                amount = doctor.consultationRate || 0;
+                amount = doctor.metaData.doctorData.consultationRate || 0;
             } else if (appointmentType === "online") {
-                amount = doctor.onlineConsultationRate || 0;
+                amount = doctor.metaData.doctorData.onlineConsultationRate || 0;
             } else {
                 throw new Error("Invalid appointment type.");
             }
-
+            
             // Calculate tax and total amount
             const tax = amount * 0.18; // 18% tax
             const totalAmount = amount + tax;
@@ -269,7 +273,7 @@ class AppointmentController {
                 .skip(paginationSkip)
                 .limit(paginationLimit)
                 .sort({ date: 1 }) // Sort by date (ascending)
-                .populate("doctorId", "fullName email profilePicture") // Populate related fields as needed
+                .populate("doctorId", "fullName email profilePicture phone age gender address") // Populate related fields as needed
                 .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
 
