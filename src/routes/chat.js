@@ -1,12 +1,13 @@
-const express = require("express");
+import express from "express";
+import ChatController from "../controllers/chatController.js";
+import upload from "../services/multer.services.js";
+
 const router = express.Router();
+const chatController = new ChatController();
 
-const { getMessages, sendMessage } = require("../controllers/chatController");
-const upload = require('../services/multer.services');
 // Fetch chat messages
-router.get("/messages", getMessages);
-
+router.get("/messages",  chatController.getMessages.bind(chatController));
 // Save a new chat message
-router.post("/message",upload.fields([{ name: 'chatImage', maxCount: 1 }]), sendMessage);
+router.post("/message" , upload.fields([{ name: "chatImage", maxCount: 1 }]), chatController.sendMessage.bind(chatController));
 
-module.exports = router;
+export default router;

@@ -64,63 +64,76 @@ class PrescriptionController {
     }
 
     async getPrescriptions(req, res) {
-        try {
+      try {
           // Ensure the user is authenticated
           if (!req.user.id) {
-            return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
+              return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
           }
+  
           // Retrieve query parameters for filtering
           const { dateFilter, prescriptionId } = req.query; // 'today' or 'older', or prescriptionId
           const currentDate = new Date();
           const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0)); // Today's start time
           const endOfDay = new Date(currentDate.setHours(23, 59, 59, 999)); // Today's end time
-      
+          
           let prescriptionQuery = {};
-      
+  
           // Apply user role-based filters
           if (req.user.role === "doctor") {
-            prescriptionQuery.doctorId = req.user.id; // Doctor-specific prescriptions
+              prescriptionQuery.doctorId = req.user.id; // Doctor-specific prescriptions
           } else if (req.user.role === "patient") {
-            prescriptionQuery.patientId = req.user.id; // Patient-specific prescriptions
+              prescriptionQuery.patientId = req.user.id; // Patient-specific prescriptions
           }
           console.log(req.user.id);
-          
+  
           // Include hospitalId filtering if available
           prescriptionQuery.hospitalId = req.user.hospitalId;
-      
+  
           // Apply date filters (if specified)
           if (dateFilter === 'today') {
-            prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay }; // Filter for today's prescriptions
+              prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay }; // Filter for today's prescriptions
           } else if (dateFilter === 'older') {
-            prescriptionQuery.date = { $lt: startOfDay }; // Filter for older prescriptions
+              prescriptionQuery.date = { $lt: startOfDay }; // Filter for older prescriptions
           }
-      
+  
           // If prescriptionId is provided in the query, get that specific prescription
           if (prescriptionId) {
-            prescriptionQuery._id = prescriptionId; // Filter by prescription ID
+              console.log(prescriptionId);
+              try {
+                  // Ensure prescriptionId is in ObjectId format
+                  prescriptionQuery._id = mongoose.Types.ObjectId(prescriptionId); // Convert to ObjectId
+              } catch (error) {
+                  return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid prescription ID format", "error");
+              }
           }
-      
+  
           // If no query parameters (dateFilter, prescriptionId) are provided, fetch all prescriptions
           // for that user and hospital
           let prescriptions;
           if (dateFilter || prescriptionId) {
-            // Fetch prescriptions with filters applied
-            prescriptions = await Prescription.find(prescriptionQuery);
+              // Fetch prescriptions with filters applied
+              prescriptions = await Prescription.find(prescriptionQuery)
+                  .populate("patientId", "fullName gender address age")
+                  .populate("doctorId", "fullName");
           } else {
-            // Fetch all prescriptions for the user and hospital if no filters are provided
-            prescriptions = await Prescription.find({ hospitalId: req.user.hospitalId, ...prescriptionQuery });
+              // Fetch all prescriptions for the user and hospital if no filters are provided
+              prescriptions = await Prescription.find({ hospitalId: req.user.hospitalId, ...prescriptionQuery })
+                  .populate("patientId", "fullName gender address age")
+                  .populate("doctorId", "fullName");
           }
-      
+  
           if (!prescriptions || prescriptions.length === 0) {
-            return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
+              return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
           }
-      
+  
           // Send response with the prescriptions data
           return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, { prescriptions });
-        } catch (error) {
+      } catch (error) {
+          console.error("Error fetching prescriptions:", error);
           return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
-        }
       }
+  }
+  
     
    
     async editPrescription(req, res) {

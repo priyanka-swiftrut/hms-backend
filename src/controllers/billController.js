@@ -1,5 +1,6 @@
 import Bill from '../models/Bill.model.js';
 import Insurance from "../models/Insurance.model.js";
+import AppointmentModel from "../models/Appointment.model.js";
 import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 
@@ -31,7 +32,13 @@ class BillController {
   
       // Fetch appointment details from the AppointmentModel using appointmentId
       const appointment = await AppointmentModel.findById(appointmentId).populate('patientId doctorId');
-  
+      
+      if(req.user.role !== "receptionist"  && paymentType === "cash" && appointmentType === "online"){
+        response.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
+      }
+
+
+
       if (!appointment) {
         return ResponseService.send(
           res,
@@ -41,6 +48,8 @@ class BillController {
         );
       }
   
+
+
       const { patientId, doctorId, hospitalId } = appointment;
   
       // Validate the discount and tax values

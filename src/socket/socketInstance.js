@@ -1,98 +1,100 @@
+import { Server } from "socket.io";
+
 let io;
 let onlineUsers = {}; // Track users by socket ID
 
-module.exports = {
-    init: (server) => {
-        if (!io) {
-            io = require("socket.io")(server, {
-                cors: {
-                    origin: "*", // Replace with specific origin in production
-                    methods: ["GET", "POST"],
-                },
+export const init = (server) => {
+    if (!io) {
+        io = new Server(server, {
+            cors: {
+                origin: "*", // Replace with specific origin in production
+                methods: ["GET", "POST"],
+            },
+        });
+
+        io.on("connection", (socket) => {
+            console.log("New client connected:", socket.id);
+
+            // Track the online user
+            socket.on("register-user", (userId) => {
+                if (!userId) {
+                    console.warn(`Socket ${socket.id} tried to register without a userId`);
+                    return;
+                }
+                onlineUsers[socket.id] = { socketId: socket.id, userId, isAvailable: true };
+                console.log(`User ${userId} registered with socket ${socket.id}`);
+                io.emit("update-online-users", onlineUsers);
             });
 
-            io.on("connection", (socket) => {
-                console.log("New client connected:", socket.id);
-
-                // Track the online user
-                socket.on("register-user", (userId) => {
-                    if (!userId) {
-                        console.warn(`Socket ${socket.id} tried to register without a userId`);
-                        return;
-                    }
-                    onlineUsers[socket.id] = { socketId: socket.id, userId, isAvailable: true };
-                    console.log(`User ${userId} registered with socket ${socket.id}`);
-                    io.emit("update-online-users", onlineUsers);
-                });
-
-                // Join chat rooms
-                socket.on("join-chat", (roomId) => {
-                    if (!roomId) {
-                        console.warn(`Socket ${socket.id} tried to join a chat room without roomId`);
-                        return;
-                    }
-                    socket.join(`chat-${roomId}`);
-                    console.log(`Socket ${socket.id} joined chat room ${roomId}`);
-                });
-
-                // Handle sending messages
-                socket.on("send-message", (data) => {
-                    const { to, from, message: text, roomId } = data;
-
-                    if (!to || !from || !text || !roomId) {
-                        console.warn(`Invalid message data received from socket ${socket.id}`);
-                        return;
-                    }
-
-                    // Send message to the specific user in the room
-                    const recipientSocketId = Object.keys(onlineUsers).find(
-                        (id) => onlineUsers[id].userId === to
-                    );
-
-                    if (recipientSocketId) {
-                        io.to(recipientSocketId).emit("receive-message", {
-                            from,
-                            to,
-                            message: text,
-                            roomId,
-                        });
-                        console.log(`Message sent from ${from} to ${to} in room ${roomId}`);
-                    } else {
-                        console.log(`User ${to} is not online. Message not delivered.`);
-                    }
-                });
-
-                // Handle receiving messages
-                socket.on("receive-message", (data) => {
-                    console.log(`Message received by user:`, data);
-                });
-
-
-                // Handle disconnection
-                socket.on("disconnect", () => {
-                    console.log("Client disconnected:", socket.id);
-                    delete onlineUsers[socket.id];
-                    io.emit("update-online-users", onlineUsers);
-                });
+            // Join chat rooms
+            socket.on("join-chat", (roomId) => {
+                if (!roomId) {
+                    console.warn(`Socket ${socket.id} tried to join a chat room without roomId`);
+                    return;
+                }
+                socket.join(`chat-${roomId}`);
+                console.log(`Socket ${socket.id} joined chat room ${roomId}`);
             });
-        }
 
-        console.log("Socket.IO initialized");
-        return io;
-    },
+            // Handle sending messages
+            socket.on("send-message", (data) => {
+                const { to, from, message: text, roomId } = data;
 
-    getIO: () => {
-        if (!io) {
-            throw new Error("Socket.IO has not been initialized. Please call init() first.");
-        }
-        return io;
-    },
+                if (!to || !from || !text || !roomId) {
+                    console.warn(`Invalid message data received from socket ${socket.id}`);
+                    return;
+                }
 
-    // Get the status of a user (if they are available)
-    getUserAvailability: (socketId) => {
-        return onlineUsers[socketId]?.isAvailable || false;
-    },
+                // Send message to the specific user in the room
+                const recipientSocketId = Object.keys(onlineUsers).find(
+                    (id) => onlineUsers[id].userId === to
+                );
 
-    // Expose onlineUsers for external use
-    getOnlineUsers: () => onlineUsers,
+                if (recipientSocketId) {
+                    io.to(recipientSocketId).emit("receive-message", {
+                        from,
+                        to,
+                        message: text,
+                        roomId,
+                    });
+                    console.log(`Message sent from ${from} to ${to} in room ${roomId}`);
+                } else {
+                    console.log(`User ${to} is not online. Message not delivered.`);
+                }
+            });
+
+            // Handle receiving messages
+            socket.on("receive-message", (data) => {
+                console.log(`Message received by user:`, data);
+            });
+
+            // Handle disconnection
+            socket.on("disconnect", () => {
+                console.log("Client disconnected:", socket.id);
+                delete onlineUsers[socket.id];
+                io.emit("update-online-users", onlineUsers);
+            });
+        });
+    }
+
+    console.log("Socket.IO initialized");
+    return io;
 };
+
+export const getIO = () => {
+    if (!io) {
+        throw new Error("Socket.IO has not been initialized. Please call init() first.");
+    }
+    return io;
+};
+
+// Get the status of a user (if they are available)
+export const getUserAvailability = (socketId) => {
+    return onlineUsers[socketId]?.isAvailable || false;
+};
+
+// Expose onlineUsers for external use
+export const getOnlineUsers = () => onlineUsers;
+
+
+export default { init, getIO, getUserAvailability, getOnlineUsers };

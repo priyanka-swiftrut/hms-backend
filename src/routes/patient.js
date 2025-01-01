@@ -2,11 +2,14 @@ import express from "express";
 import PatientController from "../controllers/patientController.js";
 import AppointmentController from "../controllers/appointmentController.js";
 import PrescriptionController from "../controllers/PrescriptionController.js";
+import AdminController from "../controllers/adminController.js";
 import upload from "../services/multer.services.js";    
 const router = express.Router();
 const patientController = new PatientController();
 const appointmentController = new AppointmentController();
 const prescriptionController = new PrescriptionController();
+const adminController = new AdminController();
+
 // No Authorization Apis
 
 // Authorization Apis
@@ -23,5 +26,8 @@ router.get("/getDoctorSession/:doctorId", appointmentController.getDoctorSession
 
 
 router.get("/getPrescription", prescriptionController.getPrescriptions.bind(prescriptionController));
+
+router.get("/getBillsforPatient", patientController.getBillsforPatient.bind(patientController));
+router.get("/getDashboardData", adminController.getDashboardDatademo.bind(adminController));
 
 export default router;

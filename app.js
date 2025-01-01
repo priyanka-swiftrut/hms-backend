@@ -9,10 +9,16 @@ import connectDB from "./src/config/db.js";
 import API from "./src/routes/index.js"
 import Models from './src/models/index.js';
 import passportConfig from "./src/config/passport.js";
+import socketInstance from "./src/socket/socketInstance.js";
+import http from "http";
 
 dotenv.config();
   
 const app = express();
+
+const server = http.createServer(app);  
+const io = socketInstance.init(server);
+
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -37,6 +43,6 @@ app.use("/api",API );
 
 const port = process.env.PORT || 5000;
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

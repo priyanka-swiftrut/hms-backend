@@ -96,7 +96,9 @@ class AppointmentController {
             if (!doctor) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
             }
-
+            if(req.user.role !== "receptionist"  && paymentType === "cash" && appointmentType === "online"){
+                response.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
+            }
             // Validate required fields
             if (!["onsite", "online"].includes(appointmentType)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid appointment type.", 0);
@@ -104,7 +106,7 @@ class AppointmentController {
             if (!["Cash", "Online", "Insurance"].includes(paymentType)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
             }
-
+            
             let isAppoitement = false;
             if (appointmentTime) {
                 const isDoctorAppoitemnt = await Appointment.find({ doctorId, date, appointmentTime });
@@ -142,16 +144,15 @@ class AppointmentController {
             if (status) {
                 const bill = await this.createBill(newAppointment, paymentType, appointmentType, insuranceDetails);
                 if (!bill) {
-                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Error creating bill.", "error");
+                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Appointment Booked but Error Genrating bill.", 0);
                 }
-
                 return ResponseService.send(res, StatusCodes.CREATED, "Appointment and bill created successfully.", 1, { appointment: newAppointment, bill });
             }
 
             return ResponseService.send(res, StatusCodes.CREATED, "Appointment created successfully without a bill.", 1, { appointment: newAppointment });
         } catch (error) {
             console.error("Error creating appointment:", error);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -164,9 +165,10 @@ class AppointmentController {
             if (!doctor) {
                 throw new Error("Doctor not found.");
             }
-            if(paymentType === "cash" && paymentType === "online"){
+            if(req.user.role !== "receptionist"  && paymentType === "cash" && appointmentType === "online"){
                 response.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
             }
+
             console.log(doctor);
             let amount = 0;
             if (appointmentType === "onsite") {
@@ -225,7 +227,7 @@ class AppointmentController {
             await newBill.save();
             return newBill;
         } catch (error) {
-            console.error("Error creating bill:", error);
+            console.error("Error creating bill:", error );
             return null;
         }
     }
