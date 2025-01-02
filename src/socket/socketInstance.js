@@ -3,7 +3,7 @@ import { Server } from "socket.io";
 let io;
 let onlineUsers = {}; // Track users by socket ID
 
-export const init = (server) => {
+const init = (server) => {
     if (!io) {
         io = new Server(server, {
             cors: {
