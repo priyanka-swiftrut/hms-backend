@@ -10,6 +10,7 @@ import API from "./src/routes/index.js"
 import Models from './src/models/index.js';
 import passportConfig from "./src/config/passport.js";
 import socketInstance from "./src/socket/socketInstance.js";
+import notificationSocket from "./src/socket/notificationSocket.js";
 import http from "http";
 
 dotenv.config();
@@ -18,7 +19,7 @@ const app = express();
 
 const server = http.createServer(app);  
 const io = socketInstance.init(server);
-
+notificationSocket(io);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
