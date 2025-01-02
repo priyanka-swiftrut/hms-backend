@@ -130,9 +130,6 @@ class BillController {
     }
   }
   
-
-
-
   /**
    * Edits an existing bill
    * @param {Object} req - The request object
@@ -265,8 +262,6 @@ class BillController {
     }
   }
 
-
-
   async getBill(req, res) {
     try {
       const { id } = req.query;
@@ -316,7 +311,6 @@ class BillController {
     }
   }
   
-
 }
 
 export default BillController;

@@ -7,17 +7,21 @@ import BillController from '../controllers/billController.js';
 import PatientController from '../controllers/patientController.js';
 import AppointmentController from '../controllers/appointmentController.js';
 import upload from '../services/multer.services.js';
+import AuthController from '../controllers/authController.js';
+
 const adminController = new AdminController();
 const receptionistController = new ReceptionistController();
 const doctorController = new DoctorController();
 const billController = new BillController();
 const appointmentController = new AppointmentController();
 const patientController = new PatientController();
+const authController = new AuthController();
 
 
 router.post("/editAdmin", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.EditProfile.bind(adminController));
 router.delete("/delete/:id", adminController.deleteProfile.bind(adminController));
 router.get("/getAdmin", adminController.getAdmin.bind(adminController));
+router.post("/changePassword", authController.changePassword.bind(authController));
 
 
 router.post("/createReceptionist", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.Register.bind(receptionistController));
@@ -33,8 +37,8 @@ router.get('/getDoctor', doctorController.getdoctor.bind(doctorController));
 router.post("/editDoctor/:id", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
 
 
-router.get("/getpatient", patientController.getPatients.bind(patientController));
-    
+router.get("/getSinglepatients", patientController.getPatients.bind(patientController));
+router.get("/getpatients", patientController.getPatients.bind(patientController));
 
 
 router.post("/createBill", billController.createBillManualy.bind(billController));

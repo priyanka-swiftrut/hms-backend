@@ -157,8 +157,6 @@ class AppointmentController {
         }
     }
     
-
-
     async createBill(req, appointment, paymentType, appointmentType, insuranceDetails) {
         try {
             const { doctorId, patientId, hospitalId, _id: appointmentId } = appointment;
@@ -235,7 +233,6 @@ class AppointmentController {
         }
     }
     
-
     async getAppointments(req, res) {
         try {
             // Validate user ID
@@ -312,7 +309,6 @@ class AppointmentController {
         }
     }
     
-
     async getpatientfromappointment(req, res) {
         try {
             const { id } = req.params;
@@ -358,8 +354,6 @@ class AppointmentController {
         }
     }
     
-    
-
     async editAppointment(req, res) {
         try {
             const { id } = req.params;

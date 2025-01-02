@@ -147,6 +147,49 @@ class AuthController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);
         }
     }
+
+    async changePassword(req, res) {
+
+        try {
+            const userId = req.user.id; // Get user ID from req.user
+            const { oldPassword, newPassword, confirmPassword } = req.body;
+        
+            // Validate input
+            if (!oldPassword || !newPassword || !confirmPassword) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "All fields are required", 0);
+            }
+        
+            if (newPassword !== confirmPassword) {
+                
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "New password and confirm password must match", 0);
+            }
+        
+            // Fetch user from database
+            const user = await User.findById(userId);
+            if (!user) {
+                return ResponseService.send(res, StatusCodes.NOT_FOUND, "User not found", 0);
+            }
+        
+            // Check if oldPassword matches the stored password
+            const isMatch = await bcrypt.compare(oldPassword, user.password);
+            if (!isMatch) {
+              return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Old password is incorrect", 0);
+            }
+        
+            // Hash the new password
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(newPassword, salt);
+        
+            // Update the user's password
+            user.password = hashedPassword;
+            await user.save();
+            return ResponseService.send(res, StatusCodes.OK, "Password changed successfully", 1);
+          } catch (error) {
+            console.error(error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again later.", 0);
+          }
+
+    }
 }
 
 export default AuthController;
