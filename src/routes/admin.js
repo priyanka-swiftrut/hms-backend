@@ -44,7 +44,8 @@ router.get("/getpatients", patientController.getPatients.bind(patientController)
 router.post("/createBill", billController.createBillManualy.bind(billController));
 router.post("/editBill/:billId", billController.editBill.bind(billController));
 router.get("/getBill", billController.getBill.bind(billController));
-
+router.get("/getAppointment/withoutbill", appointmentController.getAppointmentsWithoutBills.bind(appointmentController));
+router.get("/getbillbystatus", billController.getBillByStatus.bind(billController));
 
 
 //today , privious , upcoming , all

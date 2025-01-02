@@ -26,6 +26,8 @@ router.post("/createAppointment", appointmentController.createAppointment.bind(a
 router.post("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
 
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
+router.get("/getAppointmentsTeleconsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));
+
 
 router.get("/getDoctorSession/:doctorId", appointmentController.getDoctorSession.bind(appointmentController));
 

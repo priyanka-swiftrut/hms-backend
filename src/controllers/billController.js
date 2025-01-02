@@ -311,6 +311,60 @@ class BillController {
     }
   }
   
+  async getBillByStatus(req, res) {
+    try {
+      const { status } = req.query;
+      const hospitalId = req.user.hospitalId; // Extract hospitalId from the request
+  
+      // Check if status is provided
+      if (!status) {
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Status is required", 0);
+      }
+  
+      // Validate the status value
+      const validStatuses = ["Unpaid", "Paid"];
+      if (!validStatuses.includes(status)) {
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid status value", 0);
+      }
+  
+      // Convert status to boolean for database query
+      const statusBool = status === "Paid";
+  
+      // Fetch bills with the given status and hospitalId
+      const bills = await Bill.find({ status: statusBool, hospitalId })
+        .populate("patientId", "fullName email phone")
+        .populate("doctorId", "fullName")
+        .select("billNumber status date time appointmentId");
+  
+      // Check if bills were found
+      if (!bills || bills.length === 0) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No bills found", 0);
+      }
+  
+      // Format the bills response
+      const formattedBills = bills.map(bill => ({
+        billNumber: bill.billNumber,
+        patientName: bill.patientId?.fullName || "N/A",
+        diseaseName: bill.appointmentId?.dieseas_name || "N/A",
+        phoneNumber: bill.patientId?.phone || "N/A",
+        status: bill.status ? "Paid" : "Unpaid",
+        date: new Date(bill.date).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+        time: bill.time,
+      }));
+  
+      return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, formattedBills);
+      
+    } catch (error) {
+      console.error("Error fetching bills:", error);
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+    }
+  }
+  
+
 }
 
 export default BillController;

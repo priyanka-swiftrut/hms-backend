@@ -24,7 +24,7 @@ router.post("/editAppointment", appointmentController.editAppointment.bind(appoi
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getpatientfromappointment/:id", appointmentController.getpatientfromappointment.bind(appointmentController));
 router.get("/getpatient", patientController.getPatients.bind(patientController));
-
+router.get("/getAppointmentsTeleconsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));
 
     
 

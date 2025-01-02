@@ -309,6 +309,84 @@ class AppointmentController {
         }
     }
     
+    async getAppointmentsTeleconsultation(req, res) {
+        try {
+            // Validate user ID
+            if (!req.user.id) {
+                return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
+            }
+    
+            const { filter, page = 1, limit = 15 } = req.query;
+            const paginationLimit = parseInt(limit, 10);
+            const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
+    
+            const filters = { type: "online" }; // Only fetch teleconsultation (online) appointments
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of the day
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+    
+            // Apply role-based filters
+            if (req.user.role === "doctor") {
+                filters.doctorId = req.user.id;
+            } else if (req.user.role === "patient") {
+                filters.patientId = req.user.id;
+            }
+    
+            // Apply date-based filters
+            if (filter === "today") {
+                filters.date = { $gte: today, $lt: tomorrow };
+            } else if (filter === "upcoming") {
+                filters.date = { $gt: today };
+            } else if (filter === "previous") {
+                filters.date = { $lt: today };
+            }
+    
+            // Apply status filter for canceled appointments
+            if (filter === "cancel") {
+                filters.status = "canceled";
+            }
+    
+            // Fetch appointments with pagination
+            const appointments = await Appointment.find(filters)
+                .skip(paginationSkip)
+                .limit(paginationLimit)
+                .sort({ date: 1 }) // Sort by date (ascending)
+                .populate("doctorId", "fullName email profilePicture phone age gender address")
+                .populate("patientId", "fullName email")
+                .populate("hospitalId", "name");
+    
+            // Format the date field
+            const formattedAppointments = appointments.map((appointment) => {
+                const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                });
+                return {
+                    ...appointment.toObject(),
+                    date: formattedDate,
+                };
+            });
+    
+            const totalAppointments = await Appointment.countDocuments(filters);
+    
+            return ResponseService.send(res, StatusCodes.OK, "Teleconsultation appointments retrieved successfully", 1, {
+                appointments: formattedAppointments,
+                pagination: {
+                    total: totalAppointments,
+                    page: parseInt(page, 10),
+                    limit: paginationLimit,
+                    totalPages: Math.ceil(totalAppointments / paginationLimit),
+                },
+            });
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+        }
+    }
+
+
+
     async getpatientfromappointment(req, res) {
         try {
             const { id } = req.params;
@@ -459,6 +537,42 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+
+    async getAppointmentsWithoutBills (req, res) {
+
+        try {
+            const hospitalId = req.user.hospitalId; // Access hospitalId from the request
+        
+            // Fetch all appointment IDs present in bills
+            const billedAppointmentIds = await Bill.find({ hospitalId })
+              .distinct("appointmentId");
+        
+            // Fetch appointments not in the billed list and matching the hospitalId
+            const appointmentsWithoutBills = await Appointment.find({
+              hospitalId,
+              _id: { $nin: billedAppointmentIds },
+            })
+              .populate( "doctorId",  "fullName" ) // Populate doctor name
+              .populate("patientId",  "fullName" ) // Populate patient name
+              .select("date appointmentTime doctorId patientId"); // Select required fields
+        
+            // Format the output
+            const result = appointmentsWithoutBills.map((appointment) => ({
+              doctorName: appointment.doctorId?.fullName,
+              patientName: appointment.patientId?.fullName,
+              appointmentTime: appointment.appointmentTime,
+              date: new Date(appointment.date).toLocaleDateString("en-US", {year: "numeric",month: "short",day: "numeric",})
+            }));
+        
+            return ResponseService.send(res, StatusCodes.OK, "Appointments without bills fetched successfully", 1, result);
+          } catch (error) {
+            console.error("Error fetching appointments without bills:", error );
+           return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Error fetching appointments without bills", 0);
+          }
+
+    }
+
+
 }
 
 export default AppointmentController;
