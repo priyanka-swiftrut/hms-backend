@@ -1,5 +1,7 @@
 import Appointment from '../models/Appointment.model.js';
 import Bill from '../models/Bill.model.js';
+import hospitalModel from '../models/Hospital.model.js';
+import userModel from '../models/User.model.js';
 import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import User from '../models/User.model.js';
@@ -469,6 +471,7 @@ class AppointmentController {
         try {
             const { doctorId } = req.params;
             const { date } = req.query; // Get the date from the query params
+            console.log("date", date);
             const targetDate = date || moment().format("YYYY-MM-DD"); // Use the provided date or default to today
 
             const doctor = await User.findById(doctorId);
@@ -579,6 +582,183 @@ class AppointmentController {
 
     }
 
+    async getseacrchingforappointment(req, res) {
+
+        try {
+            const { country, state, city, hospitalName, speciality, doctor } = req.query;
+        
+            // Step 1: Fetch countries
+            if (!country && !state && !city && !hospitalName && !speciality && !doctor) {
+              const countries = await hospitalModel.distinct("country");
+              return res.status(200).json({ countries });
+            }
+        
+            // Step 2: Fetch states for a given country
+            if (country && !state && !city && !hospitalName && !speciality && !doctor) {
+              const states = await hospitalModel.distinct("state", { country });
+              if (!states.length) {
+                return res.status(404).json({ message: `No states found for country: ${country}` });
+              }
+              return res.status(200).json({ states });
+            }
+        
+            // Step 3: Fetch cities for a given country and state
+            if (country && state && !city && !hospitalName && !speciality && !doctor) {
+              const cities = await hospitalModel.distinct("city", { country, state });
+              if (!cities.length) {
+                return res.status(404).json({ message: `No cities found for state: ${state}, country: ${country}` });
+              }
+              return res.status(200).json({ cities });
+            }
+        
+            // Step 4: Fetch hospital names for a given country, state, and city
+            if (country && state && city && !hospitalName && !speciality && !doctor) {
+              const hospitals = await hospitalModel.find(
+                { country, state, city },
+                { name: 1, _id: 0 }
+              ).distinct("name");
+              if (!hospitals.length) {
+                return res.status(404).json({
+                  message: `No hospitals found for city: ${city}, state: ${state}, country: ${country}`,
+                });
+              }
+              return res.status(200).json({ hospitals });
+            }
+        
+            // Step 5: Fetch specialties for a given hospital
+            if (country && state && city && hospitalName && !speciality && !doctor) {
+              const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
+              if (!hospital) {
+                return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
+              }
+        
+              const specialties = await userModel.distinct("metaData.doctorData.speciality", {
+                role: "doctor",
+                hospitalId: hospital._id,
+              });
+              if (!specialties.length) {
+                return res.status(404).json({ message: `No specialties found for hospital: ${hospitalName}` });
+              }
+              return res.status(200).json({ specialties });
+            }
+        
+            // Step 6: Fetch doctors for a given specialty and hospital
+            if (country && state && city && hospitalName && speciality && !doctor) {
+              const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
+              if (!hospital) {
+                return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
+              }
+        
+              const doctors = await userModel.find(
+                {
+                  role: "doctor",
+                  hospitalId: hospital._id,
+                  "metaData.doctorData.speciality": speciality,
+                },
+                { fullName: 1, _id: 0 }
+              );
+              if (!doctors.length) {
+                return res.status(404).json({
+                  message: `No doctors found for specialty: ${speciality} in hospital: ${hospitalName}`,
+                });
+              }
+              return res.status(200).json({ doctors });
+            }
+        
+            // Step 7: Fetch doctor details for a given doctor name and specialty
+            if (country && state && city && hospitalName && speciality && doctor) {
+              const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
+              if (!hospital) {
+                return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
+              }
+        
+              const doctorDetails = await userModel.findOne(
+                {
+                  role: "doctor",
+                  hospitalId: hospital._id,
+                  "metaData.doctorData.speciality": speciality,
+                  fullName: { $regex: new RegExp(doctor, "i") },
+                },
+                { fullName: 1, metaData: 1 }
+              );
+              if (!doctorDetails) {
+                return res.status(404).json({
+                  message: `Doctor not found: ${doctor} with specialty: ${speciality}`,
+                });
+              }
+              return res.status(200).json({ doctorDetails });
+            }
+        
+            res.status(400).json({ message: "Invalid query parameters." });
+          } catch (error) {
+            console.error("Error in search-options API:", error);
+            res.status(500).json({ message: "Internal Server Error", error: error.message });
+          }
+
+    }
+
+    async getseacrchingforappointment(req, res) {
+
+        try {
+            const { country, state, city, hospitalName, speciality, doctor } = req.query;
+        
+            // Filters to apply based on the query parameters
+            const hospitalFilters = {};
+            const doctorFilters = { role: "doctor" };
+        
+            if (country) hospitalFilters.country = country;
+            if (state) hospitalFilters.state = state;
+            if (city) hospitalFilters.city = city;
+            if (hospitalName) hospitalFilters.name = hospitalName;
+        
+            if (speciality) doctorFilters["metaData.doctorData.speciality"] = speciality;
+            if (doctor) doctorFilters.fullName = { $regex: new RegExp(doctor, "i") };
+        
+            // Step 1: Fetch possible options for each dropdown
+            const countries = await hospitalModel.distinct("country", hospitalFilters);
+            const states = await hospitalModel.distinct("state", hospitalFilters);
+            const cities = await hospitalModel.distinct("city", hospitalFilters);
+            const hospitals = await hospitalModel.distinct("name", hospitalFilters);
+        
+            let specialties = [];
+            if (hospitalName || country || state || city) {
+              const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
+              const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
+              specialties = await userModel.distinct("metaData.doctorData.speciality", {
+                ...doctorFilters,
+                hospitalId: { $in: hospitalIds },
+              });
+            } else {
+              specialties = await userModel.distinct("metaData.doctorData.speciality", doctorFilters);
+            }
+        
+            let doctors = [];
+            if (speciality || hospitalName || country || state || city) {
+              const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
+              const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
+              doctors = await userModel.find(
+                { ...doctorFilters, hospitalId: { $in: hospitalIds } },
+                { fullName: 1, _id: 0 }
+              );
+            } else {
+              doctors = await userModel.find(doctorFilters, { fullName: 1, _id: 0 });
+            }
+        
+            // Send response with all possible options
+            res.status(200).json({
+              countries,
+              states,
+              cities,
+              hospitals,
+              specialties,
+              doctors: doctors.map((d) => d.fullName),
+            });
+          } catch (error) {
+            console.error("Error in search-options API:", error);
+            res.status(500).json({ message: "Internal Server Error", error: error.message });
+          }
+
+    }
 
 }
 

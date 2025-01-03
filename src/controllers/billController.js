@@ -334,6 +334,7 @@ class BillController {
       const bills = await Bill.find({ status: statusBool, hospitalId })
         .populate("patientId", "fullName email phone")
         .populate("doctorId", "fullName")
+        .populate("appointmentId", "dieseas_name date appointmentTime status")
         .select("billNumber status date time appointmentId");
   
       // Check if bills were found
@@ -345,10 +346,11 @@ class BillController {
       const formattedBills = bills.map(bill => ({
         billNumber: bill.billNumber,
         patientName: bill.patientId?.fullName || "N/A",
+        doctorName: bill.doctorId?.fullName || "N/A",
         diseaseName: bill.appointmentId?.dieseas_name || "N/A",
         phoneNumber: bill.patientId?.phone || "N/A",
         status: bill.status ? "Paid" : "Unpaid",
-        date: new Date(bill.date).toLocaleDateString("en-US", {
+        billDate: new Date(bill.date).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -356,13 +358,18 @@ class BillController {
         time: bill.time,
       }));
   
-      return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, formattedBills);
-      
+      // Return the count of bills along with the formatted bills
+      return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, {
+        count: bills.length,
+        bills: formattedBills,
+      });
+  
     } catch (error) {
       console.error("Error fetching bills:", error);
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
   }
+  
   
 
 }

@@ -2,6 +2,7 @@ import express from "express";
 import PatientController from "../controllers/patientController.js";
 import AppointmentController from "../controllers/appointmentController.js";
 import PrescriptionController from "../controllers/PrescriptionController.js";
+import DoctorController from "../controllers/doctorController.js";
 import AdminController from "../controllers/adminController.js";
 import AuthController from "../controllers/authController.js";
 import upload from "../services/multer.services.js";    
@@ -11,6 +12,7 @@ const appointmentController = new AppointmentController();
 const prescriptionController = new PrescriptionController();
 const adminController = new AdminController();
 const authController = new AuthController();
+const doctorController = new DoctorController();
 
 // No Authorization Apis
 
@@ -27,6 +29,9 @@ router.post("/editAppointment", appointmentController.editAppointment.bind(appoi
 
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getAppointmentsTeleconsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));
+router.get("/searchAppointment", appointmentController.getseacrchingforappointment.bind(appointmentController));
+router.get("/searchAppointmentdata", appointmentController.getseacrchingforappointment.bind(appointmentController));
+
 
 
 router.get("/getDoctorSession/:doctorId", appointmentController.getDoctorSession.bind(appointmentController));
@@ -36,5 +41,7 @@ router.get("/getPrescription", prescriptionController.getPrescriptions.bind(pres
 
 router.get("/getBillsforPatient", patientController.getBillsforPatient.bind(patientController));
 router.get("/getDashboardData", adminController.getDashboardDatademo.bind(adminController));
+
+router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
 
 export default router;

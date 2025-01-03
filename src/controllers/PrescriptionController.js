@@ -97,9 +97,28 @@ class PrescriptionController {
           return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid prescription ID format", "error");
         }
       }
-      const prescriptions = await Prescription.find(prescriptionQuery)
+      let prescriptions = await Prescription.find(prescriptionQuery)
         .populate("patientId", "fullName gender address age")
-        .populate("doctorId", "fullName");
+        .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
+        .populate("appointmentId", "dieseas_name type")
+        .populate("hospitalId", "name")
+
+
+        prescriptions = prescriptions.map((prescription) => ({
+          prescriptionId: prescription._id,
+          prescriptionDate: prescription.date,
+          hospitalName: prescription.hospitalId?.name || "N/A",
+          DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
+          DoctorName: prescription.doctorId?.fullName || "N/A",
+          patientName: prescription.patientId?.fullName || "N/A",
+          doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
+          gender: prescription.patientId?.gender || "N/A",
+          age: prescription.patientId?.age || "N/A",
+          address : prescription.patientId?.address || "N/A",
+          medications: prescription.medications || "N/A",
+          additionalNote : prescription.instructions || "N/A",
+          doctorsignature: prescription.doctorId?.metaData?.doctorData?.signature || "N/A",
+        }));
 
       if (!prescriptions.length) {
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
@@ -190,10 +209,10 @@ class PrescriptionController {
       }
 
       // Fetch prescriptions from the database
-      const prescriptions = await Prescription.find(prescriptionQuery).populate({
-        path: "patientId",
-        select: "name phone age gender",
-      });
+      const prescriptions = await Prescription.find(prescriptionQuery)
+      .populate("patientId", "fullName phone age gender")
+      .populate("appointmentId", "dieseas_name type ")
+
 
       // Check if prescriptions exist
       if (!prescriptions || prescriptions.length === 0) {

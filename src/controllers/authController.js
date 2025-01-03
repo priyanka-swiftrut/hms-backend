@@ -152,10 +152,11 @@ class AuthController {
 
         try {
             const userId = req.user.id; // Get user ID from req.user
-            const { oldPassword, newPassword, confirmPassword } = req.body;
+            const { currentPassword, newPassword, confirmPassword } = req.body;
         
+            
             // Validate input
-            if (!oldPassword || !newPassword || !confirmPassword) {
+            if (!currentPassword || !newPassword || !confirmPassword) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "All fields are required", 0);
             }
         
@@ -170,8 +171,8 @@ class AuthController {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "User not found", 0);
             }
         
-            // Check if oldPassword matches the stored password
-            const isMatch = await bcrypt.compare(oldPassword, user.password);
+            // Check if currentPassword matches the stored password
+            const isMatch = await bcrypt.compare(currentPassword, user.password);
             if (!isMatch) {
               return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Old password is incorrect", 0);
             }
