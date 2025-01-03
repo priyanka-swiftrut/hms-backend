@@ -166,7 +166,7 @@ class PatientController {
 
     async getBillsforPatient(req, res) {
         try {
-            const { id } = req.user; // Assuming `req.user` contains the authenticated user's details
+            const { id } = req.user; 
             const { status } = req.query;
     
             // Validate input

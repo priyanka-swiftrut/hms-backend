@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import MessageModel from "../models/Message.model";
 
 let io;
 let onlineUsers = {}; // Track users by socket ID
@@ -37,14 +38,15 @@ const init = (server) => {
             });
 
             // Handle sending messages
-            socket.on("send-message", (data) => {
+            socket.on("send-message", async(data) => {
                 const { to, from, message: text, roomId } = data;
 
                 if (!to || !from || !text || !roomId) {
                     console.warn(`Invalid message data received from socket ${socket.id}`);
                     return;
                 }
-
+                const chat = new MessageModel({ from, to, message: text, roomId });
+                await chat.save();
                 // Send message to the specific user in the room
                 const recipientSocketId = Object.keys(onlineUsers).find(
                     (id) => onlineUsers[id].userId === to
