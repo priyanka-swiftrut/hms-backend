@@ -57,7 +57,7 @@ router.get("/getpatientfromappointment/:id", appointmentController.getpatientfro
 router.get("/searchData", adminController.searchData.bind(adminController));
 router.get("/getDashboardData", adminController.getDashboardData.bind(adminController));
 router.get("/getPaginatedAppointments", adminController.getPaginatedAppointments.bind(adminController));
-router.get("/getBillsMonitor", adminController.getBills.bind(adminController));
+router.get("/getBillsMonitor", adminController.getBillsmonitoring.bind(adminController));
     
 router.get("/reportandanalysis", adminController.reportandanalysis.bind(adminController));
 

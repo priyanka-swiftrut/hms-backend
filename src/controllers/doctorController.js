@@ -47,20 +47,41 @@ class DoctorController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+
     async getdoctor(req, res) {
         try {
-            if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
-                const doctor = await User.find({ role: 'doctor', isActive: true });
-                if (doctor) {
-                    return ResponseService.send(res, StatusCodes.OK, "doctor fetched successfully", 1, doctor);
+            if (!req.query.id) {
+                const doctors = await User.find({ role: 'doctor', isActive: true });
+                if (doctors.length > 0) {
+                    return ResponseService.send(res, StatusCodes.OK, "Doctors fetched successfully", 1, doctors);
                 } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch doctor", 0);
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "No doctors found", 0);
                 }
-            }
-            else {
-                const doctor = await User.findById({ _id: req.query.id, role: 'doctor' });
+            } else {
+                const doctor = await User.findOne({ _id: req.query.id, role: 'doctor' })
+                    .populate("hospitalId", "name worksiteLink address country state city zipcode emergencyContactNo");
+    
                 if (doctor) {
-                    return ResponseService.send(res, StatusCodes.OK, "doctor fetched successfully", 1, doctor);
+                    let formattedHospitalDetails = null;
+    
+                    if (doctor.hospitalId) {
+                        const hospital = doctor.hospitalId;
+                        const formattedAddress = `${hospital.address || "N/A"}, ${hospital.city || "N/A"}, ${hospital.state || "N/A"}, ${hospital.country || "N/A"}, ${hospital.zipcode || "N/A"}`;
+    
+                        // Create a formatted hospital object with the additional address
+                        formattedHospitalDetails = {
+                            ...hospital.toObject(),
+                            formattedAddress,
+                        };
+                    }
+    
+                    // Attach the formatted hospital details to the response
+                    const doctorWithFormattedHospital = {
+                        ...doctor.toObject(),
+                        hospitalId: formattedHospitalDetails,
+                    };
+    
+                    return ResponseService.send(res, StatusCodes.OK, "Doctor fetched successfully", 1, doctorWithFormattedHospital);
                 } else {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch doctor", 0);
                 }
@@ -69,6 +90,8 @@ class DoctorController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
+
 
     async deleteImage(path) {
         if (path) {

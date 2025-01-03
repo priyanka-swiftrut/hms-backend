@@ -147,7 +147,7 @@ class BillController {
         insuranceDetails,
         description,
         status,
-        notes
+        notes,
       } = req.body;
   
       // Fetch the bill from the database
@@ -164,7 +164,12 @@ class BillController {
       // Update amount
       if (amount !== undefined) {
         if (amount < 0) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Amount cannot be negative.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Amount cannot be negative.",
+            0
+          );
         }
         bill.amount = amount;
       }
@@ -172,7 +177,12 @@ class BillController {
       // Update discount
       if (discount !== undefined) {
         if (discount < 0 || discount > 100) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Discount must be between 0 and 100.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Discount must be between 0 and 100.",
+            0
+          );
         }
         bill.discount = discount;
       }
@@ -180,7 +190,12 @@ class BillController {
       // Update tax
       if (tax !== undefined) {
         if (tax < 0) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Tax cannot be negative.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Tax cannot be negative.",
+            0
+          );
         }
         bill.tax = tax;
       }
@@ -188,17 +203,27 @@ class BillController {
       // Update description
       if (description !== undefined) {
         if (!Array.isArray(description)) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Description must be an array of key-value pairs.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Description must be an array of key-value pairs.",
+            0
+          );
         }
-        description.forEach((item) => {
+        for (const item of description) {
           if (!item.key || !item.value) {
-            return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Each description entry must have both 'key' and 'value'.",0);
+            return ResponseService.send(
+              res,
+              StatusCodes.BAD_REQUEST,
+              "Each description entry must have both 'key' and 'value'.",
+              0
+            );
           }
-        });
+        }
         bill.description = description;
       }
   
-      // Update insurance details
+      // Handle insurance logic
       if (paymentType === "Insurance") {
         if (
           !insuranceDetails ||
@@ -207,29 +232,64 @@ class BillController {
           insuranceDetails.claimAmount === undefined ||
           insuranceDetails.claimedAmount === undefined
         ) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",
+            0
+          );
         }
   
         if (insuranceDetails.claimAmount < insuranceDetails.claimedAmount) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Claim amount cannot be less than claimed amount.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Claim amount cannot be less than claimed amount.",
+            0
+          );
         }
   
-        const newInsurance = new Insurance({
-          patientId: bill.patientId,
-          insuranceCompany: insuranceDetails.insuranceCompany,
-          insurancePlan: insuranceDetails.insurancePlan,
-          claimAmount: insuranceDetails.claimAmount,
-          claimedAmount: insuranceDetails.claimedAmount,
-        });
+        if (bill.insuranceId) {
+          // Update existing insurance
+          const insurance = await Insurance.findById(bill.insuranceId);
+          if (!insurance) {
+            return ResponseService.send(
+              res,
+              StatusCodes.NOT_FOUND,
+              "Associated insurance not found.",
+              0
+            );
+          }
   
-        const savedInsurance = await newInsurance.save();
-        bill.insuranceId = savedInsurance._id;
+          insurance.insuranceCompany = insuranceDetails.insuranceCompany;
+          insurance.insurancePlan = insuranceDetails.insurancePlan;
+          insurance.claimAmount = insuranceDetails.claimAmount;
+          insurance.claimedAmount = insuranceDetails.claimedAmount;
+          await insurance.save();
+        } else {
+          // Create new insurance
+          const newInsurance = new Insurance({
+            patientId: bill.patientId,
+            insuranceCompany: insuranceDetails.insuranceCompany,
+            insurancePlan: insuranceDetails.insurancePlan,
+            claimAmount: insuranceDetails.claimAmount,
+            claimedAmount: insuranceDetails.claimedAmount,
+          });
+  
+          const savedInsurance = await newInsurance.save();
+          bill.insuranceId = savedInsurance._id;
+        }
       }
   
       // Update payment type
       if (paymentType !== undefined) {
         if (!["Online", "Cash", "Insurance"].includes(paymentType)) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Invalid payment type. Allowed values: Online, Cash, Insurance.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Invalid payment type. Allowed values: Online, Cash, Insurance.",
+            0
+          );
         }
         bill.paymentType = paymentType;
       }
@@ -237,7 +297,12 @@ class BillController {
       // Update status
       if (status !== undefined) {
         if (!["Unpaid", "Paid"].includes(status)) {
-          return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Invalid status value. Allowed values: Unpaid, Paid.",0);
+          return ResponseService.send(
+            res,
+            StatusCodes.BAD_REQUEST,
+            "Invalid status value. Allowed values: Unpaid, Paid.",
+            0
+          );
         }
         bill.status = status;
       }
@@ -255,12 +320,25 @@ class BillController {
       // Save updated bill
       await bill.save();
   
-      return ResponseService.send(res,StatusCodes.OK,"Bill updated successfully.",1,bill);
+      return ResponseService.send(
+        res,
+        StatusCodes.OK,
+        "Bill updated successfully.",
+        1,
+        bill
+      );
     } catch (error) {
       console.error("Error updating bill:", error);
-      return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
+      return ResponseService.send(
+        res,
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        error.message,
+        0
+      );
     }
   }
+  
+  
 
   async getBill(req, res) {
     try {

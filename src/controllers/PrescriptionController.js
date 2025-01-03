@@ -84,7 +84,7 @@ class PrescriptionController {
       } else if (req.user.role === "patient") {
         prescriptionQuery.patientId = req.user.id;
       }
-  
+      
       if (dateFilter === "today") {
         prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay };
       } else if (dateFilter === "older") {

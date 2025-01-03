@@ -433,7 +433,7 @@ class AdminController {
         }
     }
 
-    async getBills(req, res) {
+    async getBillsmonitoring(req, res) {
         try {
             const { hospitalId } = req.user;
             const { type } = req.query;
