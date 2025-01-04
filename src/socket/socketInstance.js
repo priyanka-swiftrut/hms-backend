@@ -3,6 +3,7 @@ import Message from "../models/Message.model.js";
 
 let io;
 let onlineUsers = {}; // Track users by socket ID
+let checkonline = {}
 
 const init = (server) => {
     if (!io) {
@@ -23,8 +24,9 @@ const init = (server) => {
                     return;
                 }
                 onlineUsers[socket.id] = { socketId: socket.id, userId, isAvailable: true };
+                checkonline[userId] = { socketId: socket.id, userId, isAvailable: true };
                 console.log(`User ${userId} registered with socket ${socket.id}`);
-                io.emit("update-online-users", onlineUsers);
+                io.emit("update-online-users",{ onlineUsers , checkonline});
             });
 
             // Join chat rooms
@@ -51,7 +53,7 @@ const init = (server) => {
                 const recipientSocketId = Object.keys(onlineUsers).find(
                     (id) => onlineUsers[id].userId === to
                 );
-
+                
                 if (recipientSocketId) {
                     io.to(recipientSocketId).emit("receive-message", {
                         from,
@@ -69,6 +71,26 @@ const init = (server) => {
             socket.on("receive-message", (data) => {
                 console.log(`Message received by user:`, data);
             });
+
+            // i want to cheq user is online or not  
+            socket.on("check-online", (userId) => {
+                console.log(userId, "-------------------------------------------------------");
+                const user = checkonline[userId];
+                if (user) {
+                    io.to(socket.id).emit("user-status", { online: true, user });
+                    console.log(`User ${userId} is online.`);
+                } else {
+                    io.to(socket.id).emit("user-status", { online: false });
+                    console.log(`User ${userId} is offline.`);
+                }
+            });
+
+            
+            
+            
+            
+           
+            
 
             // Handle disconnection
             socket.on("disconnect", () => {

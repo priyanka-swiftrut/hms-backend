@@ -11,6 +11,7 @@ import Models from './src/models/index.js';
 import passportConfig from "./src/config/passport.js";
 import socketInstance from "./src/socket/socketInstance.js";
 import notificationSocket from "./src/socket/notificationSocket.js";
+import socketRoutes from "./src/routes/chat.js";
 import http from "http";
 
 dotenv.config();
@@ -41,6 +42,7 @@ app.use(passport.session());
 connectDB();
 
 app.use("/api",API );
+app.use("/chat", socketRoutes);
 
 const port = process.env.PORT || 5000;
 

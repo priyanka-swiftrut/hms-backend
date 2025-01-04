@@ -140,7 +140,8 @@ class AppointmentController {
                 country,
                 status: "scheduled",
             };
-
+            console.log(req.user.id);
+            
             const newAppointment = new Appointment(appointmentData);
             await newAppointment.save();
 
@@ -169,7 +170,7 @@ class AppointmentController {
     async createBill(req, appointment, paymentType, appointmentType, insuranceDetails) {
         try {
             const { doctorId, patientId, hospitalId, _id: appointmentId } = appointment;
-
+            console.log(patientId , "sssssssssssssssssssssssssss");
             // Fetch consultation rate based on appointmentType
             const doctor = await User.findById(doctorId);
             if (!doctor) {
@@ -325,11 +326,11 @@ class AppointmentController {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
     
-            const { filter, page = 1, limit = 15 } = req.query;
+            const { filter, page = 1, limit = 15, type } = req.query;
             const paginationLimit = parseInt(limit, 10);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
     
-            const filters = { type: "online" }; // Only fetch teleconsultation (online) appointments
+            const filters = {};
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of the day
             const tomorrow = new Date(today);
@@ -356,6 +357,11 @@ class AppointmentController {
                 filters.status = "canceled";
             }
     
+            // Apply type filter
+            if (type === "onsite" || type === "online") {
+                filters.type = type;
+            }
+    
             // Fetch appointments with pagination
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
@@ -380,7 +386,7 @@ class AppointmentController {
     
             const totalAppointments = await Appointment.countDocuments(filters);
     
-            return ResponseService.send(res, StatusCodes.OK, "Teleconsultation appointments retrieved successfully", 1, {
+            return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
                 appointments: formattedAppointments,
                 pagination: {
                     total: totalAppointments,
@@ -394,7 +400,7 @@ class AppointmentController {
         }
     }
 
-
+    
 
     async getpatientfromappointment(req, res) {
         try {
