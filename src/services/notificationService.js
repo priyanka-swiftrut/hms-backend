@@ -2,28 +2,28 @@ import socketInstance from '../socket/socketInstance.js';
 import Notification from '../models/Notification.model.js';
 
 
-const sendNotification = async ({ type, message, societyId, targetUsers }) => {
+const sendNotification = async ({ type, message, hospitalId, targetUsers }) => {
     try {
-        if (!societyId) {
-            console.error("Invalid societyId provided for notification emission.");
+        if (!hospitalId) {
+            console.error("Invalid hospitalId provided for notification emission.");
             return;
         }
-        const newNotification = new Notification({ type, message, societyId, targetUsers });
+        const newNotification = new Notification({ type, message, hospitalId, targetUsers });
         await newNotification.save();
         
         const io = socketInstance.getIO();
         if (io) {
             try {
-                io.to(`society-${societyId}`).emit("new-notification", {
+                io.to(`hospital-${hospitalId}`).emit("new-notification", {
                     type,
                     message,
-                    societyId,
+                    hospitalId,
                     targetUsers,
                     timestamp: new Date(),
                 });
             } catch (error) {
                 console.error(
-                    `Error emitting notification to society-${societyId}:`,
+                    `Error emitting notification to hospital-${hospitalId}:`,
                     error
                 );
             }

@@ -40,30 +40,48 @@ const init = (server) => {
             });
 
             // Handle sending messages
-            socket.on("send-message", async(data) => {
+            socket.on("send-message", async (data) => {
                 const { to, from, message: text, roomId } = data;
-
+            
+                // Validate required fields
                 if (!to || !from || !text || !roomId) {
                     console.warn(`Invalid message data received from socket ${socket.id}`);
+                    socket.emit("error", { message: "Invalid message data." });
                     return;
                 }
-                const chat = new Message({ from, to, message: text, roomId });
-                await chat.save();
-                // Send message to the specific user in the room
-                const recipientSocketId = Object.keys(onlineUsers).find(
-                    (id) => onlineUsers[id].userId === to
-                );
-                
-                if (recipientSocketId) {
-                    io.to(recipientSocketId).emit("receive-message", {
-                        from,
-                        to,
-                        message: text,
-                        roomId,
-                    });
-                    console.log(`Message sent from ${from} to ${to} in room ${roomId}`);
-                } else {
-                    console.log(`User ${to} is not online. Message not delivered.`);
+            
+                // Validate ObjectId fields
+                const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
+                if (!isValidObjectId(from) || !isValidObjectId(to)) {
+                    console.warn(`Invalid ObjectId(s): from=${from}, to=${to}`);
+                    socket.emit("error", { message: "Invalid user IDs provided." });
+                    return;
+                }
+            
+                try {
+                    // Save the message
+                    const chat = new Message({ from, to, message: text, roomId });
+                    await chat.save();
+            
+                    // Send message to the specific user in the room
+                    const recipientSocketId = Object.keys(onlineUsers).find(
+                        (id) => onlineUsers[id].userId === to
+                    );
+            
+                    if (recipientSocketId) {
+                        io.to(recipientSocketId).emit("receive-message", {
+                            from,
+                            to,
+                            message: text,
+                            roomId,
+                        });
+                        console.log(`Message sent from ${from} to ${to} in room ${roomId}`);
+                    } else {
+                        console.log(`User ${to} is not online. Message not delivered.`);
+                    }
+                } catch (error) {
+                    console.error("Error saving message:", error);
+                    socket.emit("error", { message: "Failed to send message. Please try again." });
                 }
             });
 
@@ -74,7 +92,7 @@ const init = (server) => {
 
             // i want to cheq user is online or not  
             socket.on("check-online", (userId) => {
-                console.log(userId, "-------------------------------------------------------");
+
                 const user = checkonline[userId];
                 if (user) {
                     io.to(socket.id).emit("user-status", { online: true, user });
@@ -85,11 +103,6 @@ const init = (server) => {
                 }
             });
 
-            
-            
-            
-            
-           
             
 
             // Handle disconnection

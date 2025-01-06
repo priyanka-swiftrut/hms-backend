@@ -3,9 +3,9 @@ const notification = (io) => {
         console.log('Client connected:', socket.id);
 
         // Join society room
-        socket.on('join-society', (societyId) => {
-            socket.join(`society-${societyId}`);
-            console.log(`Client joined society room: society-${societyId}`);
+        socket.on('join-hospital', (hospitalId) => {
+            socket.join(`hospital-${hospitalId}`);
+            console.log(`Client joined hospital room: hospital-${hospitalId}`);
         });
 
         socket.on('disconnect', () => {
@@ -14,4 +14,6 @@ const notification = (io) => {
     });
 };
 
-export default notification;
+    
+
+export default notification; 

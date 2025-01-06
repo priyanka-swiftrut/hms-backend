@@ -90,10 +90,15 @@ class AppointmentController {
                 state,
                 country,
                 paymentType,
-                status,
+                paymentStatus,
                 insuranceDetails
             } = req.body;
-
+            let patientId;
+            if (req.user.role === "patient") {
+                patientId = req.user.id;
+            } else if(req.user.role ===  "receptionist") {
+                patientId = req.body.patientId;
+            }
             // Validate doctor existence
             const doctor = await User.findById(doctorId);
             if (!doctor) {
@@ -115,7 +120,7 @@ class AppointmentController {
             let isAppointment = false;
             if (appointmentTime) {
                 const isDoctorAppointment = await Appointment.find({ doctorId, date, appointmentTime });
-                const isPatientAppointment = await Appointment.find({ patientId: req.user.id, date, appointmentTime });
+                const isPatientAppointment = await Appointment.find({ patientId: patientId, date, appointmentTime });
 
                 if (isDoctorAppointment.length > 0 || isPatientAppointment.length > 0) {
                     isAppointment = true;
@@ -127,7 +132,7 @@ class AppointmentController {
 
             // Prepare appointment data
             const appointmentData = {
-                patientId: req.user.id,
+                patientId,
                 doctorId,
                 hospitalId: doctor.hospitalId,
                 date,
@@ -140,13 +145,12 @@ class AppointmentController {
                 country,
                 status: "scheduled",
             };
-            console.log(req.user.id);
-            
+
             const newAppointment = new Appointment(appointmentData);
             await newAppointment.save();
 
             // Conditional bill creation
-            if (status) {
+            if (paymentStatus) {
                 const bill = await this.createBill(req, newAppointment, paymentType, appointmentType, insuranceDetails);
                 if (!bill) {
                     return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Appointment booked but error generating bill.", 0);
@@ -155,8 +159,15 @@ class AppointmentController {
                 await sendNotification({
                     type: 'Appoitement',
                     message: `Appoitement Booked Succesfully: ${newAppointment.date} at ${newAppointment.appointmentTime}`,
-                    hospitalId: req.user.hospitalId,
-                    targetUsers: [doctorId, patientId],
+                    hospitalId: doctor.hospitalId,
+                    targetUsers: patientId,
+                });
+
+                await sendNotification({
+                    type: 'Appoitement',
+                    message: `You have new Appoitement on : ${newAppointment.date} at ${newAppointment.appointmentTime}`,
+                    hospitalId: doctor.hospitalId,
+                    targetUsers: doctorId,
                 });
                 return ResponseService.send(res, StatusCodes.CREATED, "Appointment and bill created successfully.", 1, { appointment: newAppointment, bill });
             }
@@ -170,7 +181,6 @@ class AppointmentController {
     async createBill(req, appointment, paymentType, appointmentType, insuranceDetails) {
         try {
             const { doctorId, patientId, hospitalId, _id: appointmentId } = appointment;
-            console.log(patientId , "sssssssssssssssssssssssssss");
             // Fetch consultation rate based on appointmentType
             const doctor = await User.findById(doctorId);
             if (!doctor) {
@@ -243,6 +253,82 @@ class AppointmentController {
         }
     }
 
+    // async getAppointments(req, res) {
+    //     try {
+    //         // Validate user ID
+    //         if (!req.user.id) {
+    //             return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
+    //         }
+
+    //         const { filter, page = 1, limit = 15 } = req.query;
+    //         const paginationLimit = parseInt(limit, 10);
+    //         const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
+
+    //         const filters = {};
+    //         const today = new Date();
+    //         today.setHours(0, 0, 0, 0); // Start of the day
+    //         const tomorrow = new Date(today);
+    //         tomorrow.setDate(today.getDate() + 1);
+
+    //         // Apply role-based filters
+    //         if (req.user.role === "doctor") {
+    //             filters.doctorId = req.user.id;
+    //         } else if (req.user.role === "patient") {
+    //             filters.patientId = req.user.id;
+    //         }
+
+    //        // Apply date-based filters
+    //         if (filter === "today") {
+    //             filters.date = { $gte: today, $lt: tomorrow };
+    //         } else if (filter === "upcoming") {
+    //             filters.date = { $gt: today };
+    //         } else if (filter === "previous") {
+    //             filters.date = { $lt: today };
+    //         }
+
+    //         // Apply status filter for canceled appointments
+    //         if (filter === "cancel") {
+    //             filters.status = "canceled";
+    //         }
+
+    //         // Fetch appointments with pagination
+    //         const appointments = await Appointment.find(filters)
+    //             .skip(paginationSkip)
+    //             .limit(paginationLimit)
+    //             .sort({ date: 1 }) // Sort by date (ascending)
+    //             .populate("doctorId", "fullName email profilePicture phone age gender address")
+    //             .populate("patientId", "fullName email")
+    //             .populate("hospitalId", "name");
+
+    //         // Format the date field
+    //         const formattedAppointments = appointments.map((appointment) => {
+    //             const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
+    //                 day: "numeric",
+    //                 month: "short",
+    //                 year: "numeric",
+    //             });
+    //             return {
+    //                 ...appointment.toObject(),
+    //                 date: formattedDate,
+    //             };
+    //         });
+
+    //         const totalAppointments = await Appointment.countDocuments(filters);
+
+    //         return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
+    //             appointments: formattedAppointments,
+    //             pagination: {
+    //                 total: totalAppointments,
+    //                 page: parseInt(page, 10),
+    //                 limit: paginationLimit,
+    //                 totalPages: Math.ceil(totalAppointments / paginationLimit),
+    //             },
+    //         });
+    //     } catch (error) {
+    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+    //     }
+    // }
+
     async getAppointments(req, res) {
         try {
             // Validate user ID
@@ -250,7 +336,7 @@ class AppointmentController {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
 
-            const { filter, page = 1, limit = 15 } = req.query;
+            const { filter, date, page = 1, limit = 15 } = req.query;
             const paginationLimit = parseInt(limit, 10);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
 
@@ -268,7 +354,14 @@ class AppointmentController {
             }
 
             // Apply date-based filters
-            if (filter === "today") {
+            if (date) {
+                // Date-wise query
+                const selectedDate = new Date(date);
+                selectedDate.setHours(0, 0, 0, 0);
+                const nextDay = new Date(selectedDate);
+                nextDay.setDate(selectedDate.getDate() + 1);
+                filters.date = { $gte: selectedDate, $lt: nextDay };
+            } else if (filter === "today") {
                 filters.date = { $gte: today, $lt: tomorrow };
             } else if (filter === "upcoming") {
                 filters.date = { $gt: today };
@@ -318,31 +411,33 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
-    
+
+
+
     async getAppointmentsTeleconsultation(req, res) {
         try {
             // Validate user ID
             if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
-    
+
             const { filter, page = 1, limit = 15, type } = req.query;
             const paginationLimit = parseInt(limit, 10);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
-    
+
             const filters = {};
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of the day
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
-    
+
             // Apply role-based filters
             if (req.user.role === "doctor") {
                 filters.doctorId = req.user.id;
             } else if (req.user.role === "patient") {
                 filters.patientId = req.user.id;
             }
-    
+
             // Apply date-based filters
             if (filter === "today") {
                 filters.date = { $gte: today, $lt: tomorrow };
@@ -351,17 +446,17 @@ class AppointmentController {
             } else if (filter === "previous") {
                 filters.date = { $lt: today };
             }
-    
+
             // Apply status filter for canceled appointments
             if (filter === "cancel") {
                 filters.status = "canceled";
             }
-    
+
             // Apply type filter
             if (type === "onsite" || type === "online") {
                 filters.type = type;
             }
-    
+
             // Fetch appointments with pagination
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
@@ -370,7 +465,7 @@ class AppointmentController {
                 .populate("doctorId", "fullName email profilePicture phone age gender address")
                 .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
-    
+
             // Format the date field
             const formattedAppointments = appointments.map((appointment) => {
                 const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
@@ -383,9 +478,9 @@ class AppointmentController {
                     date: formattedDate,
                 };
             });
-    
+
             const totalAppointments = await Appointment.countDocuments(filters);
-    
+
             return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
                 appointments: formattedAppointments,
                 pagination: {
@@ -400,7 +495,7 @@ class AppointmentController {
         }
     }
 
-    
+
 
     async getpatientfromappointment(req, res) {
         try {
@@ -554,37 +649,37 @@ class AppointmentController {
         }
     }
 
-    async getAppointmentsWithoutBills (req, res) {
+    async getAppointmentsWithoutBills(req, res) {
 
         try {
             const hospitalId = req.user.hospitalId; // Access hospitalId from the request
-        
+
             // Fetch all appointment IDs present in bills
             const billedAppointmentIds = await Bill.find({ hospitalId })
-              .distinct("appointmentId");
-        
+                .distinct("appointmentId");
+
             // Fetch appointments not in the billed list and matching the hospitalId
             const appointmentsWithoutBills = await Appointment.find({
-              hospitalId,
-              _id: { $nin: billedAppointmentIds },
+                hospitalId,
+                _id: { $nin: billedAppointmentIds },
             })
-              .populate( "doctorId",  "fullName" ) // Populate doctor name
-              .populate("patientId",  "fullName" ) // Populate patient name
-              .select("date appointmentTime doctorId patientId"); // Select required fields
-        
+                .populate("doctorId", "fullName") // Populate doctor name
+                .populate("patientId", "fullName") // Populate patient name
+                .select("date appointmentTime doctorId patientId"); // Select required fields
+
             // Format the output
             const result = appointmentsWithoutBills.map((appointment) => ({
-              doctorName: appointment.doctorId?.fullName,
-              patientName: appointment.patientId?.fullName,
-              appointmentTime: appointment.appointmentTime,
-              date: new Date(appointment.date).toLocaleDateString("en-US", {year: "numeric",month: "short",day: "numeric",})
+                doctorName: appointment.doctorId?.fullName,
+                patientName: appointment.patientId?.fullName,
+                appointmentTime: appointment.appointmentTime,
+                date: new Date(appointment.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", })
             }));
-        
+
             return ResponseService.send(res, StatusCodes.OK, "Appointments without bills fetched successfully", 1, result);
-          } catch (error) {
-            console.error("Error fetching appointments without bills:", error );
-           return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Error fetching appointments without bills", 0);
-          }
+        } catch (error) {
+            console.error("Error fetching appointments without bills:", error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Error fetching appointments without bills", 0);
+        }
 
     }
 
@@ -592,114 +687,114 @@ class AppointmentController {
 
         try {
             const { country, state, city, hospitalName, speciality, doctor } = req.query;
-        
+
             // Step 1: Fetch countries
             if (!country && !state && !city && !hospitalName && !speciality && !doctor) {
-              const countries = await hospitalModel.distinct("country");
-              return res.status(200).json({ countries });
+                const countries = await hospitalModel.distinct("country");
+                return res.status(200).json({ countries });
             }
-        
+
             // Step 2: Fetch states for a given country
             if (country && !state && !city && !hospitalName && !speciality && !doctor) {
-              const states = await hospitalModel.distinct("state", { country });
-              if (!states.length) {
-                return res.status(404).json({ message: `No states found for country: ${country}` });
-              }
-              return res.status(200).json({ states });
+                const states = await hospitalModel.distinct("state", { country });
+                if (!states.length) {
+                    return res.status(404).json({ message: `No states found for country: ${country}` });
+                }
+                return res.status(200).json({ states });
             }
-        
+
             // Step 3: Fetch cities for a given country and state
             if (country && state && !city && !hospitalName && !speciality && !doctor) {
-              const cities = await hospitalModel.distinct("city", { country, state });
-              if (!cities.length) {
-                return res.status(404).json({ message: `No cities found for state: ${state}, country: ${country}` });
-              }
-              return res.status(200).json({ cities });
+                const cities = await hospitalModel.distinct("city", { country, state });
+                if (!cities.length) {
+                    return res.status(404).json({ message: `No cities found for state: ${state}, country: ${country}` });
+                }
+                return res.status(200).json({ cities });
             }
-        
+
             // Step 4: Fetch hospital names for a given country, state, and city
             if (country && state && city && !hospitalName && !speciality && !doctor) {
-              const hospitals = await hospitalModel.find(
-                { country, state, city },
-                { name: 1, _id: 0 }
-              ).distinct("name");
-              if (!hospitals.length) {
-                return res.status(404).json({
-                  message: `No hospitals found for city: ${city}, state: ${state}, country: ${country}`,
-                });
-              }
-              return res.status(200).json({ hospitals });
+                const hospitals = await hospitalModel.find(
+                    { country, state, city },
+                    { name: 1, _id: 0 }
+                ).distinct("name");
+                if (!hospitals.length) {
+                    return res.status(404).json({
+                        message: `No hospitals found for city: ${city}, state: ${state}, country: ${country}`,
+                    });
+                }
+                return res.status(200).json({ hospitals });
             }
-        
+
             // Step 5: Fetch specialties for a given hospital
             if (country && state && city && hospitalName && !speciality && !doctor) {
-              const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
-              if (!hospital) {
-                return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
-              }
-        
-              const specialties = await userModel.distinct("metaData.doctorData.speciality", {
-                role: "doctor",
-                hospitalId: hospital._id,
-              });
-              if (!specialties.length) {
-                return res.status(404).json({ message: `No specialties found for hospital: ${hospitalName}` });
-              }
-              return res.status(200).json({ specialties });
+                const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
+                if (!hospital) {
+                    return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
+                }
+
+                const specialties = await userModel.distinct("metaData.doctorData.speciality", {
+                    role: "doctor",
+                    hospitalId: hospital._id,
+                });
+                if (!specialties.length) {
+                    return res.status(404).json({ message: `No specialties found for hospital: ${hospitalName}` });
+                }
+                return res.status(200).json({ specialties });
             }
-        
+
             // Step 6: Fetch doctors for a given specialty and hospital
             if (country && state && city && hospitalName && speciality && !doctor) {
-              const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
-              if (!hospital) {
-                return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
-              }
-        
-              const doctors = await userModel.find(
-                {
-                  role: "doctor",
-                  hospitalId: hospital._id,
-                  "metaData.doctorData.speciality": speciality,
-                },
-                { fullName: 1, _id: 0 }
-              );
-              if (!doctors.length) {
-                return res.status(404).json({
-                  message: `No doctors found for specialty: ${speciality} in hospital: ${hospitalName}`,
-                });
-              }
-              return res.status(200).json({ doctors });
+                const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
+                if (!hospital) {
+                    return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
+                }
+
+                const doctors = await userModel.find(
+                    {
+                        role: "doctor",
+                        hospitalId: hospital._id,
+                        "metaData.doctorData.speciality": speciality,
+                    },
+                    { fullName: 1, _id: 0 }
+                );
+                if (!doctors.length) {
+                    return res.status(404).json({
+                        message: `No doctors found for specialty: ${speciality} in hospital: ${hospitalName}`,
+                    });
+                }
+                return res.status(200).json({ doctors });
             }
-        
+
             // Step 7: Fetch doctor details for a given doctor name and specialty
             if (country && state && city && hospitalName && speciality && doctor) {
-              const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
-              if (!hospital) {
-                return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
-              }
-        
-              const doctorDetails = await userModel.findOne(
-                {
-                  role: "doctor",
-                  hospitalId: hospital._id,
-                  "metaData.doctorData.speciality": speciality,
-                  fullName: { $regex: new RegExp(doctor, "i") },
-                },
-                { fullName: 1, metaData: 1 }
-              );
-              if (!doctorDetails) {
-                return res.status(404).json({
-                  message: `Doctor not found: ${doctor} with specialty: ${speciality}`,
-                });
-              }
-              return res.status(200).json({ doctorDetails });
+                const hospital = await hospitalModel.findOne({ name: hospitalName, country, state, city });
+                if (!hospital) {
+                    return res.status(404).json({ message: `Hospital not found: ${hospitalName}` });
+                }
+
+                const doctorDetails = await userModel.findOne(
+                    {
+                        role: "doctor",
+                        hospitalId: hospital._id,
+                        "metaData.doctorData.speciality": speciality,
+                        fullName: { $regex: new RegExp(doctor, "i") },
+                    },
+                    { fullName: 1, metaData: 1 }
+                );
+                if (!doctorDetails) {
+                    return res.status(404).json({
+                        message: `Doctor not found: ${doctor} with specialty: ${speciality}`,
+                    });
+                }
+                return res.status(200).json({ doctorDetails });
             }
-        
+
             res.status(400).json({ message: "Invalid query parameters." });
-          } catch (error) {
+        } catch (error) {
             console.error("Error in search-options API:", error);
             res.status(500).json({ message: "Internal Server Error", error: error.message });
-          }
+        }
 
     }
 
@@ -707,62 +802,62 @@ class AppointmentController {
 
         try {
             const { country, state, city, hospitalName, speciality, doctor } = req.query;
-        
+
             // Filters to apply based on the query parameters
             const hospitalFilters = {};
             const doctorFilters = { role: "doctor" };
-        
+
             if (country) hospitalFilters.country = country;
             if (state) hospitalFilters.state = state;
             if (city) hospitalFilters.city = city;
             if (hospitalName) hospitalFilters.name = hospitalName;
-        
+
             if (speciality) doctorFilters["metaData.doctorData.speciality"] = speciality;
             if (doctor) doctorFilters.fullName = { $regex: new RegExp(doctor, "i") };
-        
+
             // Step 1: Fetch possible options for each dropdown
             const countries = await hospitalModel.distinct("country", hospitalFilters);
             const states = await hospitalModel.distinct("state", hospitalFilters);
             const cities = await hospitalModel.distinct("city", hospitalFilters);
             const hospitals = await hospitalModel.distinct("name", hospitalFilters);
-        
+
             let specialties = [];
             if (hospitalName || country || state || city) {
-              const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
-              const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
-              specialties = await userModel.distinct("metaData.doctorData.speciality", {
-                ...doctorFilters,
-                hospitalId: { $in: hospitalIds },
-              });
+                const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
+                const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
+                specialties = await userModel.distinct("metaData.doctorData.speciality", {
+                    ...doctorFilters,
+                    hospitalId: { $in: hospitalIds },
+                });
             } else {
-              specialties = await userModel.distinct("metaData.doctorData.speciality", doctorFilters);
+                specialties = await userModel.distinct("metaData.doctorData.speciality", doctorFilters);
             }
-        
+
             let doctors = [];
             if (speciality || hospitalName || country || state || city) {
-              const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
-              const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
-              doctors = await userModel.find(
-                { ...doctorFilters, hospitalId: { $in: hospitalIds } },
-                { fullName: 1, _id: 0 }
-              );
+                const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
+                const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
+                doctors = await userModel.find(
+                    { ...doctorFilters, hospitalId: { $in: hospitalIds } },
+                    { fullName: 1, _id: 0 }
+                );
             } else {
-              doctors = await userModel.find(doctorFilters, { fullName: 1, _id: 0 });
+                doctors = await userModel.find(doctorFilters, { fullName: 1, _id: 0 });
             }
-        
+
             // Send response with all possible options
             res.status(200).json({
-              countries,
-              states,
-              cities,
-              hospitals,
-              specialties,
-              doctors: doctors.map((d) => d.fullName),
+                countries,
+                states,
+                cities,
+                hospitals,
+                specialties,
+                doctors: doctors.map((d) => d.fullName),
             });
-          } catch (error) {
+        } catch (error) {
             console.error("Error in search-options API:", error);
             res.status(500).json({ message: "Internal Server Error", error: error.message });
-          }
+        }
 
     }
 

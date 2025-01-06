@@ -100,13 +100,87 @@ class DoctorController {
         }
     };
 
+    // async getPatientRecord(req, res) {
+    //     try {
+    //         // Extract the doctor's ID from the request (assume authentication middleware sets req.user)
+    //         const Doctorid = req.user._id;
+    
+    //         // Fetch the doctor's appointments with populated patient details
+    //         const appointments = await Appointment.find({ doctorId: Doctorid })
+    //             .populate("patientId", "fullName age gender profilePicture") // Populate specific fields
+    //             .limit(10); // Consider making this limit configurable
+    
+    //         // Handle case where no appointments exist for the doctor
+    //         if (!appointments || appointments.length === 0) {
+    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "No appointments found for this doctor", 0);
+    //         }
+    
+    //         // Map and format the patient records
+    //         const patientRecords = appointments.map((appointment, index) => {
+    //             const patient = appointment.patientId;
+    
+    //             return {
+    //                 key: (index + 1).toString(), // Generate a unique key for each record
+    //                 patientName: patient?.fullName || "N/A",
+    //                 patientId: patient?._id || "N/A",
+    //                 avatar: patient?.profilePicture || "https://vectorified.com/images/default-user-icon-33.jpg",
+    //                 diseaseName: appointment.dieseas_name || "N/A",
+    //                 patientIssue: appointment.patient_issue || "N/A",
+    //                 lastAppointmentDate: new Date(appointment.date).toLocaleDateString("en-US", {
+    //                     day: "2-digit",
+    //                     month: "short",
+    //                     year: "numeric",
+    //                 }),
+    //                 lastAppointmentTime: appointment.appointmentTime || "N/A",
+    //                 age: patient?.age ? `${patient.age} Years` : "N/A",
+    //                 gender: patient?.gender || "N/A",
+    //             };
+    //         });
+    
+    //         // Respond with the formatted records
+    //         return ResponseService.send(res,StatusCodes.OK,"Patient records fetched successfully","success",patientRecords , 1);
+    //     } catch (error) {
+    //         console.error("Error fetching patient records:", error.message);
+    //         return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,"An error occurred while fetching patient records",0);
+    //     }
+    // }
+    
     async getPatientRecord(req, res) {
         try {
             // Extract the doctor's ID from the request (assume authentication middleware sets req.user)
             const Doctorid = req.user._id;
+            const { filter } = req.query; // `filter` is optional
     
-            // Fetch the doctor's appointments with populated patient details
-            const appointments = await Appointment.find({ doctorId: Doctorid })
+            // Define the date range for filtering
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of the day
+    
+            let startDate = null; // Default is no date filter
+            let endDate = null;
+    
+            if (filter === "day") {
+                startDate = new Date(today); // Start of today
+                endDate = new Date(today);
+                endDate.setDate(today.getDate() + 1); // End of today
+            } else if (filter === "week") {
+                const dayOfWeek = today.getDay(); // Current day of the week (0 = Sunday, 6 = Saturday)
+                startDate = new Date(today);
+                startDate.setDate(today.getDate() - dayOfWeek); // Start of the week (Sunday)
+                endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 7); // End of the week (Saturday)
+            } else if (filter === "month") {
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1); // Start of the month
+                endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1); // Start of next month
+            }
+    
+            // Build the query with optional date range
+            const query = { doctorId: Doctorid };
+            if (startDate && endDate) {
+                query.date = { $gte: startDate, $lt: endDate };
+            }
+    
+            // Fetch the doctor's appointments
+            const appointments = await Appointment.find(query)
                 .populate("patientId", "fullName age gender profilePicture") // Populate specific fields
                 .limit(10); // Consider making this limit configurable
     
@@ -138,13 +212,27 @@ class DoctorController {
             });
     
             // Respond with the formatted records
-            return ResponseService.send(res,StatusCodes.OK,"Patient records fetched successfully","success",patientRecords , 1);
+            return ResponseService.send(
+                res,
+                StatusCodes.OK,
+                "Patient records fetched successfully",
+                "success",
+                patientRecords,
+                1
+            );
         } catch (error) {
             console.error("Error fetching patient records:", error.message);
-            return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,"An error occurred while fetching patient records",0);
+            return ResponseService.send(
+                res,
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "An error occurred while fetching patient records",
+                0
+            );
         }
     }
     
+
+
     async getsinglepatientrecord(req, res) {
         try {
             const { patientId } = req.params;
