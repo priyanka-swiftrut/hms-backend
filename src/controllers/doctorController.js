@@ -49,7 +49,7 @@ class DoctorController {
     }
 
     async getdoctor(req, res) {
-        try {
+        try { 
             if (!req.query.id) {
                 const doctors = await User.find({ role: 'doctor', isActive: true });
                 if (doctors.length > 0) {

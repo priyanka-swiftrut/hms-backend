@@ -134,28 +134,82 @@ class PatientController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+
+    
     async getPatients(req, res) {
         try {
-            if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
-                const patients = await User.find({ role: 'patient', isActive: true });
-                if (patients) {
-                    return ResponseService.send(res, StatusCodes.OK, "Patients fetched successfully", 1, patients);
-                } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch Patients", 0);
+            const { id, search, bloodGroup, age, gender } = req.query;
+    
+            if (!id) {
+                let query = { role: 'patient', isActive: true };
+    
+                // Add search filter if provided
+                if (search) {
+                    query.$or = [
+                        { "fullName": { $regex: search, $options: 'i' } }, // Case-insensitive search on fullName
+                        { "email": { $regex: search, $options: 'i' } },    // Case-insensitive search on email
+                        { "phone": { $regex: search, $options: 'i' } }     // Case-insensitive search on phone
+                    ];
                 }
-            }
-            else {
-                const patient = await User.findById({ _id: req.query.id, role: 'patient', isActive: true });
-                if (patient) {
-                    return ResponseService.send(res, StatusCodes.OK, "Patient fetched successfully", 1, patient);
+    
+                // Add filters for bloodGroup, age, and gender if provided
+                if (bloodGroup) {
+                    query["metaData.patientData.bloodGroup"] = bloodGroup;
+                }
+                if (age) {
+                    query.age = age;
+                }
+                if (gender) {
+                    query.gender = gender;
+                }
+    
+                // Fetch all patients based on the query
+                const patients = await User.find(query).select("-password"); // Exclude sensitive fields like password
+                if (patients.length > 0) {
+                    const formattedPatients = patients.map(patient => ({
+                        id: patient._id,
+                        fullName: patient.fullName,
+                        email: patient.email,
+                        phone: patient.phone,
+                        gender: patient.gender,
+                        age: patient.age,
+                        bloodGroup: patient.metaData?.patientData?.bloodGroup,
+                        address: patient.address,
+                        metaData: patient.metaData,
+                        createdAt: patient.createdAt
+                    }));
+                    return ResponseService.send(res, StatusCodes.OK, "Patients fetched successfully", 1, formattedPatients);
                 } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch Patient", 0);
+                    return ResponseService.send(res, StatusCodes.NOT_FOUND, "No patients found", 0);
+                }
+            } else {
+                // Fetch a single patient by ID
+                const patient = await User.findOne({ _id: id, role: 'patient', isActive: true }).select("-password");
+                if (patient) {
+                    const formattedPatient = {
+                        id: patient._id,
+                        fullName: patient.fullName,
+                        email: patient.email,
+                        phone: patient.phone,
+                        gender: patient.gender,
+                        age: patient.age,
+                        bloodGroup: patient.metaData?.patientData?.bloodGroup,
+                        address: patient.address,
+                        metaData: patient.metaData,
+                        createdAt: patient.createdAt
+                    };
+                    return ResponseService.send(res, StatusCodes.OK, "Patient fetched successfully", 1, formattedPatient);
+                } else {
+                    return ResponseService.send(res, StatusCodes.NOT_FOUND, "Patient not found", 0);
                 }
             }
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
+    
+    
+    
 
     async deleteImage(path) {
         if (path) {

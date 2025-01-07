@@ -304,7 +304,7 @@ class BillController {
             0
           );
         }
-        bill.status = status;
+        bill.paymentStatus = status;
       }
   
       // Recalculate total amount if relevant fields are updated
@@ -409,7 +409,7 @@ class BillController {
       const statusBool = status === "Paid";
   
       // Fetch bills with the given status and hospitalId
-      const bills = await Bill.find({ status: statusBool, hospitalId })
+      const bills = await Bill.find({ paymentStatus: statusBool, hospitalId })
         .populate("patientId", "fullName email phone")
         .populate("doctorId", "fullName")
         .populate("appointmentId", "dieseas_name date appointmentTime status")
@@ -427,7 +427,7 @@ class BillController {
         doctorName: bill.doctorId?.fullName || "N/A",
         diseaseName: bill.appointmentId?.dieseas_name || "N/A",
         phoneNumber: bill.patientId?.phone || "N/A",
-        status: bill.status ? "Paid" : "Unpaid",
+        status: bill.paymentStatus ? "Paid" : "Unpaid",
         billDate: new Date(bill.date).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",

@@ -77,6 +77,8 @@ class AppointmentController {
     //     }
     // }
 
+
+
     async createAppointment(req, res) {
         try {
             const {
@@ -335,27 +337,39 @@ class AppointmentController {
             if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
-
-            const { filter, date, page = 1, limit = 15 } = req.query;
+    
+            const { filter, date, startDate, endDate, page = 1, limit = 15 } = req.query;
             const paginationLimit = parseInt(limit, 10);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
-
+    
             const filters = {};
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of the day
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
-
+    
             // Apply role-based filters
             if (req.user.role === "doctor") {
                 filters.doctorId = req.user.id;
             } else if (req.user.role === "patient") {
                 filters.patientId = req.user.id;
+            } else {
+                // For non-patient roles, include hospitalId if available
+                if (req.user.hospitalId) {
+                    filters.hospitalId = req.user.hospitalId;
+                }
             }
-
+    
             // Apply date-based filters
-            if (date) {
-                // Date-wise query
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999); // Include the end date's entire day
+                if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", 0);
+                }
+                filters.date = { $gte: start, $lte: end };
+            } else if (date) {
                 const selectedDate = new Date(date);
                 selectedDate.setHours(0, 0, 0, 0);
                 const nextDay = new Date(selectedDate);
@@ -368,12 +382,12 @@ class AppointmentController {
             } else if (filter === "previous") {
                 filters.date = { $lt: today };
             }
-
+    
             // Apply status filter for canceled appointments
             if (filter === "cancel") {
                 filters.status = "canceled";
             }
-
+    
             // Fetch appointments with pagination
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
@@ -382,7 +396,7 @@ class AppointmentController {
                 .populate("doctorId", "fullName email profilePicture phone age gender address")
                 .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
-
+    
             // Format the date field
             const formattedAppointments = appointments.map((appointment) => {
                 const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
@@ -395,9 +409,9 @@ class AppointmentController {
                     date: formattedDate,
                 };
             });
-
+    
             const totalAppointments = await Appointment.countDocuments(filters);
-
+    
             return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
                 appointments: formattedAppointments,
                 pagination: {
@@ -411,6 +425,8 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
+    
 
 
 
@@ -420,24 +436,24 @@ class AppointmentController {
             if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
-
-            const { filter, page = 1, limit = 15, type } = req.query;
+    
+            const { filter, page = 1, limit = 15, type, specificDate, startDate, endDate } = req.query;
             const paginationLimit = parseInt(limit, 10);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
-
+    
             const filters = {};
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of the day
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
-
+    
             // Apply role-based filters
             if (req.user.role === "doctor") {
                 filters.doctorId = req.user.id;
             } else if (req.user.role === "patient") {
                 filters.patientId = req.user.id;
             }
-
+    
             // Apply date-based filters
             if (filter === "today") {
                 filters.date = { $gte: today, $lt: tomorrow };
@@ -445,18 +461,36 @@ class AppointmentController {
                 filters.date = { $gt: today };
             } else if (filter === "previous") {
                 filters.date = { $lt: today };
-            }
-
-            // Apply status filter for canceled appointments
-            if (filter === "cancel") {
+            } else if (filter === "cancel") {
                 filters.status = "canceled";
             }
-
+    
+            // Apply specific date filter
+            if (specificDate) {
+                const specificDateObj = new Date(specificDate);
+                if (isNaN(specificDateObj.getTime())) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid specific date format", 0);
+                }
+                const specificStartOfDay = new Date(specificDateObj.setHours(0, 0, 0, 0));
+                const specificEndOfDay = new Date(specificDateObj.setHours(23, 59, 59, 999));
+                filters.date = { $gte: specificStartOfDay, $lte: specificEndOfDay };
+            }
+    
+            // Apply start date and end date filter
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", 0);
+                }
+                filters.date = { $gte: start, $lte: end };
+            }
+    
             // Apply type filter
             if (type === "onsite" || type === "online") {
                 filters.type = type;
             }
-
+    
             // Fetch appointments with pagination
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
@@ -465,7 +499,7 @@ class AppointmentController {
                 .populate("doctorId", "fullName email profilePicture phone age gender address")
                 .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
-
+    
             // Format the date field
             const formattedAppointments = appointments.map((appointment) => {
                 const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
@@ -478,9 +512,9 @@ class AppointmentController {
                     date: formattedDate,
                 };
             });
-
+    
             const totalAppointments = await Appointment.countDocuments(filters);
-
+    
             return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
                 appointments: formattedAppointments,
                 pagination: {
@@ -504,7 +538,8 @@ class AppointmentController {
             // Ensure the appointment exists
             const appointment = await Appointment.findById(id)
                 .populate("patientId", "fullName phone age gender address")
-                .populate("doctorId", "fullName");
+                .populate("doctorId", "fullName")
+                .populate("hospitalId", "name");
 
             if (!appointment) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);

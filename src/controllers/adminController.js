@@ -466,7 +466,7 @@ class AdminController {
                 bills = await BillModel.find({ hospitalId })
                     .populate("patientId", "fullName phone")
                     .populate("appointmentId", "dieseas_name")
-                    .select("billNumber status date time")
+                    .select("billNumber paymentStatus date time")
                     .lean();
 
                 bills = bills.map((bill) => ({
@@ -474,7 +474,7 @@ class AdminController {
                     patientName: bill.patientId?.fullName || "N/A",
                     diseaseName: bill.appointmentId?.dieseas_name || "N/A",
                     phoneNumber: bill.patientId?.phone || "N/A",
-                    status: bill.status,
+                    status: bill.paymentStatus,
                     date: bill.date,
                     time: bill.time,
                 }));

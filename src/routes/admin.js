@@ -54,6 +54,7 @@ router.get("/getDashboardDatademo", adminController.getDashboardDatademo.bind(ad
 router.get("/getpatientfromappointment/:id", appointmentController.getpatientfromappointment.bind(appointmentController));
 
 
+
 router.get("/searchData", adminController.searchData.bind(adminController));
 router.get("/getDashboardData", adminController.getDashboardData.bind(adminController));
 router.get("/getPaginatedAppointments", adminController.getPaginatedAppointments.bind(adminController));

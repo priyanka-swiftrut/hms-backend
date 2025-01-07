@@ -63,13 +63,89 @@ class PrescriptionController {
     }
   }
 
+  // async getPrescriptions(req, res) {
+  //   try {
+  //     if (!req.user?.id) {
+  //       return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
+  //     }
+  
+  //     const { dateFilter, prescriptionId } = req.query;
+  //     let prescriptionQuery = {};
+  //     const currentDate = new Date();
+  //     const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0));
+  //     const endOfDay = new Date(currentDate.setHours(23, 59, 59, 999));
+  
+  //     if (req.user.role !== "patient") {
+  //       prescriptionQuery = { hospitalId: req.user.hospitalId };
+  //     }
+  
+  //     if (req.user.role === "doctor") {
+  //       prescriptionQuery.doctorId = req.user.id;
+  //     } else if (req.user.role === "patient") {
+  //       prescriptionQuery.patientId = req.user.id;
+  //     }
+      
+  //     if (dateFilter === "today") {
+  //       prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay };
+  //     } else if (dateFilter === "older") {
+  //       prescriptionQuery.date = { $lt: startOfDay };
+  //     }
+  
+  //     if (prescriptionId) {
+  //       if (mongoose.isValidObjectId(prescriptionId)) {
+  //         prescriptionQuery._id = prescriptionId;
+  //       } else {
+  //         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid prescription ID format", "error");
+  //       }
+  //     }
+  
+  //     let prescriptions = await Prescription.find(prescriptionQuery)
+  //       .populate("patientId", "fullName gender address age")
+  //       .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
+  //       .populate("appointmentId", "dieseas_name type")
+  //       .populate("hospitalId", "name");
+  
+  //     prescriptions = prescriptions.map((prescription) => {
+  //       const addressObj = prescription.patientId?.address;
+  //       const formattedAddress = addressObj
+  //         ? `${addressObj.fullAddress || "N/A"}, ${addressObj.city || "N/A"}, ${addressObj.state || "N/A"}, ${addressObj.country || "N/A"}, ${addressObj.zipCode || "N/A"}`
+  //         : "N/A";
+  
+  //       return {
+  //         prescriptionId: prescription._id,
+  //         prescriptionDate: prescription.date,
+  //         hospitalName: prescription.hospitalId?.name || "N/A",
+  //         DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
+  //         DoctorName: prescription.doctorId?.fullName || "N/A",
+  //         patientName: prescription.patientId?.fullName || "N/A",
+  //         doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
+  //         gender: prescription.patientId?.gender || "N/A",
+  //         age: prescription.patientId?.age || "N/A",
+  //         address: formattedAddress, // Replaced the raw address object with the formatted string
+  //         medications: prescription.medications || "N/A",
+  //         additionalNote: prescription.instructions || "N/A",
+  //         doctorsignature: prescription.doctorId?.metaData?.doctorData?.signature || "N/A",
+  //       };
+  //     });
+  
+  //     if (!prescriptions.length) {
+  //       return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
+  //     }
+  
+  //     return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, prescriptions);
+  //   } catch (error) {
+  //     console.error("Error fetching prescriptions:", error);
+  //     return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred.", "error");
+  //   }
+  // }
+  
   async getPrescriptions(req, res) {
     try {
       if (!req.user?.id) {
         return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
       }
   
-      const { dateFilter, prescriptionId } = req.query;
+      const { dateFilter, prescriptionId, specificDate, startDate, endDate } = req.query;
       let prescriptionQuery = {};
       const currentDate = new Date();
       const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0));
@@ -84,11 +160,29 @@ class PrescriptionController {
       } else if (req.user.role === "patient") {
         prescriptionQuery.patientId = req.user.id;
       }
-      
+  
+      // Apply date filters
       if (dateFilter === "today") {
         prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay };
       } else if (dateFilter === "older") {
         prescriptionQuery.date = { $lt: startOfDay };
+      } else if (specificDate) {
+        const specificDateObj = new Date(specificDate);
+        if (isNaN(specificDateObj.getTime())) {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid date format", "error");
+        }
+        const specificStartOfDay = new Date(specificDateObj.setHours(0, 0, 0, 0));
+        const specificEndOfDay = new Date(specificDateObj.setHours(23, 59, 59, 999));
+        prescriptionQuery.date = { $gte: specificStartOfDay, $lte: specificEndOfDay };
+      } else if (startDate && endDate) {
+        // Start and End Date query
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // Include the end date's entire day
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", "error");
+        }
+        prescriptionQuery.date = { $gte: start, $lte: end };
       }
   
       if (prescriptionId) {
@@ -121,7 +215,7 @@ class PrescriptionController {
           doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
           gender: prescription.patientId?.gender || "N/A",
           age: prescription.patientId?.age || "N/A",
-          address: formattedAddress, // Replaced the raw address object with the formatted string
+          address: formattedAddress,
           medications: prescription.medications || "N/A",
           additionalNote: prescription.instructions || "N/A",
           doctorsignature: prescription.doctorId?.metaData?.doctorData?.signature || "N/A",
@@ -139,10 +233,6 @@ class PrescriptionController {
     }
   }
   
-
-
-
-
   async editPrescription(req, res) {
     try {
       const { prescriptionId } = req.params;
