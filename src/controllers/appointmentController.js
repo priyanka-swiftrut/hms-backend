@@ -741,14 +741,15 @@ class AppointmentController {
             })
                 .populate("doctorId", "fullName") // Populate doctor name
                 .populate("patientId", "fullName") // Populate patient name
-                .select("date appointmentTime doctorId patientId"); // Select required fields
+                .select("date appointmentTime doctorId patientId id"); // Select required fields
 
             // Format the output
             const result = appointmentsWithoutBills.map((appointment) => ({
-                doctorName: appointment.doctorId?.fullName,
-                patientName: appointment.patientId?.fullName,
+                doctorData : appointment.doctorId,
+                patientData: appointment.patientId,
                 appointmentTime: appointment.appointmentTime,
-                date: new Date(appointment.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", })
+                date: new Date(appointment.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", }),
+                id: appointment.id,
             }));
 
             return ResponseService.send(res, StatusCodes.OK, "Appointments without bills fetched successfully", 1, result);
