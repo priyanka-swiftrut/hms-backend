@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "nodemon app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "prettier --write .",
+    "lint": "prettier --check ."
   },
   "author": "",
   "license": "ISC",
@@ -35,14 +37,14 @@
     "socket.io": "^4.8.1"
   },
   "prettier": {
-    "semi": true,
-    "tabWidth": 2,
-    "printWidth": 80,
-    "useTabs": false,
-    "singleQuote": false,
-    "trailingComma": "es5",
-    "jsxSingleQuote": false,
-    "bracketSameLine": false,
-    "singleAttributePerLine": false
+    "semi": true,               
+    "tabWidth": 2,              
+    "useTabs": false,           
+    "singleQuote": true,
+    "trailingComma": "all",     
+    "bracketSpacing": true,     
+    "arrowParens": "always",    
+    "printWidth": 80,           
+    "endOfLine": "lf"  
   }
 }
