@@ -42,12 +42,16 @@ const init = (server) => {
             // Handle sending messages
             socket.on("send-message", async (data) => {
                 const { to, from, message: text, roomId } = data;
-            
+                
+                console.log(data, "----------------------------------------------------------------");
+                
+                
                 // Validate required fields
                 if (!to || !from || !text || !roomId) {
                     console.warn(`Invalid message data received from socket ${socket.id}`);
                     socket.emit("error", { message: "Invalid message data." });
                     return;
+
                 }
             
                 // Validate ObjectId fields

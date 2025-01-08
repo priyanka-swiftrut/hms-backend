@@ -627,10 +627,23 @@ class AdminController {
                 };
                 return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
             }
-            else if (req.user.role === "patient") {
+
+            else if (req.user.role === "patient" || req.user.role === "receptionist") {
                 try {
-                    const patientId = req.user._id;
-            
+                    const { patientId: queryPatientId } = req.query; // Get patientId from query
+                    const isReceptionist = req.user.role === "receptionist";
+
+                    // Determine the patientId to fetch data for
+                    const patientId = isReceptionist ? queryPatientId : req.user._id;
+
+                    if (!patientId) {
+                    return ResponseService.send(
+                        res,
+                        StatusCodes.BAD_REQUEST,
+                        "Patient ID is required.",
+                        "error"
+                    );
+                    }
                     // Fetch patient profile
                     const patientProfile = await User.findById(patientId);
                     if (!patientProfile) {

@@ -12,6 +12,7 @@ import  passport  from "passport";
 import adminRoutes from './admin.js';
 import auth from './auth.js';
 import ResponseService from "../services/response.services.js";
+import notification from "../routes/notification.js";
 const router = express.Router();
 const adminController = new AdminController();
 const patientController = new PatientController();
@@ -48,6 +49,8 @@ router.use('/doctor', (req, res, next) => {
         req.user = user; next();
     })(req, res, next);
 }, doctor);
+
+router.use("/notification" , notification)
 
 
 

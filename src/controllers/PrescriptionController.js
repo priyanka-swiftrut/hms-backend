@@ -326,6 +326,81 @@ class PrescriptionController {
     }
   }
 
+  async getAppointmentForPrescription(req, res) {
+    try {
+      // Get hospitalId and role from the logged-in user
+      const { hospitalId, role, _id: userId } = req.user;
+  
+      if (!hospitalId) {
+        return res.status(400).json({
+          success: false,
+          message: "Hospital ID is required.",
+        });
+      }
+  
+      // Extract query parameters
+      const { date } = req.query; // `date` is optional
+  
+      // Initialize date range filter
+      let dateFilter = {};
+  
+      if (date === "today") {
+        // Filter for today's appointments
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of the day
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1); // Start of next day
+        dateFilter = { date: { $gte: today, $lt: tomorrow } };
+      } else if (date) {
+        // Filter for a specific date
+        const specificDate = new Date(date);
+        if (isNaN(specificDate)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid date format. Use YYYY-MM-DD.",
+          });
+        }
+        specificDate.setHours(0, 0, 0, 0); // Start of the specific date
+        const nextDay = new Date(specificDate);
+        nextDay.setDate(specificDate.getDate() + 1); // Start of the next day
+        dateFilter = { date: { $gte: specificDate, $lt: nextDay } };
+      }
+  
+      // Step 1: Get all prescription appointment IDs
+      const prescriptions = await Prescription.find({ hospitalId }).select("appointmentId");
+      const prescriptionAppointmentIds = prescriptions.map((p) => p.appointmentId.toString());
+  
+      // Step 2: Build the query for appointments
+      const appointmentQuery = {
+        hospitalId,
+        _id: { $nin: prescriptionAppointmentIds },
+        ...dateFilter, // Apply the date filter if provided
+      };
+  
+      // If the user is a doctor, filter by doctorId
+      if (role === "doctor") {
+        appointmentQuery.doctorId = userId;
+      }
+  
+      // Step 3: Find appointments not referenced in prescriptions
+      const appointmentsWithoutPrescriptions = await Appointment.find(appointmentQuery)
+        .populate("patientId doctorId", "fullName email gender age ");
+      res.status(200).json({
+        success: true,
+        data: appointmentsWithoutPrescriptions,
+      });
+    } catch (error) {
+      console.error("Error fetching appointments without prescriptions:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch appointments. Please try again later.",
+        error: error.message,
+      });
+    }
+  }
+
+
+  
 
 }
 

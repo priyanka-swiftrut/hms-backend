@@ -60,10 +60,6 @@ const appointmentSchema = new mongoose.Schema(
       enum: ["pending", "paid", "failed"],
       default: "pending",
     },
-    prescriptionId: {
-      type: String,
-      default: null,
-    },
     amount: {
       type: Number,
       required: false,
