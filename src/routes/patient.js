@@ -32,7 +32,7 @@ router.post("/editAppointment", appointmentController.editAppointment.bind(appoi
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getAppointmentsTeleconcsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));
 router.get("/searchAppointment", appointmentController.getseacrchingforappointment.bind(appointmentController));
-router.get("/searchAppointmentdata", appointmentController.getseacrchingforappointment.bind(appointmentController));
+// router.get("/searchAppointmentdata", appointmentController.getseacrchingforappointment.bind(appointmentController));
 router.get("/getpatientfromappointment/:id", appointmentController.getpatientfromappointment.bind(appointmentController));
 
 
