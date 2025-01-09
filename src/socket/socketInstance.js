@@ -92,28 +92,35 @@ const init = (server) => {
             // });
 
             socket.on("send-message", async (data, callback = () => {}) => {
-                const { to, from, roomId, file } = data; // Assuming file data is sent as `file`
+            console.log(data);
+
+                const { to, from, roomId, fileDetails , type:resource_type } = data; // Assuming file data is sent as `file`
                 let message = data.message;
-            
+                
                 try {
                     // Validate required fields
-                    if (!to || !from || !roomId || (!file && !message)) {
+                    if (!to || !from || !roomId || (!fileDetails && !message)) {
                         console.warn(`Invalid data received from socket ${socket.id}`);
                         callback({ error: "Missing required fields." });
                         return;
                     }
             
                     // If a file is provided, upload to Cloudinary
-                    if (file) {
-                        const uploadedFile = await cloudinary.uploader.upload(file, {
+                    if (fileDetails) {  
+                        
+                        const { base64, type } = fileDetails;
+                        console.log(type , "23hgfkjfjhgfjhgffghfhgfhgfh------------------ghjfgjfgjfgj-------------hjfgj-------");
+                        const uploadResponse = await cloudinary.uploader.upload(`data:${type};base64,${base64}`, {
                             folder: "chatFiles",
-                            resource_type: "auto", // Automatically detect file type
+                            resource_type: resource_type, 
                         });
-                        message = uploadedFile.secure_url; // Save Cloudinary file URL as message
+                       
+
+                        message = uploadResponse.secure_url; // Save Cloudinary file URL as message
                     }
             
                     // Save the message in the database
-                    const chat = new Message({ from, to, message, roomId });
+                    const chat = new Message({ from, to, message, roomId , type : resource_type });
                     await chat.save();
             
                     // Emit the message to the recipient

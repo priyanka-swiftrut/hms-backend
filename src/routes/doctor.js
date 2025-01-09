@@ -33,6 +33,7 @@ router.get("/getPrescription", prescriptionController.getPrescriptions.bind(pres
 router.post("/editPrescription/:prescriptionId", prescriptionController.editPrescription.bind(prescriptionController));
 router.get("/getpatientdetails", prescriptionController.getpatientdetails.bind(prescriptionController));
 router.get("/getappointmentforprescription" , prescriptionController.getAppointmentForPrescription.bind(prescriptionController)) 
+router.get("/chatcontect" ,appointmentController.chatcontect.bind(appointmentController))
 
 
 

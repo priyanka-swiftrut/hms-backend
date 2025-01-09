@@ -968,6 +968,63 @@ class AppointmentController {
 
     }
 
+    async chatcontect(req,res){
+
+        try {
+            const { id, role } = req.user;
+            
+            if (role === "patient") {
+              // Fetch unique doctors the patient has appointments with
+              const appointments = await Appointment.find({ patientId: id })
+                .populate("doctorId", "fullName profilePicture")
+                .select("doctorId");
+        
+              const uniqueDoctors = appointments.reduce((acc, appointment) => {
+                const doctor = appointment.doctorId;
+                if (!acc.some((d) => d._id.toString() === doctor._id.toString())) {
+                  acc.push(doctor);
+                }
+                return acc;
+              }, []);
+        
+              return res.status(200).json({
+                success: true,
+                data: uniqueDoctors,
+              });
+            } else if (role === "doctor") {
+              // Fetch unique patients the doctor has appointments with
+              const appointments = await Appointment.find({ doctorId: id })
+                .populate("patientId", "fullName profilePicture")
+                .select("patientId");
+        
+              const uniquePatients = appointments.reduce((acc, appointment) => {
+                const patient = appointment.patientId;
+                if (!acc.some((p) => p._id.toString() === patient._id.toString())) {
+                  acc.push(patient);
+                }
+                return acc;
+              }, []);
+        
+              return res.status(200).json({
+                success: true,
+                data: uniquePatients,
+              });
+            } else {
+              return res.status(403).json({
+                success: false,
+                message: "Access denied. Only patients and doctors can access this endpoint.",
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching chat connections:", error);
+            res.status(500).json({
+              success: false,
+              message: "An error occurred while fetching chat connections.",
+            });
+          }
+
+    }
+
 }
 
 export default AppointmentController;
