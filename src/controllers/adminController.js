@@ -311,9 +311,7 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "No results found", 0);
             }
     
-            // Modify the key from "message" to "data" for the frontend
             return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
-            return res.status(StatusCodes.OK).json({statusCode: StatusCodes.OK,success: 1,data: results, } ,1);
     
         } catch (error) {
             console.error("Error in searchData:", error);

@@ -83,34 +83,34 @@ class AuthController {
     async ResetPassword(req, res) {
         try {
             if (req.body !== "") {
-              let checkmail = await User.findOne({ email: req.body.email });
-              if (checkmail) {
-                const isSamePassword = await bcrypt.compare(
-                  req.body.password,
-                  checkmail.password
-                );
-                if (isSamePassword) {
-                  return ResponseService.send(res, StatusCodes.BAD_REQUEST, "New password must be different from the current password", 0);
+                let checkmail = await User.findOne({ email: req.body.email });
+                if (checkmail) {
+                    const isSamePassword = await bcrypt.compare(
+                        req.body.password,
+                        checkmail.password
+                    );
+                    if (isSamePassword) {
+                        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "New password must be different from the current password", 0);
+                    } else {
+                        if (req.body.password !== "" && req.body.password === req.body.confirmPassword) {
+                            let pass = await bcrypt.hash(req.body.password, 10);
+                            req.body.password = pass;
+                            await User.findByIdAndUpdate(checkmail._id, req.body);
+                            return ResponseService.send(res, StatusCodes.OK, "Password Reset Successfully 🎉", 1);
+                        } else {
+                            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password must be same", 0);
+                        }
+                    }
                 } else {
-                  if (req.body.password !== "" && req.body.password === req.body.confirmPassword) {
-                    let pass = await bcrypt.hash(req.body.password, 10);
-                    req.body.password = pass;
-                    await User.findByIdAndUpdate(checkmail._id, req.body);
-                    return ResponseService.send(res, StatusCodes.OK, "Password Reset Successfully 🎉", 1);
-                  } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password must be same", 0);
-                  }
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email is Incorrect", 0);
                 }
-              } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email is Incorrect", 0);
-              }
             } else {
-              return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Data Not Found", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Data Not Found", 0);
             }
-          } catch (error) {
+        } catch (error) {
             console.log(error.message);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);
-          }
+        }
     }
 
     async Logout(req, res) {
@@ -153,42 +153,41 @@ class AuthController {
         try {
             const userId = req.user.id; // Get user ID from req.user
             const { currentPassword, newPassword, confirmPassword } = req.body;
-        
-            
+
             // Validate input
             if (!currentPassword || !newPassword || !confirmPassword) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "All fields are required", 0);
             }
-        
+
             if (newPassword !== confirmPassword) {
-                
+
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "New password and confirm password must match", 0);
             }
-        
+
             // Fetch user from database
             const user = await User.findById(userId);
             if (!user) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "User not found", 0);
             }
-        
+
             // Check if currentPassword matches the stored password
             const isMatch = await bcrypt.compare(currentPassword, user.password);
             if (!isMatch) {
-              return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Old password is incorrect", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Old password is incorrect", 0);
             }
-        
+
             // Hash the new password
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(newPassword, salt);
-        
+
             // Update the user's password
             user.password = hashedPassword;
             await user.save();
             return ResponseService.send(res, StatusCodes.OK, "Password changed successfully", 1);
-          } catch (error) {
+        } catch (error) {
             console.error(error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again later.", 0);
-          }
+        }
 
     }
 }

@@ -6,5 +6,6 @@ const prescriptionController = new PrescriptionController();
 router.post("/createPrescription/appointmentId", prescriptionController.createPrescription.bind(prescriptionController));
 router.get("/getPrescription", prescriptionController.getPrescriptions.bind(prescriptionController));
 router.post("/editPrescription/prescriptionId", prescriptionController.editPrescription.bind(prescriptionController));
+router.put("/editPrescription/prescriptionId", prescriptionController.editPrescription.bind(prescriptionController));
 
 export default router;

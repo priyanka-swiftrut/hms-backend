@@ -20,6 +20,7 @@ const billController = new BillController();
 
 // Authorization Apis
 router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.EditProfile.bind(patientController));      
+router.put("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.EditProfile.bind(patientController));      
 // router.delete("/delete/:id", patientController.deleteProfile.bind(patientController));
 router.get("/getpatients", patientController.getPatients.bind(patientController));
 router.get("/getSinglepatients", patientController.getPatients.bind(patientController));
@@ -28,6 +29,7 @@ router.post("/changePassword", authController.changePassword.bind(authController
 
 router.post("/createAppointment", appointmentController.createAppointment.bind(appointmentController));
 router.post("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
+router.put("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
 
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getAppointmentsTeleconcsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));
