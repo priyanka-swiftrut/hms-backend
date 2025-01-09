@@ -255,9 +255,17 @@ class AppointmentController {
                 time: new Date().toLocaleTimeString(),
                 status: true, // Status is true since we are creating the bill
             };
-    
+            
             const newBill = new Bill(billData);
             await newBill.save();
+
+            await sendNotification({
+                type: 'Bill',
+                message: `Bill Created Succesfully: ${newBill.date} at ${newBill.time}`,
+                hospitalId: hospitalId,
+                targetUsers: patientId,
+            });
+
             return newBill;
         } catch (error) {
             console.error("Error creating bill:", error);
