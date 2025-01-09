@@ -50,4 +50,6 @@ router.get("/getDashboardData", adminController.getDashboardDatademo.bind(adminC
 router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
 router.get("/getDoctorandhospital", patientController.getDoctorAndHospital.bind(patientController));
 
+router.get("/chatcontect" ,appointmentController.chatcontect.bind(appointmentController))
+
 export default router;
