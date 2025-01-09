@@ -96,7 +96,13 @@ const init = (server) => {
 
                 const { to, from, roomId, fileDetails , type:resource_type } = data; // Assuming file data is sent as `file`
                 let message = data.message;
-                
+
+                if (!to || !from || !roomId) {
+                    console.warn(`Invalid data received from socket ${socket.id}`);
+                    callback({ error: "Missing required fields." });
+                    return;
+                }
+
                 try {
                     // Validate required fields
                     if (!to || !from || !roomId || (!fileDetails && !message)) {

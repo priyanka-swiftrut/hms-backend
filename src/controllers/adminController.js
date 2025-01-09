@@ -288,34 +288,39 @@ class AdminController {
     async searchData(req, res) {
         try {
             const { query, role } = req.query;
+    
             if (!query) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
             }
+    
             const defaultRoles = ['doctor', 'patient', 'receptionist'];
-
+    
             const searchCriteria = {
                 fullName: { $regex: query, $options: 'i' }
             };
-
+    
             if (role) {
                 searchCriteria.role = role;
             } else {
                 searchCriteria.role = { $in: defaultRoles };
             }
-
+    
             const results = await User.find(searchCriteria);
-
-            if (results.length === 0) {
+            const data = results
+            if (data.length === 0) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "No results found", 0);
             }
-
-            return ResponseService.send(res, StatusCodes.OK, results, 1);
-
+    
+            // Modify the key from "message" to "data" for the frontend
+            return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
+            return res.status(StatusCodes.OK).json({statusCode: StatusCodes.OK,success: 1,data: results, } ,1);
+    
         } catch (error) {
             console.error("Error in searchData:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
     }
+    
 
     async getDashboardData(req, res) {
         try {
