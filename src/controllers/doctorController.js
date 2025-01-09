@@ -3,8 +3,7 @@ import Appointment from '../models/Appointment.model.js';
 import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import cloudinary from '../config/cloudinaryConfig.js';
-
-
+import sendNotification from '../services/notificationService.js';
 class DoctorController {
 
 
@@ -37,7 +36,14 @@ class DoctorController {
             // Update the doctor profile
             const updatedDoctor = await User.findByIdAndUpdate(userId, req.body, { new: true });
             if (updatedDoctor) {
+                await sendNotification({
+                    type: 'EDIT profile',
+                    message: `You profile is updated`,
+                    hospitalId: doctor.hospitalId,
+                    targetUsers: doctor.id,
+                });
                 return ResponseService.send(res, StatusCodes.OK, "Doctor profile updated successfully", 1, updatedDoctor);
+
             } else {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update doctor profile", 0);
