@@ -4,15 +4,16 @@ import cloudinary from '../config/cloudinaryConfig.js';
 
 
 let io;
-let onlineUsers = {}; // Track users by socket ID
-let checkonline = {}
+export let onlineUsers = {}; // Track users by socket ID
+export let checkonline = {}
+
 
 const init = (server) => {
     if (!io) {
         io = new Server(server, {
             cors: {
                 origin: "*", // Replace with specific origin in production
-                methods: ["GET", "POST"],
+                methods: ["GET", "POST"],  
             },
         });
         io.on("connection", (socket) => {
@@ -202,7 +203,7 @@ export const getUserAvailability = (socketId) => {
 export const getOnlineUsers = () => onlineUsers;
 
 
-export default { init, getIO, getUserAvailability, getOnlineUsers };
+export default { init, getIO, getUserAvailability, getOnlineUsers  };
 
 
 
