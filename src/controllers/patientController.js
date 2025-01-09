@@ -1,6 +1,7 @@
 import User from '../models/User.model.js';
 import ResponseService from '../services/response.services.js';
 import billModel from '../models/Bill.model.js';
+import Hospital from '../models/Hospital.model.js';
 import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
@@ -269,6 +270,79 @@ class PatientController {
         }
     }
     
+    async getDoctorAndHospital(req, res) {
+        try {
+            // Fetch all hospital data
+            const hospitalData = await Hospital.find();
+            if (!hospitalData || hospitalData.length === 0) {
+                return ResponseService.send(
+                    res,
+                    StatusCodes.NOT_FOUND,
+                    "No hospitals found",
+                    0,
+                    {}
+                );
+            }
+    
+            // Fetch all active doctors and populate their hospital information
+            const doctorData = await User.find({ role: "doctor", isActive: true })
+                .populate("hospitalId", "name worksiteLink address zipcode")
+                .select("fullName address hospitalId metaData.doctorData.speciality");
+    
+            if (!doctorData || doctorData.length === 0) {
+                return ResponseService.send(
+                    res,
+                    StatusCodes.NOT_FOUND,
+                    "No active doctors found",
+                    0,
+                    {}
+                );
+            }
+    
+            // Transform the doctorData using a map loop
+            const transformedDoctorData = doctorData.map(doctor => ({
+                id: doctor._id,
+                fullName: doctor.fullName,
+                speciality: doctor.metaData?.doctorData?.speciality || "N/A",
+                address: {
+                    country: doctor.address?.country || "N/A",
+                    state: doctor.address?.state || "N/A",
+                    city: doctor.address?.city || "N/A",
+                    zipCode: doctor.address?.zipCode || "N/A",
+                    fullAddress: doctor.address?.fullAddress || "N/A"
+                },
+                hospital: {
+                    id: doctor.hospitalId?._id || null,
+                    name: doctor.hospitalId?.name || "N/A",
+                    address: doctor.hospitalId?.address || "N/A",
+                    zipcode: doctor.hospitalId?.zipcode || "N/A",
+                    worksiteLink: doctor.hospitalId?.worksiteLink || "N/A"
+                }
+            }));
+    
+            // Send the transformed data in the response
+            return ResponseService.send(
+                res,
+                StatusCodes.OK,
+                "Doctor and hospital fetched successfully",
+                1,
+                {  doctorData: transformedDoctorData }
+            );
+        } catch (error) {
+            // Handle unexpected errors
+            console.error("Error fetching doctor and hospital data:", error);
+            return ResponseService.send(
+                res,
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "An error occurred while fetching data",
+                0,
+                {}
+            );
+        }
+    }
+    
+    
+
 }
 
 export default PatientController;

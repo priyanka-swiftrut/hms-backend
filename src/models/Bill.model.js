@@ -79,6 +79,10 @@ const billSchema = new mongoose.Schema(
       type: Number,
       required: false,
     },
+    dueAmount: {
+      type: Number,
+      required: false,
+    },
     insuranceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Insurance",

@@ -6,6 +6,7 @@ import PatientController from "../controllers/patientController.js";
 import AppointmentController from "../controllers/appointmentController.js";
 import PrescriptionController from "../controllers/PrescriptionController.js";
 import AdminController from "../controllers/adminController.js";
+import BillController from "../controllers/billController.js";
 const router = express.Router();
 const receptionistController = new ReceptionistController();
 const authController = new AuthController();
@@ -13,6 +14,7 @@ const patientController = new PatientController();
 const appointmentController = new AppointmentController();
 const prescriptionController = new PrescriptionController();
 const adminController = new AdminController();
+const billController = new BillController();
 // No Authorization Apis
 
 // Authorization Apis
@@ -36,7 +38,11 @@ router.get("/getappointmentforprescription" , prescriptionController.getAppointm
 
 
 router.get("/getBillsMonitor", adminController.getBillsmonitoring.bind(adminController));
-
+router.post("/createBill", billController.createBillManualy.bind(billController));
+router.post("/editBill/:billId", billController.editBill.bind(billController));
+router.get("/monitor-billing/bill-view", billController.getBill.bind(billController));
+router.get("/getAppointment/withoutbill", appointmentController.getAppointmentsWithoutBills.bind(appointmentController));
+router.get("/getbillbystatus", billController.getBillByStatus.bind(billController));
 
 
 

@@ -183,16 +183,17 @@ class AppointmentController {
     async createBill(req, appointment, paymentType, appointmentType, insuranceDetails) {
         try {
             const { doctorId, patientId, hospitalId, _id: appointmentId } = appointment;
+    
             // Fetch consultation rate based on appointmentType
             const doctor = await User.findById(doctorId);
             if (!doctor) {
                 throw new Error("Doctor not found.");
             }
-
+    
             if (req.user.role !== "receptionist" && paymentType === "cash" && appointmentType === "online") {
                 throw new Error("Invalid payment type.");
             }
-
+    
             let amount = 0;
             if (appointmentType === "onsite") {
                 amount = doctor.metaData.doctorData.consultationRate || 0;
@@ -201,13 +202,16 @@ class AppointmentController {
             } else {
                 throw new Error("Invalid appointment type.");
             }
-
+    
             // Calculate tax and total amount
             const tax = amount * 0.18; // 18% tax
             const totalAmount = amount + tax;
-
-            // Handle insurance details if paymentType is "insurance"
+    
+            // Initialize variables for insurance and dueAmount
             let insuranceId = null;
+            let dueAmount = 0;
+    
+            // Handle insurance details if paymentType is "Insurance"
             if (paymentType === "Insurance") {
                 const { insuranceCompany, insurancePlan, claimAmount, claimedAmount } = insuranceDetails || {};
                 if (!insuranceCompany || !insurancePlan || claimAmount === undefined || claimedAmount === undefined) {
@@ -216,7 +220,7 @@ class AppointmentController {
                 if (claimAmount < claimedAmount) {
                     throw new Error("Claim amount cannot be less than claimed amount.");
                 }
-
+    
                 // Create insurance entry
                 const newInsurance = new Insurance({
                     patientId,
@@ -227,8 +231,13 @@ class AppointmentController {
                 });
                 const savedInsurance = await newInsurance.save();
                 insuranceId = savedInsurance._id;
+    
+                // Calculate dueAmount if claimedAmount is less than totalAmount
+                if (claimedAmount < totalAmount) {
+                    dueAmount = totalAmount - claimedAmount;
+                }
             }
-
+    
             // Create bill data
             const billData = {
                 patientId,
@@ -240,12 +249,13 @@ class AppointmentController {
                 amount,
                 tax,
                 totalAmount,
+                dueAmount, // Include calculated dueAmount
                 insuranceId,
                 date: new Date(),
                 time: new Date().toLocaleTimeString(),
                 status: true, // Status is true since we are creating the bill
             };
-
+    
             const newBill = new Bill(billData);
             await newBill.save();
             return newBill;
@@ -536,12 +546,30 @@ class AppointmentController {
             // Ensure the appointment exists
             const appointment = await Appointment.findById(id)
                 .populate("patientId", "fullName phone age gender address")
-                .populate("doctorId", "fullName")
+                .populate("doctorId", "fullName  metaData.doctorData.onlineConsultationRate metaData.doctorData.consultationRate")
                 .populate("hospitalId", "name");
 
             if (!appointment) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
             }
+
+            let amount = 0;
+            let tax =0; 
+                if (appointment.type === "online") {
+                    console.log("online");
+                    
+                    amount = appointment.doctorId.metaData.doctorData.onlineConsultationRate;
+                    tax =  amount * 0.18;
+                } else if (appointment.type === "onsite") {
+                    console.log("onsite");
+                    amount = appointment.doctorId.metaData.doctorData.consultationRate;
+                    tax =  amount * 0.18;
+                } 
+
+
+                
+            // Fetch consultation rate
+            
 
             // Format the patient's address into a string
             if (appointment.patientId && appointment.patientId.address) {
@@ -549,7 +577,7 @@ class AppointmentController {
                 const formattedAddress = `${address.fullAddress}, ${address.city}, ${address.state}, ${address.country}, ${address.zipCode}`;
                 appointment.patientId.formattedAddress = formattedAddress; // Add the formatted address to the response
             }
-
+            
             // Format the date field
             if (appointment.date) {
                 appointment.formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
@@ -568,6 +596,8 @@ class AppointmentController {
                         address: appointment.patientId.formattedAddress, // Send formatted address
                     },
                     date: appointment.formattedDate, // Send formatted date
+                    amount,
+                    tax,
                 },
             });
         } catch (error) {

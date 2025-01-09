@@ -17,6 +17,9 @@ const storage = new CloudinaryStorage({
       case 'profilePicture':
         folderName = 'profileImages';
         break;
+        case 'chatFiles':
+          folderName = 'chatFilles';
+          break;
       default:
         folderName = 'others';
     }

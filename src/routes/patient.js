@@ -40,6 +40,7 @@ router.get("/getpatientfromappointment/:id", appointmentController.getpatientfro
 router.get("/getDoctorSession/:doctorId", appointmentController.getDoctorSession.bind(appointmentController));
 
 
+
 router.get("/getPrescription", prescriptionController.getPrescriptions.bind(prescriptionController));
 
 router.get("/getBillsforPatient", patientController.getBillsforPatient.bind(patientController));
@@ -47,5 +48,6 @@ router.get("getsinglebill" , billController.getBill.bind(billController));
 router.get("/getDashboardData", adminController.getDashboardDatademo.bind(adminController));
 
 router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
+router.get("/getDoctorandhospital", patientController.getDoctorAndHospital.bind(patientController));
 
 export default router;

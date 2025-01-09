@@ -8,6 +8,6 @@ const chatController = new ChatController();
 // Fetch chat messages
 router.get("/messages",  chatController.getMessages.bind(chatController));
 // Save a new chat message
-router.post("/message" , upload.fields([{ name: "chatImage", maxCount: 1 }]), chatController.sendMessage.bind(chatController));
+router.post("/message" , upload.fields([{ name: "chatFilles", maxCount: 1 }]), chatController.sendMessage.bind(chatController));
 
 export default router;
