@@ -39,6 +39,7 @@ router.post("/createPrescription/:appointmentId", prescriptionController.createP
 router.get("/getappointmentforprescription" , prescriptionController.getAppointmentForPrescription.bind(prescriptionController)) 
 
 
+
 router.get("/getBillsMonitor", adminController.getBillsmonitoring.bind(adminController));
 router.post("/createBill", billController.createBillManualy.bind(billController));
 router.post("/editBill/:billId", billController.editBill.bind(billController));
@@ -47,6 +48,6 @@ router.get("/monitor-billing/bill-view", billController.getBill.bind(billControl
 router.get("/getAppointment/withoutbill", appointmentController.getAppointmentsWithoutBills.bind(appointmentController));
 router.get("/getbillbystatus", billController.getBillByStatus.bind(billController));
 
-
+    
 
 export default router;

@@ -99,7 +99,7 @@ class AppointmentController {
             let patientId;
             if (req.user.role === "patient") {
                 patientId = req.user.id;
-            } else if (req.user.role === "receptionist") {
+            } else if (req.user.role === "receptionist") {              
                 patientId = req.body.patientId;
             }
             // Validate doctor existence
@@ -260,20 +260,25 @@ class AppointmentController {
             const newBill = new Bill(billData);
             await newBill.save();
 
+            const populatedBill = await Bill.findById(newBill._id)
+            .populate('patientId', 'fullName email gender age phone address')
+            .populate('doctorId', 'fullName metadata.doctorData.specialization metadata.doctorData.description metadata.doctorData.onlineConsultationRate metadata.doctorData.consultationRate')
+            .populate('appointmentId', 'date appointmentTime status dieseas_name');
+
             await sendNotification({
                 type: 'Bill',
                 message: `Bill Created Succesfully: ${newBill.date} at ${newBill.time}`,
                 hospitalId: hospitalId,
                 targetUsers: patientId,
-            });
+            }); 
 
-            return newBill;
+            return populatedBill;
         } catch (error) {
             console.error("Error creating bill:", error);
             return null;
         }
     }
-
+        
     // async getAppointments(req, res) {
     //     try {
     //         // Validate user ID

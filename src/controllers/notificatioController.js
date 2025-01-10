@@ -29,7 +29,8 @@ export const getNotifications = async (req, res) => {
         }
 
         const notifications = await Notification.find({ targetUsers: userId })
-            .sort({ createdAt: -1 })
+            .sort({ createdAt: -1 }) // Sort by createdAt in descending order
+            .limit(15) // Limit to the 15 most recent notifications
             .exec();
 
         res.status(200).json({ success: true, notifications });
@@ -38,6 +39,7 @@ export const getNotifications = async (req, res) => {
         res.status(500).json({ error: "Failed to fetch notifications." });
     }
 };
+
 
 // Controller to mark a notification as read
 export const markAsRead = async (req, res) => {

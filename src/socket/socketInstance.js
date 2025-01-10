@@ -27,6 +27,8 @@ const init = (server) => {
                 }
                 onlineUsers[socket.id] = { socketId: socket.id, userId, isAvailable: true };
                 checkonline[userId] = { socketId: socket.id, userId, isAvailable: true };
+                console.log(checkonline , "checkonline");
+                
                 console.log(`User ${userId} registered with socket ${socket.id}`);
                 io.emit("update-online-users",{ onlineUsers , checkonline});
             });
@@ -159,26 +161,38 @@ const init = (server) => {
             });
 
             // i want to cheq user is online or not  
-            // socket.on("check-online", (userId) => {
-            //     const user = Object.values(onlineUsers).find((u) => u.userId === userId);
-            //     console.log(user , "----------------------------------------");
-            //     if (user) {
-                   
-            //     io.to(socket.id).emit("user-status", { online: true, user });
-            //     } else {
+            socket.on("check-online", (selectedUser) => {
+               
+               let user = Object.values(checkonline).find((u) => u.userId === selectedUser);
 
+               console.log(user , "----------------------------------------");
+               if (user) {
+               io.to(socket.id).emit("user-status", { online: true, user });
+               io.to(user.socketId).emit("user-status", { online: true, user });
+               } else { 
+                   io.to(socket.id).emit("user-status", { online: false });
+               }
 
-            //     io.to(socket.id).emit("user-status", { online: false });
-            //     }
-            // });
+            });
 
 
 
             // Handle disconnection
             socket.on("disconnect", () => {
                 console.log("Client disconnected:", socket.id);
+                const disconnectedUser = onlineUsers[socket.id];
+
+                if (!disconnectedUser) {
+                    console.warn(`Socket ${socket.id} disconnected without a userId`);
+                    return;
+                }
+
+                delete checkonline[disconnectedUser.userId];
                 delete onlineUsers[socket.id];
-                io.emit("update-online-users", onlineUsers);
+                io.emit("update-online-users", onlineUsers );
+                io.emit("user-status", { online: false, user: disconnectedUser });
+                console.log();
+                
             });
         });
     }
