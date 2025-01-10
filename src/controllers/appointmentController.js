@@ -85,7 +85,7 @@ class AppointmentController {
                 doctorId,
                 date,
                 appointmentTime,
-                type: appointmentType,
+                type,
                 patient_issue,
                 dieseas_name,
                 city,
@@ -109,10 +109,10 @@ class AppointmentController {
             }
 
             // Validate payment type and appointment type
-            if (req.user.role !== "receptionist" && paymentType === "cash" && appointmentType === "online") {
+            if (req.user.role !== "receptionist" && paymentType === "cash" && type === "online") {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
             }
-            if (!["onsite", "online"].includes(appointmentType)) {
+            if (!["onsite", "online"].includes(type)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid appointment type.", 0);
             }
             if (!["Cash", "Online", "Insurance"].includes(paymentType)) {
@@ -140,7 +140,7 @@ class AppointmentController {
                 hospitalId: doctor.hospitalId,
                 date,
                 appointmentTime,
-                type: appointmentType,
+                type: type,
                 patient_issue,
                 dieseas_name,
                 city,
@@ -154,7 +154,7 @@ class AppointmentController {
 
             // Conditional bill creation
             if (paymentStatus || paymentType === "Cash" || paymentType === "Insurance") {
-                const bill = await this.createBill(req, newAppointment, paymentType, appointmentType, insuranceDetails);
+                const bill = await this.createBill(req, newAppointment, paymentType, type, insuranceDetails);
                 if (!bill) {
                     return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Appointment booked but error generating bill.", 0);
                 }
@@ -181,24 +181,24 @@ class AppointmentController {
         }
     }
 
-    async createBill(req, appointment, paymentType, appointmentType, insuranceDetails) {
+    async createBill(req, appointment, paymentType, type, insuranceDetails) {
         try {
             const { doctorId, patientId, hospitalId, _id: appointmentId } = appointment;
 
-            // Fetch consultation rate based on appointmentType
+            // Fetch consultation rate based on type
             const doctor = await User.findById(doctorId);
             if (!doctor) {
                 throw new Error("Doctor not found.");
             }
 
-            if (req.user.role !== "receptionist" && paymentType === "cash" && appointmentType === "online") {
+            if (req.user.role !== "receptionist" && paymentType === "cash" && type === "online") {
                 throw new Error("Invalid payment type.");
             }
 
             let amount = 0;
-            if (appointmentType === "onsite") {
+            if (type === "onsite") {
                 amount = doctor.metaData.doctorData.consultationRate || 0;
-            } else if (appointmentType === "online") {
+            } else if (type === "online") {
                 amount = doctor.metaData.doctorData.onlineConsultationRate || 0;
             } else {
                 throw new Error("Invalid appointment type.");
@@ -245,7 +245,7 @@ class AppointmentController {
                 doctorId,
                 hospitalId,
                 appointmentId,
-                appointmentType,
+                type,
                 paymentType,
                 amount,
                 tax,

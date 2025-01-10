@@ -18,6 +18,7 @@ router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), d
 router.put("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
 router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
 router.post("/changePassword", authController.changePassword.bind(authController));
+router.patch("/changePassword", authController.changePassword.bind(authController));
 
 
 router.post("/editAppointment", appointmentController.editAppointment.bind(appointmentController));

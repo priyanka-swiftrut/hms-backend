@@ -25,6 +25,7 @@ router.put("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), pa
 router.get("/getpatients", patientController.getPatients.bind(patientController));
 router.get("/getSinglepatients", patientController.getPatients.bind(patientController));
 router.post("/changePassword", authController.changePassword.bind(authController));
+router.patch("/changePassword", authController.changePassword.bind(authController));
 
 
 router.post("/createAppointment", appointmentController.createAppointment.bind(appointmentController));
