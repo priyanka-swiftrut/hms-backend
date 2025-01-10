@@ -95,6 +95,7 @@ class AppointmentController {
                 paymentStatus,
                 insuranceDetails
             } = req.body;
+
             let patientId;
             if (req.user.role === "patient") {
                 patientId = req.user.id;
@@ -152,7 +153,7 @@ class AppointmentController {
             await newAppointment.save();
 
             // Conditional bill creation
-            if (paymentStatus) {
+            if (paymentStatus || paymentType === "Cash" || paymentType === "Insurance") {
                 const bill = await this.createBill(req, newAppointment, paymentType, appointmentType, insuranceDetails);
                 if (!bill) {
                     return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Appointment booked but error generating bill.", 0);
@@ -685,7 +686,7 @@ class AppointmentController {
     async getDoctorSession(req, res) {
         try {
             const { doctorId } = req.params;
-            const { date } = req.query; 
+            const { date } = req.query;
             const targetDate = date || moment().format("YYYY-MM-DD");
 
             const doctor = await User.findById(doctorId);
@@ -732,7 +733,7 @@ class AppointmentController {
 
             const appointments = await Appointment.find({
                 doctorId,
-                date: { $gte: startOfDay, $lt: endOfDay } 
+                date: { $gte: startOfDay, $lt: endOfDay }
             });
 
             const checkAvailability = (slots, appointments) => {
@@ -754,8 +755,11 @@ class AppointmentController {
 
             checkAvailability(morningSlots, appointments);
             checkAvailability(eveningSlots, appointments);
-
-            return ResponseService.send(res, StatusCodes.OK, { morningSlots, eveningSlots }, 1);
+            const data = {
+                morningSlots,
+                eveningSlots
+            }
+            return ResponseService.send(res, StatusCodes.OK, ' Data fetched Succesfully', 1, data);
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
@@ -803,12 +807,12 @@ class AppointmentController {
                 { role: "doctor" },
                 {
                     fullName: 1,
-                    "metaData.doctorData.speciality": 1, 
+                    "metaData.doctorData.speciality": 1,
                     hospitalId: 1,
-                    _id: 1, 
+                    _id: 1,
                 }
-            ).lean(); 
-    
+            ).lean();
+
             const doctorMap = {};
             doctors.forEach((doc) => {
                 if (!doctorMap[doc.hospitalId]) {
@@ -820,28 +824,28 @@ class AppointmentController {
                     speciality: doc.metaData?.doctorData?.speciality || "Speciality not found",
                 });
             });
-    
+
             const countryMap = {};
             hospitals.forEach((hospital) => {
                 const { country, state, city, name: hospitalName, _id } = hospital;
-    
+
                 if (!countryMap[country]) {
                     countryMap[country] = {};
                 }
-    
+
                 if (!countryMap[country][state]) {
                     countryMap[country][state] = {};
                 }
-    
+
                 if (!countryMap[country][state][city]) {
                     countryMap[country][state][city] = [];
                 }
-    
+
                 const hospitalData = {
                     name: hospitalName,
                     specialties: [],
                 };
-    
+
                 if (doctorMap[_id]) {
                     const specialtiesMap = {};
                     doctorMap[_id].forEach((doc) => {
@@ -850,16 +854,16 @@ class AppointmentController {
                         }
                         specialtiesMap[doc.speciality].push({ name: doc.name, id: doc.id }); // Include doctor ID here
                     });
-    
+
                     hospitalData.specialties = Object.entries(specialtiesMap).map(([speciality, doctors]) => ({
                         speciality,
                         doctors,
                     }));
                 }
-    
+
                 countryMap[country][state][city].push(hospitalData);
             });
-    
+
             const result = Object.entries(countryMap).map(([country, states]) => ({
                 country,
                 states: Object.entries(states).map(([state, cities]) => ({
@@ -870,14 +874,14 @@ class AppointmentController {
                     })),
                 })),
             }));
-    
+
             return res.status(200).json(result);
         } catch (error) {
             console.error("Error in hierarchical data API:", error);
             return res.status(500).json({ message: "Internal Server Error", error: error.message });
         }
     }
-     
+
 
     // async getseacrchingforappointment(req, res) {
 
@@ -942,60 +946,60 @@ class AppointmentController {
 
     // }
 
-    async chatcontect(req,res){
+    async chatcontect(req, res) {
 
         try {
             const { id, role } = req.user;
-            
+
             if (role === "patient") {
-              // Fetch unique doctors the patient has appointments with
-              const appointments = await Appointment.find({ patientId: id })
-                .populate("doctorId", "fullName profilePicture")
-                .select("doctorId");
-        
-              const uniqueDoctors = appointments.reduce((acc, appointment) => {
-                const doctor = appointment.doctorId;
-                if (!acc.some((d) => d._id.toString() === doctor._id.toString())) {
-                  acc.push(doctor);
-                }
-                return acc;
-              }, []);
-        
-              return res.status(200).json({
-                success: true,
-                data: uniqueDoctors,
-              });
+                // Fetch unique doctors the patient has appointments with
+                const appointments = await Appointment.find({ patientId: id })
+                    .populate("doctorId", "fullName profilePicture")
+                    .select("doctorId");
+
+                const uniqueDoctors = appointments.reduce((acc, appointment) => {
+                    const doctor = appointment.doctorId;
+                    if (!acc.some((d) => d._id.toString() === doctor._id.toString())) {
+                        acc.push(doctor);
+                    }
+                    return acc;
+                }, []);
+
+                return res.status(200).json({
+                    success: true,
+                    data: uniqueDoctors,
+                });
             } else if (role === "doctor") {
-              // Fetch unique patients the doctor has appointments with
-              const appointments = await Appointment.find({ doctorId: id })
-                .populate("patientId", "fullName profilePicture")
-                .select("patientId");
-        
-              const uniquePatients = appointments.reduce((acc, appointment) => {
-                const patient = appointment.patientId;
-                if (!acc.some((p) => p._id.toString() === patient._id.toString())) {
-                  acc.push(patient);
-                }
-                return acc;
-              }, []);
-        
-              return res.status(200).json({
-                success: true,
-                data: uniquePatients,
-              });
+                // Fetch unique patients the doctor has appointments with
+                const appointments = await Appointment.find({ doctorId: id })
+                    .populate("patientId", "fullName profilePicture")
+                    .select("patientId");
+
+                const uniquePatients = appointments.reduce((acc, appointment) => {
+                    const patient = appointment.patientId;
+                    if (!acc.some((p) => p._id.toString() === patient._id.toString())) {
+                        acc.push(patient);
+                    }
+                    return acc;
+                }, []);
+
+                return res.status(200).json({
+                    success: true,
+                    data: uniquePatients,
+                });
             } else {
-              return res.status(403).json({
-                success: false,
-                message: "Access denied. Only patients and doctors can access this endpoint.",
-              });
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied. Only patients and doctors can access this endpoint.",
+                });
             }
-          } catch (error) {
+        } catch (error) {
             console.error("Error fetching chat connections:", error);
             res.status(500).json({
-              success: false,
-              message: "An error occurred while fetching chat connections.",
+                success: false,
+                message: "An error occurred while fetching chat connections.",
             });
-          }
+        }
 
     }
 

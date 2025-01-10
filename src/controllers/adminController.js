@@ -309,12 +309,8 @@ class AdminController {
             const data = results
             if (data.length === 0) {
                 return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0);
-            }
-            
-            // Modify the key from "message" to "data" for the frontend
+            }       
             return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
-            return res.status(StatusCodes.OK).json({statusCode: StatusCodes.OK,success: 1,data: results, } ,1);
-        
         } catch (error) {
             console.error("Error in searchData:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
@@ -637,7 +633,6 @@ class AdminController {
                 try {
                     const { patientId: queryPatientId } = req.query; // Get patientId from query
                     const isReceptionist = req.user.role === "receptionist";
-
                     // Determine the patientId to fetch data for
                     const patientId = isReceptionist ? queryPatientId : req.user._id;
 
@@ -659,7 +654,6 @@ class AdminController {
                             "error"
                         );
                     }
-            
                     // Fetch prescriptions and populate hospital details
                     const prescriptionsdata = await PrescriptionModel.find({ patientId })
                         .sort({ createdAt: -1 })
@@ -674,13 +668,11 @@ class AdminController {
                         DiseaseName : prescription.appointmentId?.dieseas_name || "N/A",
                         DoctorName : prescription.doctorId?.fullName || "N/A",
                     }));
-            
                     // Prepare dashboard data
                     const dashboardData = {
                         patientProfile,
                         prescriptions,
                     };
-            
                     // Return success response with dashboard data
                     return ResponseService.send(res,StatusCodes.OK,"Dashboard data fetched successfully","success",dashboardData);
                 } catch (error) {console.error("Error fetching patient dashboard data:", error);

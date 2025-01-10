@@ -15,11 +15,13 @@ const authController = new AuthController();
 
 // Authorization Apis
 router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
+router.put("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
 router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
 router.post("/changePassword", authController.changePassword.bind(authController));
 
 
 router.post("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
+router.put("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
 
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getpatientfromappointment/:id", appointmentController.getpatientfromappointment.bind(appointmentController));
@@ -31,6 +33,7 @@ router.get("/getAppointmentsTeleconcsultation", appointmentController.getAppoint
 router.post("/createPrescription/:appointmentId", prescriptionController.createPrescription.bind(prescriptionController));
 router.get("/getPrescription", prescriptionController.getPrescriptions.bind(prescriptionController));
 router.post("/editPrescription/:prescriptionId", prescriptionController.editPrescription.bind(prescriptionController));
+router.put("/editPrescription/:prescriptionId", prescriptionController.editPrescription.bind(prescriptionController));
 router.get("/getpatientdetails", prescriptionController.getpatientdetails.bind(prescriptionController));
 router.get("/getappointmentforprescription" , prescriptionController.getAppointmentForPrescription.bind(prescriptionController)) 
 router.get("/chatcontect" ,appointmentController.chatcontect.bind(appointmentController))
