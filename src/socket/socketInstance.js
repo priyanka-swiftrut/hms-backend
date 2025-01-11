@@ -186,7 +186,7 @@ const init = (server) => {
                } else { 
                    io.to(socket.id).emit("user-status", { online: false });
                }
-
+               
             });
 
             socket.on("typing", (data) => {

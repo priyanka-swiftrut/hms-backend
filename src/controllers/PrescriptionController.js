@@ -194,9 +194,9 @@ class PrescriptionController {
       }
   
       let prescriptions = await Prescription.find(prescriptionQuery)
-        .populate("patientId", "fullName gender address age")
+        .populate("patientId", "fullName gender address age phone")
         .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
-        .populate("appointmentId", "dieseas_name type")
+        .populate("appointmentId", "dieseas_name type appintmentTime date")
         .populate("hospitalId", "name");
   
       prescriptions = prescriptions.map((prescription) => {
@@ -212,6 +212,7 @@ class PrescriptionController {
           DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
           DoctorName: prescription.doctorId?.fullName || "N/A",
           patientName: prescription.patientId?.fullName || "N/A",
+          patientNumber : prescription.patientId?.phone || "N/A",
           doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
           gender: prescription.patientId?.gender || "N/A",
           age: prescription.patientId?.age || "N/A",
@@ -219,6 +220,9 @@ class PrescriptionController {
           medications: prescription.medications || "N/A",
           additionalNote: prescription.instructions || "N/A",
           doctorsignature: prescription.doctorId?.metaData?.doctorData?.signature || "N/A",
+          appointmentTime: prescription.appointmentId?.appointmentTime || "N/A",
+          appointmentDate: prescription.appointmentId?.date || "N/A",
+          dieseas_name: prescription.appointmentId?.dieseas_name || "N/A",
         };
       });
   
