@@ -288,58 +288,60 @@ class AdminController {
     async searchData(req, res) {
         try {
             const { query, role } = req.query;
-    
+
             if (!query) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
             }
-    
+
             const defaultRoles = ['doctor', 'patient', 'receptionist'];
-    
+
             const searchCriteria = {
                 fullName: { $regex: query, $options: 'i' }
             };
-    
+
             if (role) {
                 searchCriteria.role = role;
             } else {
                 searchCriteria.role = { $in: defaultRoles };
             }
-    
+
             if (req.user.role !== 'patient') {
                 searchCriteria.hospitalId = req.user.hospitalId;
             }
-    
-            let results = await User.find(searchCriteria);
-    
-            if (req.user.role === 'patient') {
-                results = results.filter(user => user.role === 'doctor');
-            } else if (role === 'patient' || !role) {
-                const patientIds = results.map(patient => patient._id);
-                const appointments = await AppointmentModel.find({ patientId: { $in: patientIds } })
-                    .populate('patientId', 'fullName email phone age gender address')
-                    .populate('hospitalId', 'name');
-    
+
+            let results = [];
+
+            if (role === 'patient') {
+                const appointments = await AppointmentModel.find()
+                    .populate('patientId');
+
                 const patientsFromAppointments = appointments.map(appointment => appointment.patientId);
-                results = [...results, ...patientsFromAppointments];
+                results = patientsFromAppointments.filter(patient => patient.fullName.match(new RegExp(query, 'i')));
+            } else {
+                results = await User.find(searchCriteria);
+
+                if (req.user.role === 'patient') {
+                    results = results.filter(user => user.role === 'doctor');
+                }
             }
-    
+
             const data = results.filter((value, index, self) =>
                 index === self.findIndex((t) => (
                     t._id.toString() === value._id.toString()
                 ))
             );
-    
+
             if (data.length === 0) {
                 return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0, []);
             }
-    
+
             return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
         } catch (error) {
             console.error("Error in searchData:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
     }
-    
+
     async getDashboardData(req, res) {
         try {
             const { hospitalId } = req.user;
@@ -511,73 +513,73 @@ class AdminController {
 
     async getDashboardDatademo(req, res) {
         try {
-            if (req.user.role === "admin"){
+            if (req.user.role === "admin") {
                 const { hospitalId } = req.user;
 
 
                 const doctorFilter = { role: "doctor", isActive: true };
                 if (hospitalId) doctorFilter.hospitalId = hospitalId;
                 const totalDoctors = await User.countDocuments(doctorFilter);
-    
+
                 const appointmentFilter = {};
                 if (hospitalId) appointmentFilter.hospitalId = hospitalId;
-    
+
                 const billfilter = await BillModel.find({ hospitalId })
                     .populate("appointmentId", "dieseas_name")
                     .populate("patientId", "fullName")
                     .select("billNumber status date time patientId appointmentId")
                     .lean();
-    
+
                 const billdata = billfilter.map((bill) => ({
                     "billsNo": bill.billNumber,
                     "patientName": bill.patientId?.fullName || "Unknown", // Safe navigation
                     "diseaseName": bill.appointmentId?.dieseas_name || "Unknown", // Safe navigation
                     "status": bill.status ? "Paid" : "Unpaid", // Convert Boolean to readable string
                 }));
-    
+
                 const UnpaindBills = billfilter.filter((bill) => !bill.status).length;
-    
+
                 const now = new Date();
                 const startOfDay = new Date(now.setHours(0, 0, 0, 0));
                 const endOfDay = new Date(now.setHours(23, 59, 59, 999));
-    
+
                 appointmentFilter.date = { $gte: startOfDay, $lte: endOfDay };
-    
+
                 // Fetch distinct patientIds for the current day
                 const uniquePatientIds = await AppointmentModel.distinct("patientId");
-    
+
                 const totalPatients = uniquePatientIds.length;
-    
+
                 const last10Days = new Date(now.setDate(now.getDate() - 10));
-    
+
                 const newPatients = await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $gte: last10Days },
                 });
-    
+
                 const oldPatients = await User.countDocuments({
                     _id: { $in: uniquePatientIds },
                     isActive: true,
                     createdAt: { $lt: last10Days },
                 });
-    
+
                 const patientSummary = {
                     newPatients,
                     oldPatients,
                     totalPatients,
                 };
-    
+
                 // Adjust the dates for different time ranges
                 const startOfYear = new Date(now.getFullYear(), 0, 1);
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 const startOfWeek = new Date(now);
                 startOfWeek.setDate(now.getDate() - now.getDay());
-    
+
                 const getPatientChartData = async (uniquePatientIds, startDate, type) => {
                     const data = [];
                     const categories = [];
-    
+
                     if (type === "year") {
                         for (let i = 0; i < 12; i++) {
                             const monthStart = new Date(startDate.getFullYear(), i, 1);
@@ -629,16 +631,16 @@ class AdminController {
                 const { page = 1 } = req.query;
                 const limit = 10;
                 const skip = (page - 1) * limit;
-    
+
                 const appointments = await AppointmentModel.find(appointmentFilter)
                     .populate("patientId", "fullName")
                     .populate("doctorId", "fullName")
                     .select("type dieseas_name appointmentTime ")
                     .skip(skip)
                     .limit(limit);
-    
+
                 const todayAppointments = await AppointmentModel.countDocuments(appointmentFilter);
-    
+
                 let dashboardData = {
                     totalDoctors,
                     patientSummary,
@@ -659,12 +661,12 @@ class AdminController {
                     const patientId = isReceptionist ? queryPatientId : req.user._id;
 
                     if (!patientId) {
-                    return ResponseService.send(
-                        res,
-                        StatusCodes.BAD_REQUEST,
-                        "Patient ID is required.",
-                        "error"
-                    );
+                        return ResponseService.send(
+                            res,
+                            StatusCodes.BAD_REQUEST,
+                            "Patient ID is required.",
+                            "error"
+                        );
                     }
                     // Fetch patient profile
                     const patientProfile = await User.findById(patientId);
@@ -682,13 +684,13 @@ class AdminController {
                         .populate("hospitalId", "name")
                         .populate("appointmentId", "dieseas_name")
                         .populate("doctorId", "fullName");
-                    
+
                     const prescriptions = prescriptionsdata.map((prescription) => ({
                         prescriptionId: prescription._id,
                         prescriptionDate: prescription.date,
                         hospitalName: prescription.hospitalId?.name || "N/A",
-                        DiseaseName : prescription.appointmentId?.dieseas_name || "N/A",
-                        DoctorName : prescription.doctorId?.fullName || "N/A",
+                        DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
+                        DoctorName: prescription.doctorId?.fullName || "N/A",
                     }));
                     // Prepare dashboard data
                     const dashboardData = {
@@ -696,9 +698,10 @@ class AdminController {
                         prescriptions,
                     };
                     // Return success response with dashboard data
-                    return ResponseService.send(res,StatusCodes.OK,"Dashboard data fetched successfully","success",dashboardData);
-                } catch (error) {console.error("Error fetching patient dashboard data:", error);
-                    return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,"An error occurred while fetching patient dashboard data",0);
+                    return ResponseService.send(res, StatusCodes.OK, "Dashboard data fetched successfully", "success", dashboardData);
+                } catch (error) {
+                    console.error("Error fetching patient dashboard data:", error);
+                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred while fetching patient dashboard data", 0);
                 }
             }
 
@@ -863,18 +866,18 @@ class AdminController {
         try {
             // Initialize an empty result object to store all the data
             let reportData = {};
-    
+
             // Fetch Total Patients
             const totalPatients = await AppointmentModel.distinct("patientId");
             reportData.totalPatients = totalPatients.length;
-    
+
             // Fetch Repeat Patients
             const repeatPatients = await AppointmentModel.aggregate([
                 { $group: { _id: "$patientId", count: { $sum: 1 } } },
                 { $match: { count: { $gt: 1 } } }
             ]);
             reportData.repeatPatients = repeatPatients.length;
-    
+
             // Fetch Appointment Chart Data (Year and Month Wise)
             const appointmentData = await AppointmentModel.aggregate([
                 {
@@ -888,7 +891,7 @@ class AdminController {
                     },
                 },
             ]);
-    
+
             // Process Year-wise and Month-wise Appointment Data
             reportData.appointmentData = {
                 yearWiseData: appointmentData.reduce((acc, cur) => {
@@ -908,7 +911,7 @@ class AdminController {
                     return acc;
                 }, {}),
             };
-    
+
             // Fetch Patient Summary Data (Week Wise and Day Wise)
             const summary = await AppointmentModel.aggregate([
                 {
@@ -925,10 +928,10 @@ class AdminController {
                     },
                 },
             ]);
-    
+
             const weekData = Array(7).fill(0).map(() => ({ newPatients: 0, oldPatients: 0 }));
             const patientIdsSeen = new Set();
-    
+
             summary.forEach(({ _id, newPatients, totalPatients }) => {
                 const newCount = newPatients.filter(p => !patientIdsSeen.has(p)).length;
                 newPatients.forEach(p => patientIdsSeen.add(p));
@@ -937,12 +940,12 @@ class AdminController {
                     oldPatients: totalPatients - newCount,
                 };
             });
-    
+
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of the day
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1); // Start of the next day
-    
+
             const dailySummary = await AppointmentModel.aggregate([
                 {
                     $match: { date: { $gte: today, $lt: tomorrow } },
@@ -961,12 +964,12 @@ class AdminController {
                     },
                 },
             ]);
-    
+
             const hours = [8, 10, 12, 14, 16, 18, 20];
             const dailyData = hours.map(hour => ({ newPatients: 0, oldPatients: 0 }));
-    
+
             const dailyPatientIdsSeen = new Set();
-    
+
             dailySummary.forEach(({ _id, newPatients, totalPatients }) => {
                 const hourIndex = hours.findIndex(h => h === _id);
                 if (hourIndex !== -1) {
@@ -978,7 +981,7 @@ class AdminController {
                     };
                 }
             });
-    
+
             reportData.patientSummary = {
                 week: {
                     categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -995,7 +998,7 @@ class AdminController {
                     },
                 },
             };
-    
+
             // Fetch Patient Count by Department (Group appointments by doctor speciality)
             const departmentData = await AppointmentModel.aggregate([
                 {
@@ -1014,10 +1017,10 @@ class AdminController {
                     },
                 },
             ]);
-    
+
             // For patientDepartmentData, we need to ensure we count only unique patients for each speciality
             const patientDepartmentDataMap = new Map();
-    
+
             // Aggregate data based on appointments, ensuring each patient is counted only once per speciality
             await AppointmentModel.aggregate([
                 {
@@ -1043,14 +1046,14 @@ class AdminController {
                     }
                 });
             });
-    
+
             // Convert map to array for the final result
             reportData.patientDepartmentData = Array.from(patientDepartmentDataMap.entries()).map((entry, index) => ({
                 key: `${index + 1}`,
                 name: entry[0],
                 count: entry[1].toString(),
             }));
-    
+
             // Fetch Doctor Count by Department (Group doctors by speciality)
             const doctorData = await User.aggregate([
                 { $match: { role: "doctor" } },
@@ -1061,7 +1064,7 @@ class AdminController {
                     },
                 },
             ]);
-    
+
             reportData.doctorDepartmentData = doctorData
                 .filter(item => item._id) // Filter out null specialities
                 .map((item, index) => ({
@@ -1069,7 +1072,7 @@ class AdminController {
                     name: item._id,
                     count: item.count.toString(),
                 }));
-    
+
             // Fetch Patient Age Distribution
             const ageGroups = [
                 { range: "0-2 Years", min: 0, max: 2 },
@@ -1079,21 +1082,21 @@ class AdminController {
                 { range: "40-59 Years", min: 40, max: 59 },
                 { range: "60 And Above", min: 60, max: Infinity },
             ];
-    
+
             const patientData = await User.find({ role: "patient" }, "age");
             reportData.patientAgeDistribution = ageGroups.map(group => ({
                 age: group.range,
                 value: patientData.filter(p => p.age >= group.min && p.age <= group.max).length,
                 color: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color for each range
             }));
-    
+
             res.json(reportData);
-    
+
         } catch (error) {
             res.status(500).json({ error: error.message }, 0);
         }
     }
-    
+
 }
 
 
