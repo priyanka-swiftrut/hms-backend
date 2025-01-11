@@ -4,9 +4,11 @@ import admin from "./admin.js";
 import patient from "./patient.js";
 import doctor from "./doctor.js";
 import receptionist from "./receptionist.js";
+import payment from "./rezorpay.js";
 import AdminController from "../controllers/adminController.js";
 import PatientController from "../controllers/patientController.js";
-import AppointmentController from "../controllers/appointmentController.js";
+
+
 import upload from "../services/multer.services.js";
 import  passport  from "passport";
 import adminRoutes from './admin.js';
@@ -57,7 +59,7 @@ router.use('/doctor', (req, res, next) => {
 }, doctor);
 
 router.use("/notification" , notification)
-
+router.use("/payment" , payment)
 
 
 export default router;

@@ -34,17 +34,18 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
+    "razorpay": "^2.9.5",
     "socket.io": "^4.8.1"
   },
   "prettier": {
-    "semi": true,               
-    "tabWidth": 2,              
-    "useTabs": false,           
+    "semi": true,
+    "tabWidth": 2,
+    "useTabs": false,
     "singleQuote": true,
-    "trailingComma": "all",     
-    "bracketSpacing": true,     
-    "arrowParens": "always",    
-    "printWidth": 80,           
-    "endOfLine": "lf"  
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "arrowParens": "always",
+    "printWidth": 80,
+    "endOfLine": "lf"
   }
 }

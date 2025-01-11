@@ -597,7 +597,7 @@ class AppointmentController {
                     day: "numeric",
                 }); // Convert the date to "2 Jan, 2025"
             }
-
+            
             // Return the response
             return ResponseService.send(res, StatusCodes.OK, "Appointment fetched successfully", 1, {
                 appointment: {
