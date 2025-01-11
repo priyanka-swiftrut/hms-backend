@@ -12,10 +12,10 @@ const razorpay = new Razorpay({
 // Create order
 export const createOrder = async (req, res) => {
     try {
-        const { appointmentType, doctorId } = req.body;
+        const { appointmentType, doctorId, paymentType, insuranceDetails } = req.body;
 
         // Validate required fields
-        if (!appointmentType || !doctorId) {
+        if (!appointmentType || !doctorId || !paymentType) {
             return res.status(400).json({ error: "All fields are required." });
         }
 
@@ -28,13 +28,11 @@ export const createOrder = async (req, res) => {
         // Calculate amount and tax
         let amount = 0;
         let tax = 0;
-
+        
         if (appointmentType === "online") {
-            console.log("Online consultation");
             amount = doctor.metaData.doctorData.onlineConsultationRate;
             tax = amount * 0.18; // 18% tax
         } else if (appointmentType === "onsite") {
-            console.log("Onsite consultation");
             amount = doctor.metaData.doctorData.consultationRate;
             tax = amount * 0.18; // 18% tax
         } else {
@@ -43,26 +41,71 @@ export const createOrder = async (req, res) => {
 
         const totalAmount = Math.round((amount + tax) * 100); // Convert to paise (smallest currency unit)
 
-        // Razorpay order options
-        const options = {
-            amount: totalAmount, // Amount in paise
-            currency: "INR",
-            receipt: "receipt_" + Date.now(),
-        };
+        if (paymentType === "Insurance") {
+            const { claimAmount, claimedAmount } = insuranceDetails || {};
+            
+            // Validate insurance details
+            if (claimAmount === undefined || claimedAmount === undefined) {
+                return res.status(400).json({ error: "Insurance details are incomplete." });
+            }
+            if (claimAmount < claimedAmount) {
+                return res.status(400).json({ error: "Claim amount cannot be less than claimed amount." });
+            }
 
-        console.log("Order options:", options);
+            // Calculate the remaining amount to be paid by the user
+            let dueAmount = 0;
+            if (claimedAmount < totalAmount) {
+                dueAmount = totalAmount - claimedAmount;
+            }
 
-        // Create Razorpay order
-        const order = await razorpay.orders.create(options);
-        console.log("Order created successfully:", order);
+            if (dueAmount > 0) {
+                // Create Razorpay order for the remaining amount
+                const options = {
+                    amount: dueAmount, // Remaining amount in paise
+                    currency: "INR",
+                    receipt: "receipt_" + Date.now(),
+                };
 
-        // Send response
-        res.status(200).json({ order, totalAmountInRupees: totalAmount / 100 }); // Return total amount in rupees as well
+                console.log("Order options:", options);
+
+                const order = await razorpay.orders.create(options);
+                console.log("Order created successfully:", order);
+
+                return res.status(200).json({
+                    order,
+                    dueAmountInRupees: dueAmount / 100, // Return due amount in rupees
+                    paymentCoveredByInsurance: claimedAmount / 100,
+                });
+            } else {
+                // Full amount is covered by insurance
+                return res.status(200).json({
+                    message: "Total amount covered by insurance.",
+                    paymentCoveredByInsurance: claimedAmount / 100,
+                });
+            }
+        } else if (paymentType === "Direct") {
+            // Handle direct payment via Razorpay
+            const options = {
+                amount: totalAmount, // Total amount in paise
+                currency: "INR",
+                receipt: "receipt_" + Date.now(),
+            };
+
+            console.log("Order options:", options);
+
+            const order = await razorpay.orders.create(options);
+            console.log("Order created successfully:", order);
+
+            return res.status(200).json({ order, totalAmountInRupees: totalAmount / 100 });
+        } else {
+            return res.status(400).json({ error: "Invalid payment type." });
+        }
     } catch (error) {
         console.error("Error creating order:", error);
         res.status(500).json({ error: error.message });
     }
 };
+
 
 
 

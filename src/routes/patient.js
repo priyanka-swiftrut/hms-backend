@@ -29,8 +29,8 @@ router.patch("/changePassword", authController.changePassword.bind(authControlle
 
 
 router.post("/createAppointment", appointmentController.createAppointment.bind(appointmentController));
-router.post("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
-router.put("/editAppointment", appointmentController.editAppointment.bind(appointmentController));
+router.post("/editAppointment/:id", appointmentController.editAppointment.bind(appointmentController));
+router.put("/editAppointment/:id", appointmentController.editAppointment.bind(appointmentController));
 
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getAppointmentsTeleconcsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));

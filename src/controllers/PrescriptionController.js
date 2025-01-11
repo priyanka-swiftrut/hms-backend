@@ -227,7 +227,7 @@ class PrescriptionController {
       });
   
       if (!prescriptions.length) {
-        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0 , []);
       }
   
       return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, prescriptions);
