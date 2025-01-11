@@ -6,6 +6,7 @@ import cloudinary from '../config/cloudinaryConfig.js';
 let io;
 export let onlineUsers = {}; // Track users by socket ID
 export let checkonline = {}
+const chatRooms = new Map();
 
 
 const init = (server) => {
@@ -35,13 +36,25 @@ const init = (server) => {
 
             // Join chat rooms
             socket.on("join-chat", (roomId) => {
-                if (!roomId) {
-                    console.warn(`Socket ${socket.id} tried to join a chat room without roomId`);
+                if (!roomId || !roomId.from || !roomId.to) {
+                    console.warn(`Socket ${socket.id} tried to join a chat room without proper roomId`);
+                    socket.emit("error", { message: "Invalid roomId provided" });
                     return;
                 }
-                socket.join(`chat-${roomId}`);
-                console.log(`Socket ${socket.id} joined chat room ${roomId}`);
+            
+                const normalizedRoomId = [roomId.from, roomId.to].sort().join("-");
+                const roomName = `chat-${normalizedRoomId}`;
+            
+                if (!chatRooms.has(roomName)) {
+                    chatRooms.set(roomName, { participants: [roomId.from, roomId.to], messages: [] });
+                }
+            
+                socket.join(roomName);
+                socket.emit("joined-room", { roomName });
+            
+                console.log(`Socket ${socket.id} joined chat room ${roomName}`);
             });
+
 
             // Handle sending messages
             // socket.on("send-message", async (data) => {
@@ -162,6 +175,7 @@ const init = (server) => {
 
             // i want to cheq user is online or not  
             socket.on("check-online", (selectedUser) => {
+               console.log(selectedUser , "selectedUser");
                
                let user = Object.values(checkonline).find((u) => u.userId === selectedUser);
 
@@ -175,6 +189,55 @@ const init = (server) => {
 
             });
 
+            socket.on("typing", (data) => {
+                const { roomId, from } = data;
+        
+                if (!roomId || !from) {
+                    console.warn(`Invalid typing event from socket ${socket.id}`);
+                    return;
+                }
+        
+                const roomName = `chat-${roomId}`;
+                socket.to(roomName).emit("user-typing", { from, isTyping: true });
+            });
+        
+            socket.on("stop-typing", (data) => {
+                const { roomId, from } = data;
+        
+                if (!roomId || !from) {
+                    console.warn(`Invalid stop-typing event from socket ${socket.id}`);
+                    return;
+                }
+        
+                const roomName = `chat-${roomId}`;
+                socket.to(roomName).emit("user-typing", { from, isTyping: false });
+            });
+        
+            // Get the last message of a user
+            socket.on("get-last-message", async (data, callback = () => {}) => {
+                const { userId, roomId } = data;
+        
+                if (!userId || !roomId) {
+                    console.warn(`Invalid last message request from socket ${socket.id}`);
+                    callback({ error: "Missing required fields." });
+                    return;
+                }
+                
+                try {
+                    const lastMessage = await Message.findOne({ roomId, from: userId })
+                        .sort({ createdAt: -1 })
+                        .exec();
+        
+                    if (!lastMessage) {
+                        callback({ success: false, message: "No messages found." });
+                    } else {
+                        callback({ success: true, lastMessage });
+                    }
+                } catch (error) {
+                    console.error("Error fetching last message:", error);
+                    callback({ error: "Failed to fetch last message." });
+                }
+            });
 
 
             // Handle disconnection
