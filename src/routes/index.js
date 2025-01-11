@@ -20,6 +20,12 @@ const patientController = new PatientController();
 router.post("/registerAdmin", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.Register.bind(adminController));
 router.post("/registerPatient", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.Register.bind(patientController));
 router.use("/auth", auth);
+router.get("/searchData", (req, res, next) => {
+    passport.authenticate(['jwt', 'Receptionist', 'Doctor', 'Patient'], (err, user) => {
+        if (err || !user) { return ResponseService.send(res, 403, 'Unauthorized', 0); }
+        req.user = user; next();
+    })(req, res, next);
+}, adminController.searchData.bind(adminController));
 
 router.use("/hospital", hospital); 
 // Authorization Apis

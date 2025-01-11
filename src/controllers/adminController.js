@@ -305,11 +305,34 @@ class AdminController {
                 searchCriteria.role = { $in: defaultRoles };
             }
     
-            const results = await User.find(searchCriteria);
-            const data = results
+            if (req.user.role !== 'patient') {
+                searchCriteria.hospitalId = req.user.hospitalId;
+            }
+    
+            let results = await User.find(searchCriteria);
+    
+            if (req.user.role === 'patient') {
+                results = results.filter(user => user.role === 'doctor');
+            } else if (role === 'patient' || !role) {
+                const patientIds = results.map(patient => patient._id);
+                const appointments = await AppointmentModel.find({ patientId: { $in: patientIds } })
+                    .populate('patientId', 'fullName email phone age gender address')
+                    .populate('hospitalId', 'name');
+    
+                const patientsFromAppointments = appointments.map(appointment => appointment.patientId);
+                results = [...results, ...patientsFromAppointments];
+            }
+    
+            const data = results.filter((value, index, self) =>
+                index === self.findIndex((t) => (
+                    t._id.toString() === value._id.toString()
+                ))
+            );
+    
             if (data.length === 0) {
-                return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0);
-            }       
+                return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0, []);
+            }
+    
             return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
         } catch (error) {
             console.error("Error in searchData:", error);
@@ -317,7 +340,6 @@ class AdminController {
         }
     }
     
-
     async getDashboardData(req, res) {
         try {
             const { hospitalId } = req.user;
