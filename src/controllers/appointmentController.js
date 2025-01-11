@@ -570,12 +570,9 @@ class AppointmentController {
             let amount = 0;
             let tax = 0;
             if (appointment.type === "online") {
-                console.log("online");
-
                 amount = appointment.doctorId.metaData.doctorData.onlineConsultationRate;
                 tax = amount * 0.18;
             } else if (appointment.type === "onsite") {
-                console.log("onsite");
                 amount = appointment.doctorId.metaData.doctorData.consultationRate;
                 tax = amount * 0.18;
             }

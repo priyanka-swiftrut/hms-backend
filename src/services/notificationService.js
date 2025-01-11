@@ -85,7 +85,6 @@ const sendNotification = async ({ type, message, hospitalId, targetUsers }) => {
                     const userOnlineStatus = checkonline[userIdString];
                     
                     if (userOnlineStatus && userOnlineStatus.socketId) {
-                        console.log(`Sending notification to user ${userIdString} via socket ${userOnlineStatus.socketId}`);
                         io.to(userOnlineStatus.socketId).emit("new-notification", {
                             type,
                             message,

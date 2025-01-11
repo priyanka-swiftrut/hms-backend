@@ -11,8 +11,6 @@ class ChatController {
     async getMessages(req, res) {
         try {
             const { from, to } = req.query;
-            console.log(req.query);
-            
             if (!from || !to) {
                 return ResponseService.send(res, 400, "Missing 'from' or 'to' query parameters", 0);
             }

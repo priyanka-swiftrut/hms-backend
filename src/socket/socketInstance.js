@@ -18,8 +18,6 @@ const init = (server) => {
             },
         });
         io.on("connection", (socket) => {
-            console.log("New client connected:", socket.id);
-
             // Track the online user
             socket.on("register-user", (userId) => {
                 if (!userId) {
@@ -28,9 +26,6 @@ const init = (server) => {
                 }
                 onlineUsers[socket.id] = { socketId: socket.id, userId, isAvailable: true };
                 checkonline[userId] = { socketId: socket.id, userId, isAvailable: true };
-                console.log(checkonline , "checkonline");
-                
-                console.log(`User ${userId} registered with socket ${socket.id}`);
                 io.emit("update-online-users",{ onlineUsers , checkonline});
             });
 
@@ -51,8 +46,6 @@ const init = (server) => {
             
                 socket.join(roomName);
                 socket.emit("joined-room", { roomName });
-            
-                console.log(`Socket ${socket.id} joined chat room ${roomName}`);
             });
 
 
@@ -108,7 +101,6 @@ const init = (server) => {
             // });
 
             socket.on("send-message", async (data, callback = () => {}) => {
-            console.log(data);
 
                 const { to, from, roomId, fileDetails , type:resource_type } = data; // Assuming file data is sent as `file`
                 let message = data.message;
@@ -131,12 +123,10 @@ const init = (server) => {
                     if (fileDetails) {  
                         
                         const { base64, type } = fileDetails;
-                        console.log(type , "23hgfkjfjhgfjhgffghfhgfhgfh------------------ghjfgjfgjfgj-------------hjfgj-------");
                         const uploadResponse = await cloudinary.uploader.upload(`data:${type};base64,${base64}`, {
                             folder: "chatFiles",
                             resource_type: resource_type, 
                         });
-                       
 
                         message = uploadResponse.secure_url; // Save Cloudinary file URL as message
                     }
@@ -175,11 +165,8 @@ const init = (server) => {
 
             // i want to cheq user is online or not  
             socket.on("check-online", (selectedUser) => {
-               console.log(selectedUser , "selectedUser");
                
                let user = Object.values(checkonline).find((u) => u.userId === selectedUser);
-
-               console.log(user , "----------------------------------------");
                if (user) {
                io.to(socket.id).emit("user-status", { online: true, user });
                io.to(user.socketId).emit("user-status", { online: true, user });
@@ -242,7 +229,6 @@ const init = (server) => {
 
             // Handle disconnection
             socket.on("disconnect", () => {
-                console.log("Client disconnected:", socket.id);
                 const disconnectedUser = onlineUsers[socket.id];
 
                 if (!disconnectedUser) {
@@ -254,13 +240,10 @@ const init = (server) => {
                 delete onlineUsers[socket.id];
                 io.emit("update-online-users", onlineUsers );
                 io.emit("user-status", { online: false, user: disconnectedUser });
-                console.log();
                 
             });
         });
     }
-
-    console.log("Socket.IO initialized");
     return io;
 };
 
