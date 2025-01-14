@@ -285,62 +285,128 @@ class AdminController {
         }
     }
 
+    // async searchData(req, res) {
+    //     try {
+    //         const { query, role } = req.query;
+
+    //         if (!query) {
+    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
+    //         }
+
+    //         const defaultRoles = ['doctor', 'patient', 'receptionist'];
+
+    //         const searchCriteria = {
+    //             fullName: { $regex: query, $options: 'i' }
+    //         };
+
+    //         if (role) {
+    //             searchCriteria.role = role;
+    //         } else {
+    //             searchCriteria.role = { $in: defaultRoles };
+    //         }
+
+    //         if (req.user.role !== 'patient') {
+    //             searchCriteria.hospitalId = req.user.hospitalId;
+    //         }
+
+    //         let results = [];
+
+    //         if (role === 'patient') {
+    //             const appointments = await AppointmentModel.find()
+    //                 .populate('patientId');
+
+    //             const patientsFromAppointments = appointments.map(appointment => appointment.patientId);
+    //             results = patientsFromAppointments.filter(patient => patient.fullName.match(new RegExp(query, 'i')));
+    //         } else {
+    //             results = await User.find(searchCriteria);
+
+    //             if (req.user.role === 'patient') {
+    //                 results = results.filter(user => user.role === 'doctor');
+    //             }
+    //         }
+
+    //         const data = results.filter((value, index, self) =>
+    //             index === self.findIndex((t) => (
+    //                 t._id.toString() === value._id.toString()
+    //             ))
+    //         );
+
+    //         if (data.length === 0) {
+    //             return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0, []);
+    //         }
+
+    //         return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
+    //     } catch (error) {
+    //         console.error("Error in searchData:", error);
+    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
+    //     }
+    // }
+
     async searchData(req, res) {
         try {
             const { query, role } = req.query;
-
+    
             if (!query) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
             }
-
+    
             const defaultRoles = ['doctor', 'patient', 'receptionist'];
-
+    
+            // Use "starts with" regex pattern for the search
             const searchCriteria = {
-                fullName: { $regex: query, $options: 'i' }
+                fullName: { $regex: `^${query}`, $options: 'i' } // Match strings starting with `query`, case-insensitive
             };
-
+    
             if (role) {
                 searchCriteria.role = role;
             } else {
                 searchCriteria.role = { $in: defaultRoles };
             }
-
+    
             if (req.user.role !== 'patient') {
                 searchCriteria.hospitalId = req.user.hospitalId;
             }
-
+    
             let results = [];
-
+    
             if (role === 'patient') {
+                // Fetch appointments with populated patient details
                 const appointments = await AppointmentModel.find()
                     .populate('patientId');
-
+    
                 const patientsFromAppointments = appointments.map(appointment => appointment.patientId);
-                results = patientsFromAppointments.filter(patient => patient.fullName.match(new RegExp(query, 'i')));
+                // Filter patients whose fullName starts with the query
+                results = patientsFromAppointments.filter(patient => 
+                    patient.fullName && patient.fullName.toLowerCase().startsWith(query.toLowerCase())
+                );
             } else {
+                // Fetch users based on search criteria
                 results = await User.find(searchCriteria);
-
+    
                 if (req.user.role === 'patient') {
                     results = results.filter(user => user.role === 'doctor');
                 }
             }
-
+    
+            // Remove duplicates based on `_id`
             const data = results.filter((value, index, self) =>
                 index === self.findIndex((t) => (
                     t._id.toString() === value._id.toString()
                 ))
             );
-
+    
             if (data.length === 0) {
                 return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0, []);
             }
-
+    
             return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
         } catch (error) {
             console.error("Error in searchData:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
     }
+    
+
 
     async getDashboardData(req, res) {
         try {
@@ -513,7 +579,7 @@ class AdminController {
 
     async getDashboardDatademo(req, res) {
         try {
-            if (req.user.role === "admin") {
+            if (req.user.role === "admin" || req.user.role === "receptionist") {
                 const { hospitalId } = req.user;
 
 
@@ -687,7 +753,9 @@ class AdminController {
 
                     const prescriptions = prescriptionsdata.map((prescription) => ({
                         prescriptionId: prescription._id,
-                        prescriptionDate: prescription.date,
+                        prescriptionDate: new Date(prescription.date).getDate().toString().padStart(2, '0') + '/' + // DD
+                        (new Date(prescription.date).getMonth() + 1).toString().padStart(2, '0') + '/' + // MM
+                        new Date(prescription.date).getFullYear().toString().slice(-2),
                         hospitalName: prescription.hospitalId?.name || "N/A",
                         DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
                         DoctorName: prescription.doctorId?.fullName || "N/A",

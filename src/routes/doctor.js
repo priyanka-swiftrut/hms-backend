@@ -5,12 +5,14 @@ import AppointmentController from "../controllers/appointmentController.js";
 import PrescriptionController from "../controllers/PrescriptionController.js";
 import PatientController from "../controllers/patientController.js";
 import AuthController from "../controllers/authController.js";
+import HolidayController from "../controllers/holidayController.js";
 const router = express.Router();
 const doctorController = new DoctorController();
 const appointmentController = new AppointmentController();
 const prescriptionController = new PrescriptionController();
 const patientController = new PatientController();
 const authController = new AuthController();
+const holidayController = new HolidayController();
 // No Authorization Apis
 
 // Authorization Apis
@@ -21,6 +23,7 @@ router.post("/changePassword", authController.changePassword.bind(authController
 router.patch("/changePassword", authController.changePassword.bind(authController));
 
 
+
 router.post("/editAppointment/:id", appointmentController.editAppointment.bind(appointmentController));
 router.put("/editAppointment/:id", appointmentController.editAppointment.bind(appointmentController));
 
@@ -29,7 +32,7 @@ router.get("/getpatientfromappointment/:id", appointmentController.getpatientfro
 router.get("/getpatient", patientController.getPatients.bind(patientController));
 router.get("/getAppointmentsTeleconcsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));
 
-    
+
 
 router.post("/createPrescription/:appointmentId", prescriptionController.createPrescription.bind(prescriptionController));
 router.get("/getPrescription", prescriptionController.getPrescriptions.bind(prescriptionController));
@@ -45,5 +48,13 @@ router.get("/getPatientRecord", doctorController.getPatientRecord.bind(doctorCon
 router.get("/getSinglepatients", patientController.getPatients.bind(patientController));
 router.get("/getpatient", patientController.getPatients.bind(patientController));
 router.get("/getsinglepatientrecord/:patientId", doctorController.getsinglepatientrecord.bind(doctorController));
+
+
+
+//holiday
+router.post("/createHoliday", holidayController.createHoliday.bind(holidayController));
+router.get("/getholidays", holidayController.getHolidays.bind(holidayController));
+router.put("/updateholiday/:holidayId", holidayController.updateHoliday.bind(holidayController));
+router.delete("/deleteholiday", holidayController.deleteHoliday.bind(holidayController));
 
 export default router;

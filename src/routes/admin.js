@@ -55,13 +55,13 @@ router.get("/getbillbystatus", billController.getBillByStatus.bind(billControlle
 
 //today , privious , upcoming , all
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
-router.get("/getDashboardDatademo", adminController.getDashboardDatademo.bind(adminController));
+router.get("/getDashboardData", adminController.getDashboardDatademo.bind(adminController));
 router.get("/getpatientfromappointment/:id", appointmentController.getpatientfromappointment.bind(appointmentController));
 
 
 
 router.get("/searchData", adminController.searchData.bind(adminController));
-router.get("/getDashboardData", adminController.getDashboardData.bind(adminController));
+// router.get("/getDashboardData", adminController.getDashboardData.bind(adminController));
 router.get("/getPaginatedAppointments", adminController.getPaginatedAppointments.bind(adminController));
 router.get("/getBillsMonitor", adminController.getBillsmonitoring.bind(adminController));
     

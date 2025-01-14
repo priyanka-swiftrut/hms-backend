@@ -1,5 +1,8 @@
 import User from '../models/User.model.js';
 import ResponseService from '../services/response.services.js';
+import mongoose from 'mongoose';
+import appointmentModel from '../models/Appointment.model.js';
+import PrescriptionModel from '../models/priscription.model.js'
 import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import cloudinary from '../config/cloudinaryConfig.js';
@@ -179,6 +182,228 @@ class ReceptionistController {
             await cloudinary.uploader.destroy(`profileImages/${publicId}`);
         }
     };
+
+    async getPatient(req, res) {
+        try {
+            // Find a patient with the role "patient" and select specific fields
+            const patient = await User.find({ role: "patient" }).select("fullName _id number");
+    
+            // Check if no patient is found
+            if (!patient) {
+                return res.status(404).json({
+                    message: "Patient not found",
+                    data: [],
+                    count: 0,
+                });
+            }
+    
+            // Return patient details directly in the "data" field
+            return res.status(200).json({
+                message: "Patient detail for appointment booking",
+                data: patient,
+                count: 1,
+            });
+        } catch (error) {
+            // Handle server errors
+            return res.status(500).json({
+                message: "Internal Server Error",
+                error: error.message, // Provide additional error details for debugging
+            });
+        }
+    }
+    
+    // async getpatientdetailforreception(req, res) {
+
+    //     try {
+    //         const hospitalId = req.user.hospitalId; // Assuming hospitalId is passed from req.user
+    
+    //         if (!hospitalId) {
+    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
+    //         }
+    
+    //         const patients = await appointmentModel.aggregate([
+    //             {
+    //                 $match: { hospitalId: new mongoose.Types.ObjectId(hospitalId) }, // Use 'new' with ObjectId
+    //             },
+    //             {
+    //                 $group: {
+    //                     _id: "$patientId", // Group by patientId to avoid duplication
+    //                     latestAppointment: { $last: "$$ROOT" }, // Get the latest appointment for each patient
+    //                 },
+    //             },
+    //             {
+    //                 $lookup: {
+    //                     from: "users", // Name of the User collection in MongoDB
+    //                     localField: "_id",
+    //                     foreignField: "_id",
+    //                     as: "patientDetails",
+    //                 },
+    //             },
+    //             {
+    //                 $unwind: "$patientDetails", // Flatten the patientDetails array
+    //             },
+    //             {
+    //                 $project: {
+    //                     _id: 0,
+    //                     patientId: "$_id",
+    //                     patientName: "$patientDetails.fullName",
+    //                     patientEmail: "$patientDetails.email",
+    //                     latestAppointmentDate: "$latestAppointment.date",
+    //                     latestAppointmentStatus: "$latestAppointment.status",
+    //                 },
+    //             },
+    //         ]);
+    
+    //         if (patients.length > 0) {
+    //             return ResponseService.send(res, StatusCodes.OK, "Unique patients fetched successfully", 1, patients);
+    //         } else {
+    //             return ResponseService.send(res, StatusCodes.OK, "No patients found", 1, []);
+    //         }
+    //     } catch (error) {
+    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+    //     }
+
+    // }
+
+    async getpatientdetailforreception(req, res) {
+        try {
+            const hospitalId = req.user.hospitalId; // Assuming hospitalId is passed from req.user
+            const { search } = req.query; // Changed the query parameter to 'search'
+        
+            if (!hospitalId) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
+            }
+        
+            const matchQuery = {
+                hospitalId: new mongoose.Types.ObjectId(hospitalId),
+            };
+        
+            const patients = await appointmentModel.aggregate([
+                {
+                    $match: matchQuery, // Match the hospital ID
+                },
+                {
+                    $group: {
+                        _id: "$patientId", // Group by patientId to avoid duplication
+                        latestAppointment: { $last: "$$ROOT" }, // Get the latest appointment for each patient
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "users", // Name of the User collection in MongoDB
+                        localField: "_id",
+                        foreignField: "_id",
+                        as: "patientDetails",
+                    },
+                },
+                {
+                    $unwind: "$patientDetails", // Flatten the patientDetails array
+                },
+                {
+                    $match: {
+                        "patientDetails.fullName": {
+                            $regex: `^${search}`, // Matches names starting with the specified search string
+                            $options: "i", // Case-insensitive matching
+                        },
+                    },
+                },
+                {
+                    $project: {
+                        patientId: "$_id",
+                        patientName: "$patientDetails.fullName",
+                        patientEmail: "$patientDetails.email",
+                        patientNumber: "$patientDetails.phone",
+                        patientGender : "$patientDetails.gender",
+                        patientAge : "$patientDetails.age",
+                        latestAppointmentDate: "$latestAppointment.date",
+                        latestAppointmentStatus: "$latestAppointment.status",
+                    },
+                },
+            ]);
+        
+            if (patients.length > 0) {
+                return ResponseService.send(res, StatusCodes.OK, "Unique patients fetched successfully", 1, patients);
+            } else {
+                return ResponseService.send(res, StatusCodes.OK, "No patients found", 1, []);
+            }
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+        }
+    }
+    
+    async patientdeshboardforreceptionist(req, res) {
+        try {
+            const { patientId: queryPatientId } = req.query; // Get patientId from query
+            const isReceptionist = req.user.role === "receptionist";
+            // Determine the patientId to fetch data for
+            const patientId = isReceptionist ? queryPatientId : req.user._id;
+    
+            if (!patientId) {
+                return ResponseService.send(
+                    res,
+                    StatusCodes.BAD_REQUEST,
+                    "Patient ID is required.",
+                    "error"
+                );
+            }
+            // Fetch patient profile
+            const patientProfile = await User.findById(patientId);
+            if (!patientProfile) {
+                return ResponseService.send(
+                    res,
+                    StatusCodes.NOT_FOUND,
+                    "Patient profile not found",
+                    "error"
+                );
+            }
+            // Fetch prescriptions and populate hospital details
+            let prescriptionsdata = await PrescriptionModel.find({ patientId })
+                .sort({ createdAt: -1 })
+                .populate("patientId", "fullName gender address age phone")
+                .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
+                .populate("appointmentId", "dieseas_name type appointmentTime date")
+                .populate("hospitalId", "name");
+    
+            const prescriptions = prescriptionsdata.map((prescription) => {
+                const addressObj = prescription.patientId?.address;
+                const formattedAddress = addressObj
+                    ? `${addressObj.fullAddress || "N/A"}, ${addressObj.city || "N/A"}, ${addressObj.state || "N/A"}, ${addressObj.country || "N/A"}, ${addressObj.zipCode || "N/A"}`
+                    : "N/A";
+    
+                return {
+                    prescriptionId: prescription._id,
+                    prescriptionDate: new Date(prescription.date).getDate().toString().padStart(2, '0') + '/' + // DD
+                    (new Date(prescription.date).getMonth() + 1).toString().padStart(2, '0') + '/' + // MM
+                    new Date(prescription.date).getFullYear().toString().slice(-2),
+                    hospitalName: prescription.hospitalId?.name || "N/A",
+                    DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
+                    DoctorName: prescription.doctorId?.fullName || "N/A",
+                    patientName: prescription.patientId?.fullName || "N/A",
+                    patientNumber: prescription.patientId?.phone || "N/A",
+                    doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
+                    gender: prescription.patientId?.gender || "N/A",
+                    age: prescription.patientId?.age || "N/A",
+                    address: formattedAddress,
+                    medications: prescription.medications || "N/A",
+                    additionalNote: prescription.instructions || "N/A",
+                    doctorsignature: prescription.doctorId?.metaData?.doctorData?.signature || "N/A",
+                    appointmentTime: prescription.appointmentId?.appointmentTime || "N/A",
+                    appointmentDate: prescription.appointmentId?.date || "N/A",
+                    dieseas_name: prescription.appointmentId?.dieseas_name || "N/A",
+                };
+            });
+            // Prepare dashboard data
+            const dashboardData = {
+                patientProfile,
+                prescriptions,
+            };
+            // Return success response with dashboard data
+            return ResponseService.send(res, StatusCodes.OK, "Dashboard data fetched successfully", "success", dashboardData);
+        } catch (error) {
+            console.error("Error fetching patient dashboard data:", error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred while fetching patient dashboard data", 0);
+        }
+    }
 
 }
 

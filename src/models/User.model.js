@@ -194,6 +194,19 @@ const UserSchema = new mongoose.Schema({
                     return this.role === "patient";
                 },
             },
+            phoneCode: {
+                type: String,
+                required: function () {
+                    return this.role === "patient";
+                },
+            },
+            termsAccepted: {
+                type: Boolean,
+                default: false,
+                required: function () {
+                    return this.role === "patient";
+                },
+            },
         },
         receptionistData: {
             qualification: {

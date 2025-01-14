@@ -2,12 +2,15 @@ import Appointment from '../models/Appointment.model.js';
 import Bill from '../models/Bill.model.js';
 import hospitalModel from '../models/Hospital.model.js';
 import userModel from '../models/User.model.js';
+// import paymentModel from '../models/Payment.model.js';
 import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import User from '../models/User.model.js';
 import Insurance from '../models/Insurance.model.js';
+import holidaymodel from '../models/Holiday.model.js';
 import moment from 'moment';
 import sendNotification from '../services/notificationService.js';
+import mongoose from 'mongoose';
 
 class AppointmentController {
     // async createAppointment(req, res) {
@@ -691,6 +694,7 @@ class AppointmentController {
 }
 
 
+
     async getDoctorSession(req, res) {
         try {
             const { doctorId } = req.params;
@@ -772,6 +776,113 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+
+    // async getDoctorSession(req, res) {
+    //     try {
+    //         const { doctorId } = req.params;
+    //         const { date } = req.query;
+    //         const targetDate = date || moment().format("YYYY-MM-DD");
+    
+    //         const doctor = await User.findById(doctorId);
+    //         if (!doctor) {
+    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
+    //         }
+    
+    //         const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
+    //         if (!morning || !evening || !timeduration) {
+    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
+    //         }
+    
+    //         const parseSession = (sessionString) => {
+    //             const [start, end] = sessionString.split(" to ");
+    //             return { start, end };
+    //         };
+    
+    //         const morningSession = parseSession(morning);
+    //         const eveningSession = parseSession(evening);
+    
+    //         const generateSlots = (session, duration) => {
+    //             const slots = [];
+    //             let startTime = moment(session.start, "HH:mm");
+    //             const endTime = moment(session.end, "HH:mm");
+    
+    //             while (startTime < endTime) {
+    //                 const slotEndTime = moment(startTime).add(duration, "minutes");
+    //                 slots.push({
+    //                     start: startTime.format("HH:mm"),
+    //                     end: slotEndTime.format("HH:mm"),
+    //                     available: true
+    //                 });
+    //                 startTime = slotEndTime;
+    //             }
+    
+    //             return slots;
+    //         };
+    
+    //         const morningSlots = generateSlots(morningSession, timeduration);
+    //         const eveningSlots = generateSlots(eveningSession, timeduration);
+    
+    //         const startOfDay = moment(targetDate).startOf("day").toISOString();
+    //         const endOfDay = moment(targetDate).endOf("day").toISOString();
+    
+    //         const appointments = await Appointment.find({
+    //             doctorId,
+    //             date: { $gte: startOfDay, $lt: endOfDay }
+    //         });
+    
+    //         // Query the Holiday model to check if the date is a holiday
+    //         const holidays = await holidaymodel.find({
+    //             userId: doctorId, // Query holidays for this doctor
+    //             date: { $gte: startOfDay, $lt: endOfDay }
+    //         });
+    
+    //         const checkAvailability = (slots, appointments, holidays) => {
+    //             slots.forEach(slot => {
+    //                 // Check if the slot overlaps with any appointment
+    //                 appointments.forEach(appointment => {
+    //                     if (
+    //                         moment(appointment.appointmentTime, "HH:mm").isBetween(
+    //                             moment(slot.start, "HH:mm"),
+    //                             moment(slot.end, "HH:mm"),
+    //                             null,
+    //                             "[)"
+    //                         )
+    //                     ) {
+    //                         slot.available = false;
+    //                     }
+    //                 });
+    
+    //                 // Check if the slot is on a holiday and update availability accordingly
+    //                 holidays.forEach(holiday => {
+    //                     if (holiday.date.toISOString() === moment(targetDate).toISOString()) {
+    //                         if (holiday.session === "morning" && slot.start < morningSession.end) {
+    //                             slot.available = false;  // Block morning session
+    //                         } else if (holiday.session === "evening" && slot.start >= eveningSession.start) {
+    //                             slot.available = false;  // Block evening session
+    //                         } else if (holiday.session === "full_day") {
+    //                             slot.available = false;  // Block both morning and evening for full day holiday
+    //                         }
+    //                     }
+    //                 });
+    //             });
+    //         };
+    
+    //         // Check availability for both morning and evening slots
+    //         checkAvailability(morningSlots, appointments, holidays);
+    //         checkAvailability(eveningSlots, appointments, holidays);
+    
+    //         const data = {
+    //             morningSlots,
+    //             eveningSlots
+    //         };
+    
+    //         return ResponseService.send(res, StatusCodes.OK, 'Data fetched successfully', 1, data);
+    //     } catch (error) {
+    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+    //     }
+    // }
+    
+    
 
     async getAppointmentsWithoutBills(req, res) {
 

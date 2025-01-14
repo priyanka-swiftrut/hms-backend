@@ -51,6 +51,8 @@ class PatientController {
                         weight: req.body.weight,
                         bloodGroup: req.body.bloodGroup,
                         dob: req.body.dob,
+                        phoneCode: req.body.phoneCode,
+                        termsAccepted: req.body.termsAccepted,
                     },
                 },
             };
