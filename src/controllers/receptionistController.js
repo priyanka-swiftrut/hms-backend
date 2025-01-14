@@ -363,7 +363,7 @@ class ReceptionistController {
                 .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
                 .populate("appointmentId", "dieseas_name type appointmentTime date")
                 .populate("hospitalId", "name");
-    
+            
             const prescriptions = prescriptionsdata.map((prescription) => {
                 const addressObj = prescription.patientId?.address;
                 const formattedAddress = addressObj

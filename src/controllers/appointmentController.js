@@ -882,7 +882,6 @@ class AppointmentController {
     //     }
     // }
     
-    
 
     async getAppointmentsWithoutBills(req, res) {
 
