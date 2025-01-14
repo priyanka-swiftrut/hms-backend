@@ -87,7 +87,9 @@ class AdminController {
                         req.body.profilePicture = req.files.profilePicture[0].path;
                     }
                 }
-                req.body.fullName = req.body.firstName + " " + req.body.lastName;
+                if(req.body.firstName && req.body.lastName){
+                    req.body.fullName = req.body.firstName + " " + req.body.lastName;
+                }
                 let updatedUser = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
                 if (updatedUser) {
                     return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, updatedUser);
@@ -725,7 +727,7 @@ class AdminController {
                     const isReceptionist = req.user.role === "receptionist";
                     // Determine the patientId to fetch data for
                     const patientId = isReceptionist ? queryPatientId : req.user._id;
-
+            
                     if (!patientId) {
                         return ResponseService.send(
                             res,
@@ -745,21 +747,41 @@ class AdminController {
                         );
                     }
                     // Fetch prescriptions and populate hospital details
-                    const prescriptionsdata = await PrescriptionModel.find({ patientId })
+                    let prescriptionsdata = await PrescriptionModel.find({ patientId })
                         .sort({ createdAt: -1 })
-                        .populate("hospitalId", "name")
-                        .populate("appointmentId", "dieseas_name")
-                        .populate("doctorId", "fullName");
-
-                    const prescriptions = prescriptionsdata.map((prescription) => ({
-                        prescriptionId: prescription._id,
-                        prescriptionDate: new Date(prescription.date).getDate().toString().padStart(2, '0') + '/' + // DD
-                        (new Date(prescription.date).getMonth() + 1).toString().padStart(2, '0') + '/' + // MM
-                        new Date(prescription.date).getFullYear().toString().slice(-2),
-                        hospitalName: prescription.hospitalId?.name || "N/A",
-                        DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
-                        DoctorName: prescription.doctorId?.fullName || "N/A",
-                    }));
+                        .populate("patientId", "fullName gender address age phone")
+                        .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
+                        .populate("appointmentId", "dieseas_name type appointmentTime date")
+                        .populate("hospitalId", "name");
+                    
+                    const prescriptions = prescriptionsdata.map((prescription) => {
+                        const addressObj = prescription.patientId?.address;
+                        const formattedAddress = addressObj
+                            ? `${addressObj.fullAddress || "N/A"}, ${addressObj.city || "N/A"}, ${addressObj.state || "N/A"}, ${addressObj.country || "N/A"}, ${addressObj.zipCode || "N/A"}`
+                            : "N/A";
+            
+                        return {
+                            prescriptionId: prescription._id,
+                            prescriptionDate: new Date(prescription.date).getDate().toString().padStart(2, '0') + '/' + // DD
+                            (new Date(prescription.date).getMonth() + 1).toString().padStart(2, '0') + '/' + // MM
+                            new Date(prescription.date).getFullYear().toString().slice(-2),
+                            hospitalName: prescription.hospitalId?.name || "N/A",
+                            DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
+                            DoctorName: prescription.doctorId?.fullName || "N/A",
+                            patientName: prescription.patientId?.fullName || "N/A",
+                            patientNumber: prescription.patientId?.phone || "N/A",
+                            doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
+                            gender: prescription.patientId?.gender || "N/A",
+                            age: prescription.patientId?.age || "N/A",
+                            address: formattedAddress,
+                            medications: prescription.medications || "N/A",
+                            additionalNote: prescription.instructions || "N/A",
+                            doctorsignature: prescription.doctorId?.metaData?.doctorData?.signature || "N/A",
+                            appointmentTime: prescription.appointmentId?.appointmentTime || "N/A",
+                            appointmentDate: prescription.appointmentId?.date || "N/A",
+                            dieseas_name: prescription.appointmentId?.dieseas_name || "N/A",
+                        };
+                    });
                     // Prepare dashboard data
                     const dashboardData = {
                         patientProfile,

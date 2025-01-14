@@ -7,10 +7,10 @@ import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import User from '../models/User.model.js';
 import Insurance from '../models/Insurance.model.js';
-import holidaymodel from '../models/Holiday.model.js';
+import Holiday from '../models/holiday.model.js'; 
+import mongoose from 'mongoose';
 import moment from 'moment';
 import sendNotification from '../services/notificationService.js';
-import mongoose from 'mongoose';
 
 class AppointmentController {
     // async createAppointment(req, res) {
@@ -282,81 +282,7 @@ class AppointmentController {
         }
     }
         
-    // async getAppointments(req, res) {
-    //     try {
-    //         // Validate user ID
-    //         if (!req.user.id) {
-    //             return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
-    //         }
 
-    //         const { filter, page = 1, limit = 15 } = req.query;
-    //         const paginationLimit = parseInt(limit, 10);
-    //         const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
-
-    //         const filters = {};
-    //         const today = new Date();
-    //         today.setHours(0, 0, 0, 0); // Start of the day
-    //         const tomorrow = new Date(today);
-    //         tomorrow.setDate(today.getDate() + 1);
-
-    //         // Apply role-based filters
-    //         if (req.user.role === "doctor") {
-    //             filters.doctorId = req.user.id;
-    //         } else if (req.user.role === "patient") {
-    //             filters.patientId = req.user.id;
-    //         }
-
-    //        // Apply date-based filters
-    //         if (filter === "today") {
-    //             filters.date = { $gte: today, $lt: tomorrow };
-    //         } else if (filter === "upcoming") {
-    //             filters.date = { $gt: today };
-    //         } else if (filter === "previous") {
-    //             filters.date = { $lt: today };
-    //         }
-
-    //         // Apply status filter for canceled appointments
-    //         if (filter === "cancel") {
-    //             filters.status = "canceled";
-    //         }
-
-    //         // Fetch appointments with pagination
-    //         const appointments = await Appointment.find(filters)
-    //             .skip(paginationSkip)
-    //             .limit(paginationLimit)
-    //             .sort({ date: 1 }) // Sort by date (ascending)
-    //             .populate("doctorId", "fullName email profilePicture phone age gender address")
-    //             .populate("patientId", "fullName email")
-    //             .populate("hospitalId", "name");
-
-    //         // Format the date field
-    //         const formattedAppointments = appointments.map((appointment) => {
-    //             const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
-    //                 day: "numeric",
-    //                 month: "short",
-    //                 year: "numeric",
-    //             });
-    //             return {
-    //                 ...appointment.toObject(),
-    //                 date: formattedDate,
-    //             };
-    //         });
-
-    //         const totalAppointments = await Appointment.countDocuments(filters);
-
-    //         return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
-    //             appointments: formattedAppointments,
-    //             pagination: {
-    //                 total: totalAppointments,
-    //                 page: parseInt(page, 10),
-    //                 limit: paginationLimit,
-    //                 totalPages: Math.ceil(totalAppointments / paginationLimit),
-    //             },
-    //         });
-    //     } catch (error) {
-    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-    //     }
-    // }
 
     async getAppointments(req, res) {
         try {
@@ -404,10 +330,13 @@ class AppointmentController {
                 filters.date = { $gte: selectedDate, $lt: nextDay };
             } else if (filter === "today") {
                 filters.date = { $gte: today, $lt: tomorrow };
+                filters.status = { $ne: "canceled" };
             } else if (filter === "upcoming") {
                 filters.date = { $gt: today };
+                filters.status = { $ne: "canceled" };
             } else if (filter === "previous") {
                 filters.date = { $lt: today };
+                filters.status = { $ne: "canceled" };
             }
 
             // Apply status filter for canceled appointments
@@ -420,9 +349,9 @@ class AppointmentController {
                 .skip(paginationSkip)
                 .limit(paginationLimit)
                 .sort({ date: 1 }) // Sort by date (ascending)
-                .populate("doctorId", "fullName email profilePicture phone age gender address")
-                .populate("patientId", "fullName email")
-                .populate("hospitalId", "name");
+                .populate("doctorId", "fullName email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metadata.doctorData.morningSession metaData.doctorData.eveningSession")
+                .populate("patientId", "fullName email ")
+                .populate("hospitalId", "name emergencyContactNo");
 
             // Format the date field
             const formattedAppointments = appointments.map((appointment) => {
@@ -482,10 +411,13 @@ class AppointmentController {
             // Apply date-based filters
             if (filter === "today") {
                 filters.date = { $gte: today, $lt: tomorrow };
+                filters.status = { $ne: "canceled" };
             } else if (filter === "upcoming") {
                 filters.date = { $gt: today };
+                filters.status = { $ne: "canceled" };
             } else if (filter === "previous") {
                 filters.date = { $lt: today };
+                filters.status = { $ne: "canceled" };
             } else if (filter === "cancel") {
                 filters.status = "canceled";
             }
@@ -521,7 +453,7 @@ class AppointmentController {
                 .skip(paginationSkip)
                 .limit(paginationLimit)
                 .sort({ date: 1 }) // Sort by date (ascending)
-                .populate("doctorId", "fullName email profilePicture phone age gender address")
+                .populate("doctorId", "fullName email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metadata.doctorData.morningSession metaData.doctorData.eveningSession")
                 .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
 
@@ -620,78 +552,89 @@ class AppointmentController {
     }
 
     async editAppointment(req, res) {
-    try {
-        const { id } = req.params;
-        const {
-            doctorId,
-            patientId,
-            date,
-            appointmentTime,
-            patient_issue,
-            dieseas_name,
-            city,
-            state,
-            country,
-            status // Capture the status from the request body
-        } = req.body;
-
-        // Ensure the appointment exists
-        const appointment = await Appointment.findById(id);
-        if (!appointment) {
-            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
-        }
-
-        // Role-based permission check
-        if (req.user.role !== "receptionist" && (doctorId || patientId)) {
-            return ResponseService.send(
-                res,
-                StatusCodes.FORBIDDEN,
-                "You do not have permission to update sensitive fields like doctorId or patientId.",
-                0
-            );
-        }
-
-        // Conflict check only if doctorId, patientId, date, or appointmentTime are being updated
-        if (doctorId || patientId || date || appointmentTime) {
-            const conflictQuery = {
-                $or: [
-                    { doctorId: doctorId || appointment.doctorId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime },
-                    { patientId: patientId || appointment.patientId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime }
-                ],
-                _id: { $ne: id } // Exclude the current appointment
-            };
-
-            const conflict = await Appointment.findOne(conflictQuery);
-            if (conflict) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Another appointment already exists at the given time.", 0);
+        try {
+            const { id } = req.params;
+            const {
+                doctorId,
+                patientId,
+                date,
+                appointmentTime,
+                patient_issue,
+                dieseas_name,
+                city,
+                state,
+                country,
+                status
+            } = req.body;
+    
+            // Ensure the appointment exists
+            const appointment = await Appointment.findById(id);
+            if (!appointment) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
             }
+    
+            // Role-based permission check
+            if (req.user.role !== "receptionist" && (doctorId || patientId)) {
+                return ResponseService.send(
+                    res,
+                    StatusCodes.FORBIDDEN,
+                    "You do not have permission to update sensitive fields like doctorId or patientId.",
+                    0
+                );
+            }
+    
+            // Conflict check
+            if (doctorId || patientId || date || appointmentTime) {
+                const conflictQuery = {
+                    $or: [
+                        { doctorId: doctorId || appointment.doctorId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime },
+                        { patientId: patientId || appointment.patientId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime }
+                    ],
+                    _id: { $ne: id }
+                };
+    
+                const conflict = await Appointment.findOne(conflictQuery);
+                if (conflict) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Another appointment already exists at the given time.", 0);
+                }
+            }
+    
+            // Check if the new status is valid
+            const allowedStatuses = ["scheduled", "canceled", "pending", "completed", "checkin", "checkout"];
+            if (status && !allowedStatuses.includes(status)) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, `Invalid status. Allowed statuses are: ${allowedStatuses.join(", ")}.`, 0);
+            }
+    
+            // Create update object with only the fields that are provided
+            const updateData = {};
+            if (doctorId) updateData.doctorId = doctorId;
+            if (patientId) updateData.patientId = patientId;
+            if (date) updateData.date = date;
+            if (appointmentTime) updateData.appointmentTime = appointmentTime;
+            if (patient_issue !== undefined) updateData.patient_issue = patient_issue;
+            if (dieseas_name !== undefined) updateData.dieseas_name = dieseas_name;
+            if (city !== undefined) updateData.city = city;
+            if (state !== undefined) updateData.state = state;
+            if (country !== undefined) updateData.country = country;
+            if (status) updateData.status = status;
+    
+            // Use findByIdAndUpdate to ensure the update is persisted
+            const updatedAppointment = await Appointment.findByIdAndUpdate(
+                id,
+                { $set: updateData },
+                { new: true, runValidators: true }
+            );
+    
+            if (!updatedAppointment) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update appointment.", 0);
+            }
+    
+            return ResponseService.send(res, StatusCodes.OK, "Appointment updated successfully", 1, { appointment: updatedAppointment });
+        } catch (error) {
+            console.error('Error updating appointment:', error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
-
-        // Check if the new status is valid
-        const allowedStatuses = ["scheduled", "canceled", "pending", "completed", "checkin", "checkout"];
-        if (status && !allowedStatuses.includes(status)) {
-            return ResponseService.send(res, StatusCodes.BAD_REQUEST, `Invalid status. Allowed statuses are: ${allowedStatuses.join(", ")}.`, 0);
-        }
-
-        // Update the appointment data if provided
-        if (doctorId) appointment.doctorId = doctorId;
-        if (patientId) appointment.patientId = patientId;
-        if (date) appointment.date = date;
-        if (appointmentTime) appointment.appointmentTime = appointmentTime;
-        if (patient_issue !== undefined) appointment.patient_issue = patient_issue;
-        if (dieseas_name !== undefined) appointment.dieseas_name = dieseas_name;
-        if (city !== undefined) appointment.city = city;
-        if (state !== undefined) appointment.state = state;
-        if (country !== undefined) appointment.country = country;
-        if (status) appointment.status = status; // Update the status if provided
-
-        await appointment.save();
-
-        return ResponseService.send(res, StatusCodes.OK, "Appointment updated successfully", 1, { appointment });
-    } catch (error) {
-        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
-}
 
 
 
@@ -777,110 +720,112 @@ class AppointmentController {
         }
     }
 
-    // async getDoctorSession(req, res) {
-    //     try {
-    //         const { doctorId } = req.params;
-    //         const { date } = req.query;
-    //         const targetDate = date || moment().format("YYYY-MM-DD");
-    
-    //         const doctor = await User.findById(doctorId);
-    //         if (!doctor) {
-    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
-    //         }
-    
-    //         const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
-    //         if (!morning || !evening || !timeduration) {
-    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
-    //         }
-    
-    //         const parseSession = (sessionString) => {
-    //             const [start, end] = sessionString.split(" to ");
-    //             return { start, end };
-    //         };
-    
-    //         const morningSession = parseSession(morning);
-    //         const eveningSession = parseSession(evening);
-    
-    //         const generateSlots = (session, duration) => {
-    //             const slots = [];
-    //             let startTime = moment(session.start, "HH:mm");
-    //             const endTime = moment(session.end, "HH:mm");
-    
-    //             while (startTime < endTime) {
-    //                 const slotEndTime = moment(startTime).add(duration, "minutes");
-    //                 slots.push({
-    //                     start: startTime.format("HH:mm"),
-    //                     end: slotEndTime.format("HH:mm"),
-    //                     available: true
-    //                 });
-    //                 startTime = slotEndTime;
-    //             }
-    
-    //             return slots;
-    //         };
-    
-    //         const morningSlots = generateSlots(morningSession, timeduration);
-    //         const eveningSlots = generateSlots(eveningSession, timeduration);
-    
-    //         const startOfDay = moment(targetDate).startOf("day").toISOString();
-    //         const endOfDay = moment(targetDate).endOf("day").toISOString();
-    
-    //         const appointments = await Appointment.find({
-    //             doctorId,
-    //             date: { $gte: startOfDay, $lt: endOfDay }
-    //         });
-    
-    //         // Query the Holiday model to check if the date is a holiday
-    //         const holidays = await holidaymodel.find({
-    //             userId: doctorId, // Query holidays for this doctor
-    //             date: { $gte: startOfDay, $lt: endOfDay }
-    //         });
-    
-    //         const checkAvailability = (slots, appointments, holidays) => {
-    //             slots.forEach(slot => {
-    //                 // Check if the slot overlaps with any appointment
-    //                 appointments.forEach(appointment => {
-    //                     if (
-    //                         moment(appointment.appointmentTime, "HH:mm").isBetween(
-    //                             moment(slot.start, "HH:mm"),
-    //                             moment(slot.end, "HH:mm"),
-    //                             null,
-    //                             "[)"
-    //                         )
-    //                     ) {
-    //                         slot.available = false;
-    //                     }
-    //                 });
-    
-    //                 // Check if the slot is on a holiday and update availability accordingly
-    //                 holidays.forEach(holiday => {
-    //                     if (holiday.date.toISOString() === moment(targetDate).toISOString()) {
-    //                         if (holiday.session === "morning" && slot.start < morningSession.end) {
-    //                             slot.available = false;  // Block morning session
-    //                         } else if (holiday.session === "evening" && slot.start >= eveningSession.start) {
-    //                             slot.available = false;  // Block evening session
-    //                         } else if (holiday.session === "full_day") {
-    //                             slot.available = false;  // Block both morning and evening for full day holiday
-    //                         }
-    //                     }
-    //                 });
-    //             });
-    //         };
-    
-    //         // Check availability for both morning and evening slots
-    //         checkAvailability(morningSlots, appointments, holidays);
-    //         checkAvailability(eveningSlots, appointments, holidays);
-    
-    //         const data = {
-    //             morningSlots,
-    //             eveningSlots
-    //         };
-    
-    //         return ResponseService.send(res, StatusCodes.OK, 'Data fetched successfully', 1, data);
-    //     } catch (error) {
-    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-    //     }
-    // }
+
+
+    async getDoctorSession(req, res) {
+    try {
+        const { doctorId } = req.params;
+        const { date } = req.query;
+        const targetDate = date || moment().format("YYYY-MM-DD");
+
+        const doctor = await User.findById(doctorId);
+        if (!doctor) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
+        }
+
+        const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
+        if (!morning || !evening || !timeduration) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
+        }
+
+        const parseSession = (sessionString) => {
+            const [start, end] = sessionString.split(" to ");
+            return { start, end };
+        };
+
+        const morningSession = parseSession(morning);
+        const eveningSession = parseSession(evening);
+
+        const generateSlots = (session, duration) => {
+            const slots = [];
+            let startTime = moment(session.start, "HH:mm");
+            const endTime = moment(session.end, "HH:mm");
+
+            while (startTime < endTime) {
+                const slotEndTime = moment(startTime).add(duration, "minutes");
+                slots.push({
+                    start: startTime.format("HH:mm"),
+                    end: slotEndTime.format("HH:mm"),
+                    available: true
+                });
+                startTime = slotEndTime;
+            }
+
+            return slots;
+        };
+
+        const morningSlots = generateSlots(morningSession, timeduration);
+        const eveningSlots = generateSlots(eveningSession, timeduration);
+
+        const startOfDay = moment(targetDate).startOf("day").toISOString();
+        const endOfDay = moment(targetDate).endOf("day").toISOString();
+
+        const appointments = await Appointment.find({
+            doctorId,
+            date: { $gte: startOfDay, $lt: endOfDay }
+        });
+
+        const holidays = await Holiday.findOne({
+            userId: doctorId,
+            date: targetDate
+        });
+
+        const checkAvailability = (slots, appointments) => {
+            slots.forEach(slot => {
+                appointments.forEach(appointment => {
+                    if (
+                        moment(appointment.appointmentTime, "HH:mm").isBetween(
+                            moment(slot.start, "HH:mm"),
+                            moment(slot.end, "HH:mm"),
+                            null,
+                            "[)"
+                        )
+                    ) {
+                        slot.available = false;
+                    }
+                });
+            });
+        };
+
+        const applyHolidayFilter = (morningSlots, eveningSlots, holiday) => {
+            if (!holiday) return;
+
+            if (holiday.session === "morning") {
+                morningSlots.forEach(slot => slot.available = false);
+            } else if (holiday.session === "evening") {
+                eveningSlots.forEach(slot => slot.available = false);
+            } else if (holiday.session === "full_day") {
+                morningSlots.forEach(slot => slot.available = false);
+                eveningSlots.forEach(slot => slot.available = false);
+            }
+        };
+
+        checkAvailability(morningSlots, appointments);
+        checkAvailability(eveningSlots, appointments);
+
+        applyHolidayFilter(morningSlots, eveningSlots, holidays);
+
+        const data = {
+            morningSlots,
+            eveningSlots
+        };
+
+        return ResponseService.send(res, StatusCodes.OK, 'Data fetched successfully', 1, data);
+    } catch (error) {
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+    }
+}
+
     
 
     async getAppointmentsWithoutBills(req, res) {
@@ -1119,7 +1064,9 @@ class AppointmentController {
             });
         }
 
-    }
+    }   
+
+    
 
 }
 

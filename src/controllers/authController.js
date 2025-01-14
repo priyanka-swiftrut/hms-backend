@@ -149,47 +149,50 @@ class AuthController {
     }
 
     async changePassword(req, res) {
-
         try {
             const userId = req.user.id; // Get user ID from req.user
             const { currentPassword, newPassword, confirmPassword } = req.body;
-
+    
+            if (!userId) {
+                return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
+            }
+    
             // Validate input
             if (!currentPassword || !newPassword || !confirmPassword) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "All fields are required", 0);
             }
-
+    
             if (newPassword !== confirmPassword) {
-
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "New password and confirm password must match", 0);
             }
-
-            // Fetch user from database
+    
+            // Fetch user from the database
             const user = await User.findById(userId);
             if (!user) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "User not found", 0);
             }
-
+    
             // Check if currentPassword matches the stored password
             const isMatch = await bcrypt.compare(currentPassword, user.password);
             if (!isMatch) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Old password is incorrect", 0);
             }
-
+    
             // Hash the new password
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-            // Update the user's password
+    
+            // Update the user's password with limited validation
             user.password = hashedPassword;
-            await user.save();
+            await user.save({ validateModifiedOnly: true }); // Save only modified fields
+    
             return ResponseService.send(res, StatusCodes.OK, "Password changed successfully", 1);
         } catch (error) {
             console.error(error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again later.", 0);
         }
-
     }
+    
 }
 
 export default AuthController;

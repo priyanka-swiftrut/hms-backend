@@ -6,6 +6,7 @@ import PrescriptionController from "../controllers/PrescriptionController.js";
 import PatientController from "../controllers/patientController.js";
 import AuthController from "../controllers/authController.js";
 import HolidayController from "../controllers/holidayController.js";
+import AppointmentRecoedsController from "../controllers/appointmentRecoedsController.js";
 const router = express.Router();
 const doctorController = new DoctorController();
 const appointmentController = new AppointmentController();
@@ -13,6 +14,7 @@ const prescriptionController = new PrescriptionController();
 const patientController = new PatientController();
 const authController = new AuthController();
 const holidayController = new HolidayController();
+const appointmentRecoedsController = new AppointmentRecoedsController();
 // No Authorization Apis
 
 // Authorization Apis
@@ -56,5 +58,16 @@ router.post("/createHoliday", holidayController.createHoliday.bind(holidayContro
 router.get("/getholidays", holidayController.getHolidays.bind(holidayController));
 router.put("/updateholiday/:holidayId", holidayController.updateHoliday.bind(holidayController));
 router.delete("/deleteholiday", holidayController.deleteHoliday.bind(holidayController));
+
+
+//appointmentRecord
+
+router.post('/appointments/:appointmentId/records',upload.array('appointmentRecord', 10), appointmentRecoedsController.createAppointmentRecord.bind(appointmentRecoedsController) );// Handle up to 10 images
+router.get('/appointments/:appointmentId/records', appointmentRecoedsController.getAppointmentRecord.bind(appointmentRecoedsController));
+// router.get('/appointments/:appointmentId/records/:recordId', appointmentRecoedsController.getAppointmentRecord.bind(appointmentRecoedsController));
+router.put('/appointments/:appointmentId/records/:recordId', upload.fields([{ name: 'appointmentRecord', maxCount: 1 }]), appointmentRecoedsController.editAppointmentRecord.bind(appointmentRecoedsController));
+router.delete('/appointments/:appointmentId/records/:recordId/images/:imageUrl', appointmentRecoedsController.deleteImage.bind(appointmentRecoedsController));
+
+
 
 export default router;

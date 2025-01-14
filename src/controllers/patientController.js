@@ -89,6 +89,9 @@ class PatientController {
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
+            if(req.body.firstName && req.body.lastName){
+                req.body.fullName = req.body.firstName + " " + req.body.lastName;
+            }
             if (req.files) {
                 if (req.files?.profilePicture?.[0]?.path) {
                     if (patient.profilePicture && patient.profilePicture !== "") {

@@ -22,6 +22,12 @@ class PrescriptionController {
         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
       }
 
+      const prescriptiondata = await Prescription.findOne({appointmentId:appointmentId});
+
+      if(!prescriptiondata){
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "you already creted prescription", 0);
+      }
+
       // Validate medications
       if (!medications || medications.length === 0) {
         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Medications are required.", 0);
@@ -59,6 +65,45 @@ class PrescriptionController {
       );
     } catch (error) {
       console.error("Error creating prescription:", error.message);
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", "error");
+    }
+  }
+
+  async editPrescription(req, res) {
+    try {
+      const { prescriptionId } = req.params;
+      const { medications, instructions, date, status } = req.body;
+
+      // Validate prescription ID
+      if (!prescriptionId) {
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Prescription ID is required.", 0);
+      }
+
+      // Fetch the prescription
+      const prescription = await Prescription.findById(prescriptionId);
+      if (!prescription) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Prescription not found.", 0);
+      }
+
+      // Update fields if provided in the request body
+      if (medications) prescription.medications = medications;
+      if (instructions) prescription.instructions = instructions;
+      if (date) prescription.date = date;
+      if (status) prescription.status = status;
+
+      // Save updated prescription
+      await prescription.save();
+
+      // Send success response
+      return ResponseService.send(
+        res,
+        StatusCodes.OK,
+        "Prescription updated successfully.",
+        1,
+        { prescription }
+      );
+    } catch (error) {
+      console.error("Error updating prescription:", error.message);
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", "error");
     }
   }
@@ -326,10 +371,14 @@ class PrescriptionController {
         };
       });
   
-      if (!prescriptions.length) {
-        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0 , []);
+      if (dateFilter == "today" &&  !prescriptions.length) {
+        return ResponseService.send(res, StatusCodes.OK, "No prescriptions found.", 0 ,[]);
       }
-  
+      
+      if ( !prescriptions.length) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0 );
+      }
+
       return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, prescriptions);
     } catch (error) {
       console.error("Error fetching prescriptions:", error);
@@ -337,44 +386,7 @@ class PrescriptionController {
     }
   }
   
-  async editPrescription(req, res) {
-    try {
-      const { prescriptionId } = req.params;
-      const { medications, instructions, date, status } = req.body;
-
-      // Validate prescription ID
-      if (!prescriptionId) {
-        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Prescription ID is required.", 0);
-      }
-
-      // Fetch the prescription
-      const prescription = await Prescription.findById(prescriptionId);
-      if (!prescription) {
-        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Prescription not found.", 0);
-      }
-
-      // Update fields if provided in the request body
-      if (medications) prescription.medications = medications;
-      if (instructions) prescription.instructions = instructions;
-      if (date) prescription.date = date;
-      if (status) prescription.status = status;
-
-      // Save updated prescription
-      await prescription.save();
-
-      // Send success response
-      return ResponseService.send(
-        res,
-        StatusCodes.OK,
-        "Prescription updated successfully.",
-        1,
-        { prescription }
-      );
-    } catch (error) {
-      console.error("Error updating prescription:", error.message);
-      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", "error");
-    }
-  }
+  
 
   async getpatientdetails(req, res) {
     try {

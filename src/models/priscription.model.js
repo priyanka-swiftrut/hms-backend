@@ -53,7 +53,7 @@ const prescriptionSchema = new mongoose.Schema(
     ],
     instructions: {
       type: String,
-      trim: true,
+      trim: true, 
     },
     date: {
       type: Date,

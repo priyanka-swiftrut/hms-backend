@@ -25,6 +25,9 @@ class DoctorController {
             }
 
             // Handle profile picture update
+            if(req.body.firstName && req.body.lastName){
+                req.body.fullName = req.body.firstName + " " + req.body.lastName;
+            }
             if (req.files?.profilePicture?.[0]?.path) {
                 if (doctor.profilePicture && doctor.profilePicture !== "") {
                     const publicId = doctor.profilePicture.split("/").pop().split(".")[0];
