@@ -23,7 +23,7 @@ class PrescriptionController {
 
       const prescriptiondata = await Prescription.findOne({appointmentId:appointmentId});
 
-      if(!prescriptiondata){
+      if(prescriptiondata){
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "you already creted prescription", 0);
       }
 
