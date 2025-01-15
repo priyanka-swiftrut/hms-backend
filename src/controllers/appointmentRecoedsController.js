@@ -11,8 +11,7 @@ class AppointmentRecordController {
         try {
             const { appointmentId } = req.params;
             const { description } = req.body;
-            console.log();
-            
+
             if (!appointmentId) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
             }
@@ -27,15 +26,13 @@ class AppointmentRecordController {
             }
 
             let appointment = await appointmentmodel.findOne({ _id: appointmentId });
-            console.log(appointment);
 
             if (!appointment) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment not found.", 0);
             }
 
             const existingRecord = await AppointmentRecord.findOne({ appointmentId });
-            console.log(existingRecord);
-            
+
             if (existingRecord) {
                 return ResponseService.send(res, StatusCodes.CONFLICT, "Appointment record already exists.", 0);
             }
@@ -63,48 +60,38 @@ class AppointmentRecordController {
     // Edit Appointment Record
     async editAppointmentRecord(req, res) {
         try {
-            const { appointmentId, recordId } = req.params; // Extract appointmentId and recordId from params
+            const { recordId } = req.params;
             const { description, existingImages } = req.body;
-    
-            const record = await AppointmentRecord.findById(recordId); // Find the record by recordId
+
+            const record = await AppointmentRecord.findById(recordId);
             if (!record) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
             }
-    
-            // Update description if provided
+
             if (description) {
                 record.description = description;
             }
-            
-            
 
-            // If images are to be updated:
             const newImages = req.files ? req.files.map(file => file.path) : [];
-    
-            // If there are new images, replace the existing ones:
+
             if (newImages.length > 0) {
-                // Delete old images if applicable (you can integrate Cloudinary deletion here if using it for image storage)
-                // Example: assuming you have a function deleteImages() that deletes images from Cloudinary or the file system:
                 if (record.images.length > 0) {
-                    await deleteImages(record.images); // Remove old images before saving new ones
+                    await deleteImages(record.images);
                 }
-                // Replace with new images
                 record.images = newImages;
+
             } else if (existingImages && existingImages.length > 0) {
-                // If there are no new images, keep the existing images provided in the request
                 record.images = existingImages;
             }
-    
-            // Save the updated record
+
             await record.save();
-    
+
             return ResponseService.send(res, StatusCodes.OK, "Appointment record updated successfully.", 1, record);
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
-    // Delete Image from Record
     async deleteImage(req, res) {
         try {
             const { appointmentId } = req.params;
@@ -119,8 +106,7 @@ class AppointmentRecordController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Image not found in the record.", 0);
             }
 
-            // Remove image from Cloudinary
-            const publicId = imageUrl.split('/').pop().split('.')[0]; // Extract public_id from URL
+            const publicId = imageUrl.split('/').pop().split('.')[0]; 
             await cloudinary.uploader.destroy(publicId);
 
             // Remove image from the record
@@ -163,4 +149,4 @@ class AppointmentRecordController {
     }
 }
 
-export default  AppointmentRecordController;
+export default AppointmentRecordController;
