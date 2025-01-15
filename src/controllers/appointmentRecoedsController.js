@@ -114,7 +114,7 @@ class AppointmentRecordController {
         }
     }
 
-    async deleteImage(req, res) {
+    async deleteImages(req, res) {
         try {
             const { appointmentId } = req.params;
             const { imageUrl } = req.body;
