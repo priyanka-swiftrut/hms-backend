@@ -22,9 +22,9 @@ class PrescriptionController {
         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
       }
 
-      const prescriptiondata = await Prescription.findOne({appointmentId:appointmentId});
+      const prescriptiondata = await Prescription.findOne({appointmentId:appointmentId}); 
 
-      if(!prescriptiondata){
+      if(prescriptiondata){
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "you already creted prescription", 0);
       }
 
@@ -490,6 +490,7 @@ class PrescriptionController {
       const appointmentQuery = {
         hospitalId,
         _id: { $nin: prescriptionAppointmentIds },
+        status: { $ne: "canceled" },
         ...dateFilter, // Apply the date filter if provided
       };
   
@@ -499,6 +500,8 @@ class PrescriptionController {
       }
   
       // Step 3: Find appointments not referenced in prescriptions
+      console.log(appointmentQuery, "appointmentquery");
+      
       const appointmentsWithoutPrescriptions = await Appointment.find(appointmentQuery)
         .populate("patientId doctorId", "fullName email gender age ");
       res.status(200).json({
