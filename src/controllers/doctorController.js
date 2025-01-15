@@ -13,21 +13,23 @@ class DoctorController {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-
+    
             // Determine the user ID based on the role
             const userId = req.user.role === "admin" ? req.params.id : req.user._id;
-
+    
             // Find the user (doctor) by the determined ID
             const doctor = await User.findById(userId);
             if (!doctor) {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found", 0);
             }
-
-            // Handle profile picture update
-            if(req.body.firstName && req.body.lastName){
-                req.body.fullName = req.body.firstName + " " + req.body.lastName;
+    
+            // Handle fullName if firstName and lastName are provided
+            if (req.body.firstName && req.body.lastName) {
+                req.body.fullName = `${req.body.firstName} ${req.body.lastName}`;
             }
+    
+            // Handle profile picture update
             if (req.files?.profilePicture?.[0]?.path) {
                 if (doctor.profilePicture && doctor.profilePicture !== "") {
                     const publicId = doctor.profilePicture.split("/").pop().split(".")[0];
@@ -35,18 +37,42 @@ class DoctorController {
                 }
                 req.body.profilePicture = req.files.profilePicture[0].path;
             }
-
+    
+            // Restructure address fields
+            if (req.body.country || req.body.state || req.body.city || req.body.zipCode || req.body.fullAddress) {
+                req.body.address = {
+                    country: req.body.country || doctor.address?.country,
+                    state: req.body.state || doctor.address?.state,
+                    city: req.body.city || doctor.address?.city,
+                    zipCode: req.body.zipCode || doctor.address?.zipCode,
+                    fullAddress: req.body.fullAddress || doctor.address?.fullAddress,
+                };
+            }
+    
+            // Restructure doctorData (metaData)
+            if (req.body.hospitalName || req.body.specialization || req.body.qualification || req.body.experience) {
+                req.body.metaData = {
+                    ...doctor.metaData, // Keep existing metaData
+                    doctorData: {
+                        ...doctor.metaData?.doctorData, // Keep existing doctorData
+                        hospitalName: req.body.hospitalName || doctor.metaData?.doctorData?.hospitalName,
+                        specialization: req.body.specialization || doctor.metaData?.doctorData?.specialization,
+                        qualification: req.body.qualification || doctor.metaData?.doctorData?.qualification,
+                        experience: req.body.experience || doctor.metaData?.doctorData?.experience,
+                    },
+                };
+            }
+    
             // Update the doctor profile
             const updatedDoctor = await User.findByIdAndUpdate(userId, req.body, { new: true });
             if (updatedDoctor) {
                 await sendNotification({
                     type: 'EDIT profile',
-                    message: `You profile is updated`,
+                    message: `Your profile has been updated successfully.`,
                     hospitalId: doctor.hospitalId,
                     targetUsers: doctor.id,
                 });
                 return ResponseService.send(res, StatusCodes.OK, "Doctor profile updated successfully", 1, updatedDoctor);
-
             } else {
                 await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update doctor profile", 0);
@@ -56,6 +82,7 @@ class DoctorController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
 
     async getdoctor(req, res) {
         try { 

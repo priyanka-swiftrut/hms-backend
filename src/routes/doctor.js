@@ -18,8 +18,8 @@ const appointmentRecoedsController = new AppointmentRecoedsController();
 // No Authorization Apis
 
 // Authorization Apis
-router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
-router.put("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
+router.post("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
+router.put("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), doctorController.EditProfile.bind(doctorController)); 
 router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
 router.post("/changePassword", authController.changePassword.bind(authController));
 router.patch("/changePassword", authController.changePassword.bind(authController));

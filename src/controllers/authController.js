@@ -53,6 +53,8 @@ class AuthController {
             }
     
             // Generate JWT token based on the user role
+            console.log(user, "users");
+            
             const secret = user.role === 'admin' ? process.env.JWT_SECRET_ADMIN
                 : user.role === 'doctor' ? process.env.JWT_SECRET_DOCTOR
                     : user.role === 'patient' ? process.env.JWT_SECRET_PATIENT

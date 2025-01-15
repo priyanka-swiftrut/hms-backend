@@ -5,6 +5,7 @@ import Hospital from '../models/Hospital.model.js';
 import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
+import cloudinary from '../config/cloudinaryConfig.js';
 
 
 class PatientController {
@@ -75,13 +76,14 @@ class PatientController {
 
     async EditProfile(req, res) {
         try {
+            // Check if the request body is empty
             if (!req.body || Object.keys(req.body).length === 0) {
                 if (req.files?.profilePicture?.[0]?.path) {
                     await this.deleteImage(req.files?.profilePicture?.[0]?.path);
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-
+    
             const patient = await User.findById(req.user._id);
             if (!patient) {
                 if (req.files?.profilePicture?.[0]?.path) {
@@ -89,18 +91,49 @@ class PatientController {
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
-            if(req.body.firstName && req.body.lastName){
-                req.body.fullName = req.body.firstName + " " + req.body.lastName;
+    
+            // Handle fullName if firstName and lastName are provided
+            if (req.body.firstName && req.body.lastName) {
+                req.body.fullName = `${req.body.firstName} ${req.body.lastName}`;
             }
-            if (req.files) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    if (patient.profilePicture && patient.profilePicture !== "") {
-                        const publicId = patient.profilePicture.split("/").pop().split(".")[0];
-                        await cloudinary.uploader.destroy(`profileImages/${publicId}`);
-                    }
-                    req.body.profilePicture = req.files.profilePicture[0].path;
+    
+            // Handle profilePicture upload and deletion
+            if (req.files?.profilePicture?.[0]?.path) {
+                if (patient.profilePicture && patient.profilePicture !== "") {
+                    const publicId = patient.profilePicture.split("/").pop().split(".")[0];
+                    await cloudinary.uploader.destroy(`profileImages/${publicId}`);
                 }
+                req.body.profilePicture = req.files.profilePicture[0].path;
             }
+    
+            // Restructure address fields
+            if (req.body.country || req.body.state || req.body.city || req.body.zipCode || req.body.fullAddress) {
+                req.body.address = {
+                    country: req.body.country || patient.address?.country,
+                    state: req.body.state || patient.address?.state,
+                    city: req.body.city || patient.address?.city,
+                    zipCode: req.body.zipCode || patient.address?.zipCode,
+                    fullAddress: req.body.fullAddress || patient.address?.fullAddress,
+                };
+            }
+    
+            // Restructure patientData (metaData)
+            if (req.body.height || req.body.weight || req.body.bloodGroup || req.body.dob || req.body.phoneCode || req.body.termsAccepted) {
+                req.body.metaData = {
+                    ...patient.metaData, // Keep existing metaData
+                    patientData: {
+                        ...patient.metaData?.patientData, // Keep existing patientData
+                        height: req.body.height || patient.metaData?.patientData?.height,
+                        weight: req.body.weight || patient.metaData?.patientData?.weight,
+                        bloodGroup: req.body.bloodGroup || patient.metaData?.patientData?.bloodGroup,
+                        dob: req.body.dob || patient.metaData?.patientData?.dob,
+                        phoneCode: req.body.phoneCode || patient.metaData?.patientData?.phoneCode,
+                        termsAccepted: req.body.termsAccepted !== undefined ? req.body.termsAccepted : patient.metaData?.patientData?.termsAccepted,
+                    },
+                };
+            }
+    
+            // Update the patient document
             const updatedPatient = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
             if (updatedPatient) {
                 return ResponseService.send(res, StatusCodes.OK, "Patient profile updated successfully", 1, updatedPatient);
@@ -112,13 +145,12 @@ class PatientController {
             }
         } catch (error) {
             if (req.files?.profilePicture?.[0]?.path) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
-                }
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
             }
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
         }
     }
+    
 
     async deleteProfile(req, res) {
         try {
