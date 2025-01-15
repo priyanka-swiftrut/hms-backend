@@ -12,6 +12,7 @@ class AppointmentRecordController {
             const { appointmentId } = req.params;
             const { description } = req.body;
 
+
             if (!appointmentId) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
             }
@@ -25,12 +26,14 @@ class AppointmentRecordController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
 
-            const appointment = await appointmentmodel.findOne({ _id: appointmentId });
+            let appointment = await appointmentmodel.findOne({ _id: appointmentId });
+
             if (!appointment) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment not found.", 0);
             }
 
             const existingRecord = await AppointmentRecord.findOne({ appointmentId });
+
             if (existingRecord) {
                 return ResponseService.send(res, StatusCodes.CONFLICT, "Appointment record already exists.", 0);
             }
@@ -73,26 +76,33 @@ class AppointmentRecordController {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
             }
 
-            // Update description
             if (description) {
                 record.description = description;
             }
 
             // Handle images
+
             const newImages = req.files ? req.files.map(file => file.path) : [];
             imagePaths.push(...newImages); // Track newly uploaded images
+
 
             if (newImages.length > 0) {
                 // Delete old images from Cloudinary
                 if (record.images.length > 0) {
                     await this.deleteImage(record.images);
+                    await deleteImages(record.images);
                 }
                 record.images = newImages; // Replace with new images
+                record.images = newImages;
+
             } else if (existingImages && existingImages.length > 0) {
                 record.images = existingImages; // Keep existing images
+                record.images = existingImages;
             }
 
+
             await record.save();
+
 
             return ResponseService.send(res, StatusCodes.OK, "Appointment record updated successfully.", 1, record);
         } catch (error) {
@@ -104,7 +114,6 @@ class AppointmentRecordController {
         }
     }
 
-    // Delete Image from Record
     async deleteImages(req, res) {
         try {
             const { appointmentId } = req.params;
@@ -119,8 +128,7 @@ class AppointmentRecordController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Image not found in the record.", 0);
             }
 
-            // Remove image from Cloudinary
-            const publicId = imageUrl.split('/').pop().split('.')[0]; // Extract public_id from URL
+            const publicId = imageUrl.split('/').pop().split('.')[0]; 
             await cloudinary.uploader.destroy(publicId);
 
             // Remove image from the record
