@@ -18,8 +18,8 @@ const patientController = new PatientController();
 const authController = new AuthController();
 
 
-router.post("/editAdmin", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.EditProfile.bind(adminController));
-router.put("/editAdmin", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.EditProfile.bind(adminController));
+router.post("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.EditProfile.bind(adminController));
+router.put("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), adminController.EditProfile.bind(adminController));
 router.delete("/delete/:id", adminController.deleteProfile.bind(adminController));
 router.get("/getAdmin", adminController.getAdmin.bind(adminController));
 router.post("/changePassword", authController.changePassword.bind(authController));
