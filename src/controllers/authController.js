@@ -14,31 +14,61 @@ class AuthController {
             if (!req.body || Object.keys(req.body).length === 0) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-            let user = await User.findOne({ email: req.body.email });
-
-            if (!user) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found", 0);
-            }
-            let match = await bcrypt.compare(req.body.password, user.password);
-            if (match) {
-                const secret = user.role === 'admin' ? process.env.JWT_SECRET_ADMIN
-                    : user.role === 'doctor' ? process.env.JWT_SECRET_DOCTOR
-                        : user.role === 'patient' ? process.env.JWT_SECRET_PATIENT
-                            : process.env.JWT_SECRET_RECEPTIONIST;
-                if (!secret) {
-                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "JWT secret is not defined", 0);
+    
+            const { email, phoneNumber, password, otp } = req.body;
+    
+            let user;
+            if (email) {
+                // Find user by email
+                user = await User.findOne({ email });
+                if (!user) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found", 0);
                 }
-                console.log(user, "users");
-                
-                let token = await jwt.sign(
-                    { userData: user },
-                    secret,
-                    { expiresIn: "1d" }
-                );
-                return res.status(StatusCodes.OK).json({ message: "You're Logged In Successfully 🎉", status: 1, data: token, role: user.role, });
+    
+                // Check password
+                const match = await bcrypt.compare(password, user.password);
+                if (!match) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid Password", 0);
+                }
+            } else if (phoneNumber) {
+                // Find user by phone number
+                user = await User.findOne({ phoneNumber });
+                if (!user) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found", 0);
+                }
+    
+                if (!otp) {
+                    // Send OTP if not provided
+                    const response = await sendOtp(phoneNumber);
+                    return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully", 1, { sid: response.sid });
+                } else {
+                    // Verify OTP if provided
+                    const verifyResponse = await verifyOtp(phoneNumber, otp);
+                    if (verifyResponse.status !== "approved") {
+                        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
+                    }
+                }
             } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid Password", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email or Phone number is required", 0);
             }
+    
+            // Generate JWT token based on the user role
+            const secret = user.role === 'admin' ? process.env.JWT_SECRET_ADMIN
+                : user.role === 'doctor' ? process.env.JWT_SECRET_DOCTOR
+                    : user.role === 'patient' ? process.env.JWT_SECRET_PATIENT
+                        : process.env.JWT_SECRET_RECEPTIONIST;
+    
+            if (!secret) {
+                return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "JWT secret is not defined", 0);
+            }
+    
+            const token = jwt.sign({ userData: user }, secret, { expiresIn: "1d" });
+            return res.status(StatusCodes.OK).json({
+                message: "You're Logged In Successfully 🎉",
+                status: 1,
+                data: token,
+                role: user.role,
+            });
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
