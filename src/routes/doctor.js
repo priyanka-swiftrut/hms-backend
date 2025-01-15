@@ -62,11 +62,10 @@ router.delete("/deleteholiday", holidayController.deleteHoliday.bind(holidayCont
 
 //appointmentRecord
 
-router.post('/appointments/:appointmentId/records',upload.array('appointmentRecord', 10), appointmentRecoedsController.createAppointmentRecord.bind(appointmentRecoedsController) );// Handle up to 10 images
+router.post('/appointments/:appointmentId/records',upload.array('appointmentRecord', 10), appointmentRecoedsController.createAppointmentRecord.bind(appointmentRecoedsController) );
 router.get('/appointments/:appointmentId/records', appointmentRecoedsController.getAppointmentRecord.bind(appointmentRecoedsController));
-// router.get('/appointments/:appointmentId/records/:recordId', appointmentRecoedsController.getAppointmentRecord.bind(appointmentRecoedsController));
 router.put('/appointments/:appointmentId/records/:recordId', upload.fields([{ name: 'appointmentRecord', maxCount: 1 }]), appointmentRecoedsController.editAppointmentRecord.bind(appointmentRecoedsController));
-router.delete('/appointments/:appointmentId/records/:recordId/images/:imageUrl', appointmentRecoedsController.deleteImage.bind(appointmentRecoedsController));
+router.delete('/appointments/:appointmentId/records/:recordId/images/:imageUrl', appointmentRecoedsController.deleteImages.bind(appointmentRecoedsController));
 
 
 

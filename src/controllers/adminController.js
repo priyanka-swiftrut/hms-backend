@@ -660,7 +660,7 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
             }
 
-            else if (req.user.role === "patient" || req.user.role === "receptionist") {
+            else if (req.user.role === "patient" ) {
                 try {
                     const { patientId: queryPatientId } = req.query; // Get patientId from query
                     const isReceptionist = req.user.role === "receptionist";

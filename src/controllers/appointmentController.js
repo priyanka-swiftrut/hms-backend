@@ -240,7 +240,7 @@ class AppointmentController {
                 .skip(paginationSkip)
                 .limit(paginationLimit)
                 .sort({ date: 1 }) // Sort by date (ascending)
-                .populate("doctorId", "fullName email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metadata.doctorData.morningSession metaData.doctorData.eveningSession")
+                .populate("doctorId", "fullName profilePicture email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metaData.doctorData.morningSession metaData.doctorData.eveningSession metaData.doctorData.emergencyContactNo")
                 .populate("patientId", "fullName email ")
                 .populate("hospitalId", "name emergencyContactNo");
 

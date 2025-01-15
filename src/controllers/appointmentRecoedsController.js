@@ -26,7 +26,6 @@ class AppointmentRecordController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
 
-            const appointment = await appointmentmodel.findOne({ _id: appointmentId });
             let appointment = await appointmentmodel.findOne({ _id: appointmentId });
 
             if (!appointment) {
@@ -70,10 +69,7 @@ class AppointmentRecordController {
         const imagePaths = [];
         try {
             const { recordId } = req.params;
-            const { recordId } = req.params;
             const { description, existingImages } = req.body;
-
-            const record = await AppointmentRecord.findById(recordId);
 
             const record = await AppointmentRecord.findById(recordId);
             if (!record) {
@@ -118,8 +114,6 @@ class AppointmentRecordController {
         }
     }
 
-    // Delete Image from Record
-    async deleteImages(req, res) {
     async deleteImage(req, res) {
         try {
             const { appointmentId } = req.params;
@@ -177,7 +171,5 @@ class AppointmentRecordController {
         }
     }
 }
-
-export default AppointmentRecordController;
 
 export default AppointmentRecordController;
