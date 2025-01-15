@@ -19,8 +19,8 @@ const billController = new BillController();
 // No Authorization Apis
 
 // Authorization Apis
-router.post("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.EditProfile.bind(patientController));      
-router.put("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.EditProfile.bind(patientController));      
+router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.EditProfile.bind(patientController));      
+router.put("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), patientController.EditProfile.bind(patientController));      
 // router.delete("/delete/:id", patientController.deleteProfile.bind(patientController));
 router.get("/getpatients", patientController.getPatients.bind(patientController));
 router.get("/getSinglepatients", patientController.getPatients.bind(patientController));
