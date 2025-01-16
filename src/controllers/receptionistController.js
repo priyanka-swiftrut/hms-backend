@@ -268,66 +268,54 @@ class ReceptionistController {
     async getpatientdetailforreception(req, res) {
         try {
             const hospitalId = req.user.hospitalId; // Assuming hospitalId is passed from req.user
-            const { search } = req.query; // Changed the query parameter to 'search'
-        
+            const { search } = req.query; // Query parameter to search by patient name
+    
             if (!hospitalId) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
-        
-            const matchQuery = {
-                hospitalId: new mongoose.Types.ObjectId(hospitalId),
+    
+            // Fetch patients directly from the User model
+            let query = {
+                role: "patient",
+                isActive: true,
             };
-        
-            const patients = await appointmentModel.aggregate([
-                {
-                    $match: matchQuery, // Match the hospital ID
-                },
-                {
-                    $group: {
-                        _id: "$patientId", // Group by patientId to avoid duplication
-                        latestAppointment: { $last: "$$ROOT" }, // Get the latest appointment for each patient
-                    },
-                },
-                {
-                    $lookup: {
-                        from: "users", // Name of the User collection in MongoDB
-                        localField: "_id",
-                        foreignField: "_id",
-                        as: "patientDetails",
-                    },
-                },
-                {
-                    $unwind: "$patientDetails", // Flatten the patientDetails array
-                },
-                {
-                    $match: {
-                        "patientDetails.fullName": {
-                            $regex: `^${search}`, // Matches names starting with the specified search string
-                            $options: "i", // Case-insensitive matching
-                        },
-                    },
-                },
-                {
-                    $project: {
-                        patientId: "$_id",
-                        patientName: "$patientDetails.fullName",
-                        patientEmail: "$patientDetails.email",
-                        patientNumber: "$patientDetails.phone",
-                        patientGender : "$patientDetails.gender",
-                        patientAge : "$patientDetails.age",
-                        latestAppointmentDate: "$latestAppointment.date",
-                        latestAppointmentStatus: "$latestAppointment.status",
-                    },
-                },
-            ]);
-        
-            if (patients.length > 0) {
-                return ResponseService.send(res, StatusCodes.OK, "Unique patients fetched successfully", 1, patients);
+    
+            // Add search condition if provided
+            if (search) {
+                query.fullName = { $regex: `^${search}`, $options: "i" }; // Case-insensitive search for patient names
+            }
+    
+            // Fetch patients and sort them by latest (e.g., based on `createdAt`)
+            const patients = await User.find(query).sort({ createdAt: -1 });
+    
+            // Map the results to the desired format
+            const response = patients.map((patient) => ({
+                patientId: patient._id,
+                patientName: patient.fullName,
+                patientEmail: patient.email,
+                patientNumber: patient.phone,
+                patientGender: patient.gender,
+                patientAge: patient.age,
+            }));
+    
+            if (response.length > 0) {
+                return ResponseService.send(
+                    res,
+                    StatusCodes.OK,
+                    "Unique patients fetched successfully",
+                    1,
+                    response
+                );
             } else {
                 return ResponseService.send(res, StatusCodes.OK, "No patients found", 1, []);
             }
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
+            return ResponseService.send(
+                res,
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                error.message,
+                "error"
+            );
         }
     }
     
