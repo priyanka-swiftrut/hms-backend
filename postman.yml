@@ -1,0 +1,1673 @@
+openapi: 3.0.0
+info:
+  title: HMS
+  version: 1.0.0
+servers:
+  - url: https://hms-backend-1-jyts.onrender.com
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+tags:
+  - name: Hospital
+  - name: Admin Pannel
+  - name: Admin Pannel > Admin Profile
+  - name: Admin Pannel > deshboard
+  - name: Admin Pannel > Receptionist manegment
+  - name: Admin Pannel > Doctor Manegement
+  - name: Admin Pannel > Patient manegment
+  - name: Admin Pannel > Billing manegment
+  - name: Admin Pannel > searching apis
+  - name: Doctor pannel
+  - name: Doctor pannel > Doctor Profile
+  - name: Doctor pannel > appointment manegment
+  - name: Doctor pannel > patient Records
+  - name: Doctor pannel > Prescription manegment
+  - name: Doctor pannel > Prescription manegment > create prescription
+  - name: Doctor pannel > Prescription manegment > manage prescription
+  - name: Doctor pannel > teleconsulation
+  - name: Doctor pannel > chat manegment
+  - name: Doctor pannel > Holiday
+  - name: Doctor pannel > media folder
+  - name: Patient Pannel
+  - name: Patient Pannel > crud of patient
+  - name: Patient Pannel > patient profile
+  - name: Patient Pannel > patient deshboard
+  - name: Patient Pannel > appointment manegment
+  - name: Patient Pannel > appointment manegment > Time durations for appointment
+  - name: Patient Pannel > priscription
+  - name: Patient Pannel > teleconsulation
+  - name: Patient Pannel > bills manegment
+  - name: Patient Pannel > chat manegment
+  - name: Receptionist Pannel
+  - name: Receptionist Pannel > receptionist profile
+  - name: Receptionist Pannel > Patient Manegment
+  - name: Receptionist Pannel > appointment manegment
+  - name: Receptionist Pannel > appointment manegment > patient for appointment
+  - name: Receptionist Pannel > prescription manegment
+  - name: Receptionist Pannel > bill monitoring
+  - name: forget-password
+paths:
+  /api/hospital/createHospital:
+    post:
+      tags:
+        - Hospital
+      summary: create
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: asdf
+                address:
+                  type: string
+                  example: street Highway
+                country:
+                  type: string
+                  example: India
+                state:
+                  type: string
+                  example: Gujarat
+                city:
+                  type: string
+                  example: Surat
+                zipcode:
+                  type: integer
+                  example: '94180'
+                emergencyContactNo:
+                  type: integer
+                  example: '9639639639'
+                worksiteLink:
+                  type: string
+                hospitalLogo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/hospital/getHospitals:
+    get:
+      tags:
+        - Hospital
+      summary: get Hospital
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/registerAdmin:
+    post:
+      tags:
+        - Admin Pannel > Admin Profile
+      summary: register admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                firstName: Dhairy
+                lastName: Dobariya
+                email: dhairydobaryia@gmail.com
+                phone: '+918511623428'
+                gender: Male
+                hospitalId: 6769c5ec75bbb26de321988a
+                age: 30
+                address:
+                  country: INDIA
+                  state: Gujarat
+                  city: Surat
+                  zipCode: '394180'
+                  fullAddress: 123 Main St, Los Angeles, CA 90001
+                password: dhairy@123
+                confirmPassword: dhairy@123
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/editAdmin:
+    post:
+      tags:
+        - Admin Pannel > Admin Profile
+      summary: editAdmin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                firstName: dhairy
+                lastName: dobariya
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getAdmin:
+    get:
+      tags:
+        - Admin Pannel > Admin Profile
+      summary: get admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/changePassword:
+    post:
+      tags:
+        - Admin Pannel > Admin Profile
+      summary: change password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                oldPassword: '1234567'
+                newPassword: '123456'
+                confirmPassword: '123456'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getPaginatedAppointments:
+    get:
+      tags:
+        - Admin Pannel > deshboard
+      summary: today appointment
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getDashboardData:
+    get:
+      tags:
+        - Admin Pannel > deshboard
+      summary: getDashboardData
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/reportandanalysis:
+    get:
+      tags:
+        - Admin Pannel > deshboard
+      summary: reportandanalysis
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getbillbystatus:
+    get:
+      tags:
+        - Admin Pannel > deshboard
+      summary: Unpaid Bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          example: Unpaid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/createReceptionist:
+    post:
+      tags:
+        - Admin Pannel > Receptionist manegment
+      summary: create receptionist
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: trupesh
+                lastName:
+                  type: string
+                  example: savaliya
+                email:
+                  type: string
+                  example: 12e2@yopmail.com
+                phone:
+                  type: number
+                  example: '+917781994250'
+                age:
+                  type: integer
+                  example: '30'
+                gender:
+                  type: string
+                  example: Male
+                country:
+                  type: string
+                  example: INDIA
+                state:
+                  type: string
+                  example: Gujarat
+                city:
+                  type: string
+                  example: Surat
+                zipCode:
+                  type: integer
+                  example: '394185'
+                fullAddress:
+                  type: string
+                  example: street Road 1 way
+                qualification:
+                  type: string
+                  example: bcom
+                emergencyContactNo:
+                  type: number
+                  example: '+914564562371'
+                workingTime:
+                  type: integer
+                  example: '10'
+                breakTime:
+                  type: integer
+                  example: '12'
+                profilePicture:
+                  type: string
+                  format: binary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/deleteReceptionist/676b08e6e2f1743ffb293498:
+    delete:
+      tags:
+        - Admin Pannel > Receptionist manegment
+      summary: Delete Receptionist
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getReceptionist:
+    get:
+      tags:
+        - Admin Pannel > Receptionist manegment
+      summary: getReceptionist
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/editReceptionist/id:
+    get:
+      tags:
+        - Admin Pannel > Receptionist manegment
+      summary: edit receptionist
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/createDoctor:
+    post:
+      tags:
+        - Admin Pannel > Doctor Manegement
+      summary: create doctor
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: mohit
+                lastName:
+                  type: string
+                  example: dudhat
+                email:
+                  type: string
+                  example: temp@gmail.com
+                phone:
+                  type: number
+                  example: '+914586239872'
+                age:
+                  type: integer
+                  example: '25'
+                gender:
+                  type: string
+                  example: Male
+                country:
+                  type: string
+                  example: INDIA
+                state:
+                  type: string
+                  example: Gujarat
+                city:
+                  type: string
+                  example: Surat
+                zipCode:
+                  type: integer
+                  example: '418090'
+                fullAddress:
+                  type: string
+                  example: street base city
+                qualification:
+                  type: string
+                  example: M.B.B.S
+                speciality:
+                  type: string
+                  example: phijiyo
+                morningSession:
+                  type: string
+                  example: 10:00 to 12:00
+                eveningSession:
+                  type: string
+                  example: 5:00 to 8:00
+                duration:
+                  type: integer
+                  example: '14'
+                experience:
+                  type: integer
+                  example: '15'
+                description:
+                  type: string
+                  example: none
+                onlineConsultationRate:
+                  type: integer
+                  example: '2500'
+                worksiteLink:
+                  type: string
+                  example: https://www.npmjs.com/package/crypto-js
+                emergencyContactNo:
+                  type: number
+                  example: '+918528528528'
+                profilePicture:
+                  type: string
+                  format: binary
+                signature:
+                  type: string
+                  format: binary
+                workOn:
+                  type: string
+                  example: Both
+                consultationRate:
+                  type: integer
+                  example: '2500'
+                hospitalName:
+                  type: string
+                  example: human plant
+                hospitalAddress:
+                  type: string
+                  example: 343 stret road
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/editDoctor/id:
+    post:
+      tags:
+        - Admin Pannel > Doctor Manegement
+      summary: edit doctor
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                name: ''
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/deleteDoctor/:
+    delete:
+      tags:
+        - Admin Pannel > Doctor Manegement
+      summary: Delete Doctor
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getDoctor:
+    get:
+      tags:
+        - Admin Pannel > Doctor Manegement
+      summary: get one doctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          example: 6770443dceabc6c708235256
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getAppointment:
+    get:
+      tags:
+        - Admin Pannel > Patient manegment
+      summary: get canceld appointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+          example: cancel
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getpatientfromappointment/6770536bdb689d0244a27a3a:
+    get:
+      tags:
+        - Admin Pannel > Patient manegment
+      summary: patient data for box
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/createBill:
+    post:
+      tags:
+        - Admin Pannel > Billing manegment
+      summary: Create bill
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                appointmentId: 6775c358bdecaa90b9961b4d
+                discount: 10
+                tax: 5
+                paymentType: Insurance
+                description:
+                  - key: Lab Testasdfsadf   Fee
+                    value: 200
+                  - key: Consultationsdfsf Fee
+                    value: 300
+                insuranceDetails:
+                  insuranceCompany: HealthCare Insurance Inc.
+                  insurancePlan: Premium
+                  claimAmount: 800
+                  claimedAmount: 700
+                notes: This is a test asdf
+                status: true
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/editBill/67731c996e45c588ea82bda6:
+    post:
+      tags:
+        - Admin Pannel > Billing manegment
+      summary: edit bill
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                notes: not any perticular
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getBill:
+    get:
+      tags:
+        - Admin Pannel > Billing manegment
+      summary: get single bill
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: integer
+          example: '1005'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getBillsMonitor:
+    get:
+      tags:
+        - Admin Pannel > Billing manegment
+      summary: getBillsMonitor Online
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+          example: Cash
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getAppointment/withoutbill:
+    get:
+      tags:
+        - Admin Pannel > Billing manegment
+      summary: appointment without bill
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/getDoctorPatientData:
+    get:
+      tags:
+        - Admin Pannel > Billing manegment
+      summary: Get Doctor & Patient Data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/admin/searchData:
+    get:
+      tags:
+        - Admin Pannel > searching apis
+      summary: searching api
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+          example: t
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/editUser:
+    post:
+      tags:
+        - Doctor pannel > Doctor Profile
+      summary: edit doctor
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                age: 32
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/getDoctor:
+    get:
+      tags:
+        - Doctor pannel > Doctor Profile
+      summary: getDoctor
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/changePassword:
+    post:
+      tags:
+        - Doctor pannel > Doctor Profile
+      summary: change password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                oldPassword: '1234567'
+                newPassword: '123456'
+                confirmPassword: '123456'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/editAppointment:
+    get:
+      tags:
+        - Doctor pannel > appointment manegment
+      summary: get appointment
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - Doctor pannel > appointment manegment
+      summary: editAppointment
+      requestBody:
+        content: {}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/getAppointment:
+    get:
+      tags:
+        - Doctor pannel > Prescription manegment > create prescription
+      summary: date wise appointment
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+          example: '2025-01-04'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/getPatientRecord:
+    get:
+      tags:
+        - Doctor pannel > patient Records
+      summary: appointment for day
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+          example: week
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/getsinglepatientrecord/677047f308067157dc712f80:
+    get:
+      tags:
+        - Doctor pannel > patient Records
+      summary: getsinglepatientrecord
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/createPrescription/6770536bdb689d0244a27a3a:
+    post:
+      tags:
+        - Doctor pannel > Prescription manegment > create prescription
+      summary: create prescription
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                medications:
+                  - medicineName: Paracetamol
+                    strength: 500mg
+                    dose: 1 tablet
+                    duration: 5 days
+                    whenToTake: After meals
+                  - medicineName: Amoxicillin
+                    strength: 250mg
+                    dose: 1 capsule
+                    duration: 7 days
+                    whenToTake: Before meals
+                instructions: Take plenty of water and rest.
+                date: '2024-12-27'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/edit:
+    post:
+      tags:
+        - Doctor pannel > Prescription manegment > create prescription
+      summary: edit prescription
+      requestBody:
+        content: {}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/getPrescription:
+    get:
+      tags:
+        - Doctor pannel > Prescription manegment > manage prescription
+      summary: prescription start end date
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+          example: '2025-01-01'
+        - name: endDate
+          in: query
+          schema:
+            type: string
+          example: '2025-01-05'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/getpatientdetails:
+    get:
+      tags:
+        - Doctor pannel > Prescription manegment > manage prescription
+      summary: today patient on prescription
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFilter
+          in: query
+          schema:
+            type: string
+          example: today
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/getAppointmentsTeleconcsultation:
+    get:
+      tags:
+        - Patient Pannel > teleconsulation
+      summary: appointment specific date
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: specificDate
+          in: query
+          schema:
+            type: string
+          example: '2025-01-05'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/editAppointment/:
+    post:
+      tags:
+        - Doctor pannel > teleconsulation
+      summary: reschedual appointment
+      requestBody:
+        content: {}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/chatcontect:
+    get:
+      tags:
+        - Doctor pannel > chat manegment
+      summary: chat contect
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/createHoliday:
+    post:
+      tags:
+        - Doctor pannel > Holiday
+      summary: create holidays
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                date: '2025-01-15'
+                session: morning
+                reason: Family function
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/updateholiday/67857dc42a6ca7740d6f8875:
+    put:
+      tags:
+        - Doctor pannel > Holiday
+      summary: updateholiday
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                date: '2025-01-20'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/doctor/appointments/6780309cd5dccd45a50e4a5a/records:
+    post:
+      tags:
+        - Doctor pannel > media folder
+      summary: add records Copy
+      requestBody:
+        content: {}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/registerPatient:
+    post:
+      tags:
+        - Patient Pannel > crud of patient
+      summary: create  patient
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                firstName: Priyanka
+                lastName: Dudhat
+                email: priyanka@yopmail.com
+                phone: '+914587854587'
+                age: 28
+                height: 175
+                weight: 70
+                gender: Male
+                bloodGroup: A+
+                dob: '1995-01-01'
+                country: INDIA
+                state: Gujarat
+                city: Surat
+                zipCode: '90001'
+                fullAddress: 123 Street, Downtown
+                password: '123456'
+                confirmPassword: '123456'
+                hospitalId: ''
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/delete:
+    delete:
+      tags:
+        - Patient Pannel > crud of patient
+      summary: delete patient
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/editUser:
+    post:
+      tags:
+        - Patient Pannel > patient profile
+      summary: edit patient
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                age: 26
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getpatients:
+    get:
+      tags:
+        - Patient Pannel > patient profile
+      summary: get patients
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          example: 6769e7d7aab3c6bcc465e7ed
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/changePassword:
+    get:
+      tags:
+        - Patient Pannel > patient profile
+      summary: change password
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getDashboardData:
+    get:
+      tags:
+        - Patient Pannel > patient deshboard
+      summary: deshboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getPrescription:
+    get:
+      tags:
+        - Patient Pannel > priscription
+      summary: single prescription
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: prescriptionId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getDoctorSession/676b2338088303549f3e13be:
+    get:
+      tags:
+        - >-
+          Patient Pannel > appointment manegment > Time durations for
+          appointment
+      summary: doctor sesion
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+          example: '2024-12-27'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getAppointment:
+    get:
+      tags:
+        - Patient Pannel > appointment manegment
+      summary: get appointment
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getDoctor:
+    get:
+      tags:
+        - Patient Pannel > appointment manegment
+      summary: get doctor box
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/searchAppointmentdata:
+    get:
+      tags:
+        - Patient Pannel > appointment manegment
+      summary: searching api for appointment Copy
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: string
+          example: India
+        - name: state
+          in: query
+          schema:
+            type: string
+          example: Gujarat
+        - name: city
+          in: query
+          schema:
+            type: string
+          example: Surat
+        - name: hospitalName
+          in: query
+          schema:
+            type: string
+          example: City%20Hospital
+        - name: speciality
+          in: query
+          schema:
+            type: string
+          example: cardio
+        - name: doctor
+          in: query
+          schema:
+            type: string
+          example: Trupesh Savaliya
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/pateint/createAppointment:
+    post:
+      tags:
+        - Patient Pannel > appointment manegment
+      summary: create appointment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                doctorId: 676b2338088303549f3e13be
+                date: '2024-01-01T10:00:00.000Z'
+                appointmentTime: 10:00 AM
+                type: in-person
+                patient_issue: Severe headache and nausea
+                dieseas_name: Migraine
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/editAppointment/67744fd01f1da21fd5094949:
+    post:
+      tags:
+        - Patient Pannel > appointment manegment
+      summary: editAppointment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                status: canceled
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/searchAppointment:
+    get:
+      tags:
+        - Patient Pannel > appointment manegment
+      summary: searching api for appointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: string
+          example: India
+        - name: state
+          in: query
+          schema:
+            type: string
+          example: Gujarat
+        - name: city
+          in: query
+          schema:
+            type: string
+          example: Surat
+        - name: hospitalName
+          in: query
+          schema:
+            type: string
+          example: City%20Hospital
+        - name: speciality
+          in: query
+          schema:
+            type: string
+          example: cardio
+        - name: doctor
+          in: query
+          schema:
+            type: string
+          example: Trupesh Savaliya
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getAppointmentsTeleconcsultation:
+    get:
+      tags:
+        - Patient Pannel > teleconsulation
+      summary: start and end date appointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+          example: '2025-01-04'
+        - name: endDate
+          in: query
+          schema:
+            type: string
+          example: '2025-01-05'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/editAppointment/:
+    post:
+      tags:
+        - Patient Pannel > teleconsulation
+      summary: reschedual appointment
+      requestBody:
+        content: {}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getpatientfromappointment/6770536bdb689d0244a27a3a:
+    get:
+      tags:
+        - Patient Pannel > teleconsulation
+      summary: appointment box
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getBillsforPatient:
+    get:
+      tags:
+        - Patient Pannel > bills manegment
+      summary: unpaid bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          example: unpaid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/getsinglebill:
+    get:
+      tags:
+        - Patient Pannel > bills manegment
+      summary: get single bill
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/patient/chatcontect:
+    get:
+      tags:
+        - Patient Pannel > chat manegment
+      summary: chat contect
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/changePassword:
+    post:
+      tags:
+        - Receptionist Pannel > receptionist profile
+      summary: change password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                oldPassword: '1234567'
+                newPassword: '123456'
+                confirmPassword: '123456'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/editUser:
+    post:
+      tags:
+        - Receptionist Pannel > receptionist profile
+      summary: edit receptionist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                age: '50'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getDashboardData:
+    get:
+      tags:
+        - Receptionist Pannel > Patient Manegment
+      summary: patient deshboard
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: query
+          schema:
+            type: string
+          example: 677047f308067157dc712f80
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/createPatient:
+    post:
+      tags:
+        - Receptionist Pannel > Patient Manegment
+      summary: Add patient
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                firstName: might
+                lastName: dulex
+                email: might@gmail.com
+                phone: '+917485254789'
+                age: 28
+                height: 175
+                weight: 70
+                gender: Male
+                bloodGroup: A+
+                dob: '1995-01-01'
+                country: INDIA
+                state: Gujarat
+                city: Surat
+                zipCode: '90001'
+                fullAddress: 123 Street, Downtown
+                password: '123456'
+                confirmPassword: '123456'
+                hospitalId: ''
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getallpatient:
+    get:
+      tags:
+        - Receptionist Pannel > Patient Manegment
+      summary: search patient
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          example: priyanka@yopmail.com
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getPatientRecord:
+    get:
+      tags:
+        - Receptionist Pannel > Patient Manegment
+      summary: patientdetail
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getAppointment:
+    get:
+      tags:
+        - Receptionist Pannel > appointment manegment
+      summary: get canceld appointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+          example: cancel
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getpatientfromappointment/6770536bdb689d0244a27a3a:
+    get:
+      tags:
+        - Receptionist Pannel > appointment manegment
+      summary: patient data for box
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/createAppointment:
+    post:
+      tags:
+        - Receptionist Pannel > appointment manegment
+      summary: create appointment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                patientId: 677047f308067157dc712f80
+                doctorId: 6770443dceabc6c708235256
+                date: '2025-01-06'
+                appointmentTime: 08:00 AM
+                type: online
+                patient_issue: Headache
+                dieseas_name: Migraine
+                city: Los Angeles
+                state: CA
+                country: USA
+                paymentType: Cash
+                insuranceDetails:
+                  insuranceCompany: ABC Health
+                  insurancePlan: Premium
+                  claimAmount: 1000
+                  claimedAmount: 800
+                paymentStatus: true
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/editAppointment:
+    post:
+      tags:
+        - Receptionist Pannel > appointment manegment
+      summary: edit appointment
+      requestBody:
+        content: {}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getPatient:
+    get:
+      tags:
+        - Receptionist Pannel > appointment manegment
+      summary: getPatientfor appointment
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/searchAppointment:
+    get:
+      tags:
+        - Receptionist Pannel > appointment manegment
+      summary: find doctor for appointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: speciality
+          in: query
+          schema:
+            type: string
+          example: cardio
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getappointmentforprescription:
+    get:
+      tags:
+        - Receptionist Pannel > prescription manegment
+      summary: get appointment date wise
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+          example: '2025-01-07'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/receptionist/getBillsMonitor:
+    get:
+      tags:
+        - Receptionist Pannel > bill monitoring
+      summary: bills monitoring
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/forgot-password:
+    post:
+      tags:
+        - forget-password
+      summary: forgot-password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: dishant@yopmail.com
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/verify-otp:
+    post:
+      tags:
+        - forget-password
+      summary: verify otp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                otp: '878516'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/reset-password:
+    post:
+      tags:
+        - forget-password
+      summary: reset-password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: mohit@yopmail.com
+                password: '123456'
+                confirmPassword: '123456'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/login:
+    post:
+      tags:
+        - default
+      summary: Login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: dishan3t@yopmail.com
+                password: '123456'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/searchdata:
+    get:
+      tags:
+        - default
+      summary: New Request
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}

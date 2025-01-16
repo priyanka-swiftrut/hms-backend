@@ -13,9 +13,12 @@ import socketInstance from "./src/socket/socketInstance.js";
 import notificationSocket from "./src/socket/notificationSocket.js";
 import socketRoutes from "./src/routes/chat.js";
 import http from "http";
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
 
 dotenv.config();
   
+const swaggerDocument = YAML.load('./postman.yml');
 const app = express();
 
 const server = http.createServer(app);  
@@ -43,6 +46,7 @@ connectDB();
 
 app.use("/api",API );
 app.use("/chat", socketRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 const port = process.env.PORT || 5000;
 
