@@ -73,20 +73,75 @@ class AuthController {
         }
     }
 
+    async LoginWithPhone(req, res) {
+        try {
+            const { phone, otp } = req.body;
+            if (!phone) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Phone number is required", 0);
+            }
+    
+            // Check if the user exists with the given phone number
+            const user = await User.findOne({ phone });
+            if (!user) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found", 0);
+            }
+    
+            if (!otp) {
+                // Send OTP if not provided
+                const response = await sendOtp(phone);
+                return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully", 1, { sid: response.sid });
+            } else {
+                // Verify OTP if provided
+                const verifyResponse = await verifyOtp(phone, otp);
+                if (verifyResponse.status === "approved") {
+                    const secret = user.role === 'admin' ? process.env.JWT_SECRET_ADMIN
+                        : user.role === 'doctor' ? process.env.JWT_SECRET_DOCTOR
+                            : user.role === 'patient' ? process.env.JWT_SECRET_PATIENT
+                                : process.env.JWT_SECRET_RECEPTIONIST;
+    
+                    const token = jwt.sign({ userData: user }, secret, { expiresIn: "1d" });
+                    return res.status(StatusCodes.OK).json({ message: "Login successful", status: 1, data: token, role: user.role });
+                } else {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
+                }
+            }
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+        }
+    }
+    
+
     async ForgotPassword(req, res) {
         try {
-            if (!req.body.email) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email is Required", 0);
+            const { email, phone } = req.body;
+    
+            if (!email && !phone) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email or Phone Number is required", 0);
             }
-            const checkmail = await User.findOne({ email: req.body.email });
-            if (!checkmail) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email is Incorrect", 0);
+    
+            let user;
+            if (email) {
+                user = await User.findOne({ email });
+                if (!user) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email not found", 0);
+                }
+            } else if (phone) {
+                user = await User.findOne({ phone });
+                if (!user) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Phone number not found", 0);
+                }
+    
+                // Generate OTP and send via SMS
+                const response = await sendOtp(phone);
+                return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully", 1, { sid: response.sid });
             }
+    
+            // Email flow remains the same
             const otp = Math.floor(100000 + Math.random() * 900000);
             res.cookie("otp", otp, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
             this.OTP = otp;
-            res.cookie("email", checkmail.email);
-
+            res.cookie("email", user.email);
+    
             const transporter = nodemailer.createTransport({
                 host: "smtp.gmail.com",
                 port: 465,
@@ -96,21 +151,22 @@ class AuthController {
                     pass: process.env.PASSWORD,
                 },
             });
-
+    
             await transporter.sendMail({
                 from: process.env.EMAIL,
-                to: checkmail.email,
+                to: user.email,
                 subject: "Forgot Password OTP ✔",
-                text: `Hello ${checkmail.name}`,
+                text: `Hello ${user.name}`,
                 html: `<p>Your OTP is ${otp}</p>`,
             });
-
+    
             return ResponseService.send(res, StatusCodes.OK, "OTP Sent Successfully", 1);
         } catch (error) {
             console.error(error.message);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);
         }
     }
+    
 
     async ResetPassword(req, res) {
         try {
