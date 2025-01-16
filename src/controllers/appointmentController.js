@@ -175,35 +175,138 @@ class AppointmentController {
         }
     }
 
+    // async getAppointments(req, res) {
+    //     try {
+    //         // Validate user ID
+    //         if (!req.user.id) {
+    //             return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
+    //         }
+
+    //         const { filter, date, startDate, endDate, page = 1, limit = 1500 } = req.query;
+    //         const paginationLimit = parseInt(limit, 1500);
+    //         const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
+
+    //         const filters = {};
+    //         const today = new Date();
+    //         today.setHours(0, 0, 0, 0); // Start of the day
+    //         const tomorrow = new Date(today);
+    //         tomorrow.setDate(today.getDate() + 1);
+
+    //         // Apply role-based filters
+    //         if (req.user.role === "doctor") {
+    //             filters.doctorId = req.user.id;
+    //         } else if (req.user.role === "patient") {
+    //             filters.patientId = req.user.id;
+    //         } else {
+    //             // For non-patient roles, include hospitalId if available
+    //             if (req.user.hospitalId) {
+    //                 filters.hospitalId = req.user.hospitalId;
+    //             }
+    //         }
+
+    //         // Apply date-based filters
+    //         if (startDate && endDate) {
+    //             const start = new Date(startDate);
+    //             const end = new Date(endDate);
+    //             end.setHours(23, 59, 59, 999); // Include the end date's entire day
+    //             if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    //                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", 0);
+    //             }
+    //             filters.date = { $gte: start, $lte: end };
+    //         } else if (date) {
+    //             const selectedDate = new Date(date);
+    //             selectedDate.setHours(0, 0, 0, 0);
+    //             const nextDay = new Date(selectedDate);
+    //             nextDay.setDate(selectedDate.getDate() + 1);
+    //             filters.date = { $gte: selectedDate, $lt: nextDay };
+    //         } else if (filter === "today") {
+    //             filters.date = { $gte: today, $lt: tomorrow };
+    //             filters.status = { $ne: "canceled" };
+    //         } else if (filter === "upcoming") {
+    //             filters.date = { $gt: today };
+    //             filters.status = { $ne: "canceled" };
+    //         } else if (filter === "previous") {
+    //             filters.date = { $lt: today };
+    //             filters.status = { $ne: "canceled" };
+    //         }
+
+    //         // Apply status filter for canceled appointments
+    //         if (filter === "cancel") {
+    //             filters.status = "canceled";
+    //         }
+
+    //         // Fetch appointments with pagination
+    //         const appointments = await Appointment.find(filters)
+    //             .skip(paginationSkip)
+    //             .limit(paginationLimit)
+    //             .sort({ date: 1 }) // Sort by date (ascending)
+    //             .populate("doctorId", "fullName profilePicture email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metaData.doctorData.morningSession metaData.doctorData.eveningSession metaData.doctorData.emergencyContactNo")
+    //             .populate("patientId", "fullName email ")
+    //             .populate("hospitalId", "name emergencyContactNo");
+
+    //         // Format the date field
+    //         const formattedAppointments = appointments.map((appointment) => {
+    //             const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
+    //                 day: "numeric",
+    //                 month: "short",
+    //                 year: "numeric",
+    //             });
+    //             return {
+    //                 ...appointment.toObject(),
+    //                 date: formattedDate,
+    //             };
+    //         });
+
+    //         const totalAppointments = await Appointment.countDocuments(filters);
+
+    //         return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
+    //             appointments: formattedAppointments,
+    //             pagination: {
+    //                 total: totalAppointments,
+    //                 page: parseInt(page, 10),
+    //                 limit: paginationLimit,
+    //                 totalPages: Math.ceil(totalAppointments / paginationLimit),
+    //             },
+    //         });
+    //     } catch (error) {
+    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+    //     }
+    // }    
+
     async getAppointments(req, res) {
         try {
             // Validate user ID
             if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
-
-            const { filter, date, startDate, endDate, page = 1, limit = 15 } = req.query;
-            const paginationLimit = parseInt(limit, 10);
+    
+            const { filter, date, startDate, endDate, page = 1, limit = 1500, patientId } = req.query;
+            const paginationLimit = parseInt(limit, 1500);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
-
+    
             const filters = {};
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of the day
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
-
+    
             // Apply role-based filters
             if (req.user.role === "doctor") {
                 filters.doctorId = req.user.id;
             } else if (req.user.role === "patient") {
                 filters.patientId = req.user.id;
             } else {
+                // For admin and receptionist (default roles)
+                if (patientId) {
+                    // If patientId is provided, filter by patientId
+                    filters.patientId = patientId;
+                }
                 // For non-patient roles, include hospitalId if available
                 if (req.user.hospitalId) {
                     filters.hospitalId = req.user.hospitalId;
                 }
             }
-
+    
             // Apply date-based filters
             if (startDate && endDate) {
                 const start = new Date(startDate);
@@ -229,12 +332,12 @@ class AppointmentController {
                 filters.date = { $lt: today };
                 filters.status = { $ne: "canceled" };
             }
-
+    
             // Apply status filter for canceled appointments
             if (filter === "cancel") {
                 filters.status = "canceled";
             }
-
+    
             // Fetch appointments with pagination
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
@@ -243,7 +346,7 @@ class AppointmentController {
                 .populate("doctorId", "fullName profilePicture email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metaData.doctorData.morningSession metaData.doctorData.eveningSession metaData.doctorData.emergencyContactNo")
                 .populate("patientId", "fullName email ")
                 .populate("hospitalId", "name emergencyContactNo");
-
+    
             // Format the date field
             const formattedAppointments = appointments.map((appointment) => {
                 const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
@@ -256,9 +359,9 @@ class AppointmentController {
                     date: formattedDate,
                 };
             });
-
+    
             const totalAppointments = await Appointment.countDocuments(filters);
-
+    
             return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
                 appointments: formattedAppointments,
                 pagination: {
@@ -272,6 +375,7 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
 
     async getAppointmentsTeleconsultation(req, res) {
         try {
@@ -280,8 +384,8 @@ class AppointmentController {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
 
-            const { filter, page = 1, limit = 15, type, specificDate, startDate, endDate } = req.query;
-            const paginationLimit = parseInt(limit, 10);
+            const { filter, page = 1, limit = 1500, type, specificDate, startDate, endDate } = req.query;
+            const paginationLimit = parseInt(limit, 1500);
             const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
 
             const filters = {};

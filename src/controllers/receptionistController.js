@@ -108,7 +108,9 @@ class ReceptionistController {
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist not found", 0);
             }
-    
+            if (req.body.firstName && req.body.lastName) {
+                req.body.fullName = req.body.firstName + " " + req.body.lastName;
+            }
             // Handle profile picture update
             if (req.files?.profilePicture?.[0]?.path) {
                 if (receptionist.profilePicture && receptionist.profilePicture !== "") {
@@ -118,12 +120,23 @@ class ReceptionistController {
                 req.body.profilePicture = req.files.profilePicture[0].path;
             }
     
+            // Restructure address fields
+            if (req.body.country || req.body.state || req.body.city || req.body.zipCode || req.body.fullAddress) {
+                req.body.address = {
+                    country: req.body.country || receptionist.address?.country,
+                    state: req.body.state || receptionist.address?.state,
+                    city: req.body.city || receptionist.address?.city,
+                    zipCode: req.body.zipCode || receptionist.address?.zipCode,
+                    fullAddress: req.body.fullAddress || receptionist.address?.fullAddress,
+                };
+            }
+    
             // Update the receptionist profile
             const updatedReceptionist = await User.findByIdAndUpdate(userId, req.body, { new: true });
     
             if (updatedReceptionist) {
                 // Generate a new token
-                const token = jwt.sign({ userData: updatedReceptionist }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
+                const token = jwt.sign({ userData: updatedReceptionist }, process.env.JWT_SECRET_RECEPTIONIST, { expiresIn: "1d" });
     
                 // Prepare response payload
                 const responseData = {
