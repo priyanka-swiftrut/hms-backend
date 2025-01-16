@@ -6,6 +6,8 @@ import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
 import cloudinary from '../config/cloudinaryConfig.js';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 
 class PatientController {
@@ -136,7 +138,13 @@ class PatientController {
             // Update the patient document
             const updatedPatient = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
             if (updatedPatient) {
-                return ResponseService.send(res, StatusCodes.OK, "Patient profile updated successfully", 1, updatedPatient);
+                // Generate the JWT token
+                const token = jwt.sign({ userData: updatedPatient }, process.env.JWT_SECRET_PATIENT, { expiresIn: "1d" });
+    
+                return ResponseService.send(res, StatusCodes.OK, "Patient profile updated successfully", 1, {
+                    ...updatedPatient.toObject(),
+                    token
+                });
             } else {
                 if (req.files?.profilePicture?.[0]?.path) {
                     await this.deleteImage(req.files?.profilePicture?.[0]?.path);
@@ -245,7 +253,6 @@ class PatientController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
-    
     
     
 

@@ -8,7 +8,7 @@ import { StatusCodes } from 'http-status-codes';
 import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
 import EmailService from '../services/email.service.js';
-
+import jwt from 'jsonwebtoken';
 
 class ReceptionistController {
 
@@ -120,8 +120,18 @@ class ReceptionistController {
     
             // Update the receptionist profile
             const updatedReceptionist = await User.findByIdAndUpdate(userId, req.body, { new: true });
+    
             if (updatedReceptionist) {
-                return ResponseService.send(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, updatedReceptionist);
+                // Generate a new token
+                const token = jwt.sign({ userData: updatedReceptionist }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
+    
+                // Prepare response payload
+                const responseData = {
+                    ...updatedReceptionist._doc, // Spread updated receptionist data
+                    token, // Include the token
+                };
+    
+                return ResponseService.send(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, responseData);
             } else {
                 if (req.files?.profilePicture?.[0]?.path) {
                     await this.deleteImage(req.files.profilePicture[0].path);

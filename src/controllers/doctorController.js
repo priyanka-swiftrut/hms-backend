@@ -4,13 +4,18 @@ import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import cloudinary from '../config/cloudinaryConfig.js';
 import sendNotification from '../services/notificationService.js';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+
 class DoctorController {
 
 
     async EditProfile(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
-                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
     
@@ -20,7 +25,9 @@ class DoctorController {
             // Find the user (doctor) by the determined ID
             const doctor = await User.findById(userId);
             if (!doctor) {
-                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found", 0);
             }
     
@@ -66,19 +73,32 @@ class DoctorController {
             // Update the doctor profile
             const updatedDoctor = await User.findByIdAndUpdate(userId, req.body, { new: true });
             if (updatedDoctor) {
+                const token = jwt.sign({ userData: updatedDoctor }, process.env.JWT_SECRET_DOCTOR, { expiresIn: "1d" });
+    
+                // Prepare response data with token
+                const responseData = {
+                    ...updatedDoctor._doc, // Spread the updated doctor data
+                    token, // Include the token
+                };
+    
                 await sendNotification({
                     type: 'EDIT profile',
                     message: `Your profile has been updated successfully.`,
                     hospitalId: doctor.hospitalId,
                     targetUsers: doctor.id,
                 });
-                return ResponseService.send(res, StatusCodes.OK, "Doctor profile updated successfully", 1, updatedDoctor);
+    
+                return ResponseService.send(res, StatusCodes.OK, "Doctor profile updated successfully", 1, responseData);
             } else {
-                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update doctor profile", 0);
             }
         } catch (error) {
-            await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+            if (req.files?.profilePicture?.[0]?.path) {
+                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+            }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
