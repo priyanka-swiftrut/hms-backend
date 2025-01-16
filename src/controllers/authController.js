@@ -51,9 +51,6 @@ class AuthController {
             } else {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email or Phone number is required", 0);
             }
-    
-            // Generate JWT token based on the user role
-            console.log(user, "users");
             
             const secret = user.role === 'admin' ? process.env.JWT_SECRET_ADMIN
                 : user.role === 'doctor' ? process.env.JWT_SECRET_DOCTOR

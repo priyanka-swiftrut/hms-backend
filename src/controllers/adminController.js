@@ -8,6 +8,7 @@ import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
 import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 class AdminController {
 
@@ -90,7 +91,8 @@ class AdminController {
                 }
                 let updatedUser = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
                 if (updatedUser) {
-                    return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, updatedUser);
+                    const token = jwt.sign({ userData: user }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
+                    return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, { updatedUser, token });
                 } else {
                     if (req.files?.profilePicture?.[0]?.path) {
                         await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
