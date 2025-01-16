@@ -7,102 +7,20 @@ import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
 import User from '../models/User.model.js';
 import Insurance from '../models/Insurance.model.js';
-import Holiday from '../models/holiday.model.js'; 
-import mongoose from 'mongoose';
+import Holiday from '../models/holiday.model.js';
 import moment from 'moment';
 import sendNotification from '../services/notificationService.js';
 
 class AppointmentController {
-    // async createAppointment(req, res) {
-    //     try {
-    //         const { doctorId, date, appointmentTime, type, patient_issue, dieseas_name, city, state, country } = req.body;
-
-    //         // Ensure the doctor exists
-    //         const doctor = await User.findById(doctorId);
-    //         if (!doctor) {
-    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
-    //         }
-
-    //         // Create appointment data
-    //         const appointmentData = {
-    //             patientId: req.user.id,
-    //             doctorId,
-    //             hospitalId: doctor.hospitalId,
-    //             date,
-    //             appointmentTime,
-    //             type,
-    //             patient_issue,
-    //             dieseas_name,
-    //             city,
-    //             state,
-    //             country,
-    //             status: "scheduled",
-    //         };
-
-    //         const newAppointment = new Appointment(appointmentData);
-    //         await newAppointment.save();
-
-    //         // Create bill for the appointment
-    //         const bill = await this.createBill(newAppointment);
-    //         if (!bill) {
-    //             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Error creating bill.", "error");
-    //         }
-
-    //         return ResponseService.send(res, StatusCodes.CREATED, "Appointment and bill created successfully", 1, { appointment: newAppointment, bill });
-    //     } catch (error) {
-    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
-    //     }
-    // }
-
-    // /**
-    //  * Automatically creates a bill for the given appointment
-    //  * @param {Object} appointment - The appointment document
-    //  * @returns {Object} - The created bill document
-    //  */
-    // async createBill(appointment) {
-    //     try {
-    //         const billData = {
-    //             patientId: appointment.patientId,
-    //             doctorId: appointment.doctorId,
-    //             hospitalId: appointment.hospitalId,
-    //             appointmentId: appointment._id,
-    //             date: new Date(), // Current date
-    //             time: new Date().toLocaleTimeString(), // Current time in string format
-    //             status: "Unpaid",
-    //         };
-
-    //         const newBill = new Bill(billData);
-    //         await newBill.save();
-    //         return newBill;
-    //     } catch (error) {
-    //         console.error("Error creating bill:", error);
-    //         return null;
-    //     }
-    // }
-
-
-
+    
     async createAppointment(req, res) {
         try {
-            const {
-                doctorId,
-                date,
-                appointmentTime,
-                type,
-                patient_issue,
-                dieseas_name,
-                city,
-                state,
-                country,
-                paymentType,
-                paymentStatus,
-                insuranceDetails
-            } = req.body;
+            const { doctorId, date, appointmentTime, type, patient_issue, dieseas_name, city, state, country, paymentType, paymentStatus, insuranceDetails } = req.body;
 
             let patientId;
             if (req.user.role === "patient") {
                 patientId = req.user.id;
-            } else if (req.user.role === "receptionist") {              
+            } else if (req.user.role === "receptionist") {
                 patientId = req.body.patientId;
             }
             // Validate doctor existence
@@ -137,20 +55,7 @@ class AppointmentController {
             }
 
             // Prepare appointment data
-            const appointmentData = {
-                patientId,
-                doctorId,
-                hospitalId: doctor.hospitalId,
-                date,
-                appointmentTime,
-                type: type,
-                patient_issue,
-                dieseas_name,
-                city,
-                state,
-                country,
-                status: "scheduled",
-            };
+            const appointmentData = { patientId, doctorId, hospitalId: doctor.hospitalId, date, appointmentTime, type: type, patient_issue, dieseas_name, city, state, country, status: "scheduled" };
 
             const newAppointment = new Appointment(appointmentData);
             await newAppointment.save();
@@ -244,36 +149,24 @@ class AppointmentController {
 
             // Create bill data
             const billData = {
-                patientId,
-                doctorId,
-                hospitalId,
-                appointmentId,
-                type,
-                paymentType,
-                amount,
-                tax,
-                totalAmount,
-                dueAmount, // Include calculated dueAmount
-                insuranceId,
-                date: new Date(),
-                time: new Date().toLocaleTimeString(),
-                status: true, // Status is true since we are creating the bill
+                patientId, doctorId, hospitalId, appointmentId, type, paymentType, amount, tax, totalAmount, dueAmount, insuranceId, date: new Date(), time: new Date().toLocaleTimeString(),
+                status: true,
             };
-            
+
             const newBill = new Bill(billData);
             await newBill.save();
 
             const populatedBill = await Bill.findById(newBill._id)
-            .populate('patientId', 'fullName email gender age phone address')
-            .populate('doctorId', 'fullName metadata.doctorData.specialization metadata.doctorData.description metadata.doctorData.onlineConsultationRate metadata.doctorData.consultationRate')
-            .populate('appointmentId', 'date appointmentTime status dieseas_name');
+                .populate('patientId', 'fullName email gender age phone address')
+                .populate('doctorId', 'fullName metadata.doctorData.specialization metadata.doctorData.description metadata.doctorData.onlineConsultationRate metadata.doctorData.consultationRate')
+                .populate('appointmentId', 'date appointmentTime status dieseas_name');
 
             await sendNotification({
                 type: 'Bill',
                 message: `Bill Created Succesfully: ${newBill.date} at ${newBill.time}`,
                 hospitalId: hospitalId,
                 targetUsers: patientId,
-            }); 
+            });
 
             return populatedBill;
         } catch (error) {
@@ -281,8 +174,6 @@ class AppointmentController {
             return null;
         }
     }
-        
-
 
     async getAppointments(req, res) {
         try {
@@ -349,7 +240,7 @@ class AppointmentController {
                 .skip(paginationSkip)
                 .limit(paginationLimit)
                 .sort({ date: 1 }) // Sort by date (ascending)
-                .populate("doctorId", "fullName email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metadata.doctorData.morningSession metaData.doctorData.eveningSession")
+                .populate("doctorId", "fullName profilePicture email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metaData.doctorData.morningSession metaData.doctorData.eveningSession metaData.doctorData.emergencyContactNo")
                 .populate("patientId", "fullName email ")
                 .populate("hospitalId", "name emergencyContactNo");
 
@@ -381,8 +272,6 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
-
-
 
     async getAppointmentsTeleconsultation(req, res) {
         try {
@@ -486,8 +375,6 @@ class AppointmentController {
         }
     }
 
-
-
     async getpatientfromappointment(req, res) {
         try {
             const { id } = req.params;
@@ -511,11 +398,6 @@ class AppointmentController {
                 amount = appointment.doctorId.metaData.doctorData.consultationRate;
                 tax = amount * 0.18;
             }
-
-
-
-            // Fetch consultation rate
-
 
             // Format the patient's address into a string
             if (appointment.patientId && appointment.patientId.address) {
@@ -554,25 +436,14 @@ class AppointmentController {
     async editAppointment(req, res) {
         try {
             const { id } = req.params;
-            const {
-                doctorId,
-                patientId,
-                date,
-                appointmentTime,
-                patient_issue,
-                dieseas_name,
-                city,
-                state,
-                country,
-                status
-            } = req.body;
-    
+            const { doctorId, patientId, date, appointmentTime, patient_issue, dieseas_name, city, state, country, status } = req.body;
+
             // Ensure the appointment exists
             const appointment = await Appointment.findById(id);
             if (!appointment) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
             }
-    
+
             // Role-based permission check
             if (req.user.role !== "receptionist" && (doctorId || patientId)) {
                 return ResponseService.send(
@@ -582,7 +453,7 @@ class AppointmentController {
                     0
                 );
             }
-    
+
             // Conflict check
             if (doctorId || patientId || date || appointmentTime) {
                 const conflictQuery = {
@@ -592,19 +463,19 @@ class AppointmentController {
                     ],
                     _id: { $ne: id }
                 };
-    
+
                 const conflict = await Appointment.findOne(conflictQuery);
                 if (conflict) {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Another appointment already exists at the given time.", 0);
                 }
             }
-    
+
             // Check if the new status is valid
             const allowedStatuses = ["scheduled", "canceled", "pending", "completed", "checkin", "checkout"];
             if (status && !allowedStatuses.includes(status)) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, `Invalid status. Allowed statuses are: ${allowedStatuses.join(", ")}.`, 0);
             }
-    
+
             // Create update object with only the fields that are provided
             const updateData = {};
             if (doctorId) updateData.doctorId = doctorId;
@@ -617,26 +488,24 @@ class AppointmentController {
             if (state !== undefined) updateData.state = state;
             if (country !== undefined) updateData.country = country;
             if (status) updateData.status = status;
-    
+
             // Use findByIdAndUpdate to ensure the update is persisted
             const updatedAppointment = await Appointment.findByIdAndUpdate(
                 id,
                 { $set: updateData },
                 { new: true, runValidators: true }
             );
-    
+
             if (!updatedAppointment) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update appointment.", 0);
             }
-    
+
             return ResponseService.send(res, StatusCodes.OK, "Appointment updated successfully", 1, { appointment: updatedAppointment });
         } catch (error) {
             console.error('Error updating appointment:', error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
-
-
 
     async getDoctorSession(req, res) {
         try {
@@ -720,113 +589,109 @@ class AppointmentController {
         }
     }
 
-
-
     async getDoctorSession(req, res) {
-    try {
-        const { doctorId } = req.params;
-        const { date } = req.query;
-        const targetDate = date || moment().format("YYYY-MM-DD");
+        try {
+            const { doctorId } = req.params;
+            const { date } = req.query;
+            const targetDate = date || moment().format("YYYY-MM-DD");
 
-        const doctor = await User.findById(doctorId);
-        if (!doctor) {
-            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
-        }
-
-        const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
-        if (!morning || !evening || !timeduration) {
-            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
-        }
-
-        const parseSession = (sessionString) => {
-            const [start, end] = sessionString.split(" to ");
-            return { start, end };
-        };
-
-        const morningSession = parseSession(morning);
-        const eveningSession = parseSession(evening);
-
-        const generateSlots = (session, duration) => {
-            const slots = [];
-            let startTime = moment(session.start, "HH:mm");
-            const endTime = moment(session.end, "HH:mm");
-
-            while (startTime < endTime) {
-                const slotEndTime = moment(startTime).add(duration, "minutes");
-                slots.push({
-                    start: startTime.format("HH:mm"),
-                    end: slotEndTime.format("HH:mm"),
-                    available: true
-                });
-                startTime = slotEndTime;
+            const doctor = await User.findById(doctorId);
+            if (!doctor) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
             }
 
-            return slots;
-        };
+            const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
+            if (!morning || !evening || !timeduration) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
+            }
 
-        const morningSlots = generateSlots(morningSession, timeduration);
-        const eveningSlots = generateSlots(eveningSession, timeduration);
+            const parseSession = (sessionString) => {
+                const [start, end] = sessionString.split(" to ");
+                return { start, end };
+            };
 
-        const startOfDay = moment(targetDate).startOf("day").toISOString();
-        const endOfDay = moment(targetDate).endOf("day").toISOString();
+            const morningSession = parseSession(morning);
+            const eveningSession = parseSession(evening);
 
-        const appointments = await Appointment.find({
-            doctorId,
-            date: { $gte: startOfDay, $lt: endOfDay }
-        });
+            const generateSlots = (session, duration) => {
+                const slots = [];
+                let startTime = moment(session.start, "HH:mm");
+                const endTime = moment(session.end, "HH:mm");
 
-        const holidays = await Holiday.findOne({
-            userId: doctorId,
-            date: targetDate
-        });
+                while (startTime < endTime) {
+                    const slotEndTime = moment(startTime).add(duration, "minutes");
+                    slots.push({
+                        start: startTime.format("HH:mm"),
+                        end: slotEndTime.format("HH:mm"),
+                        available: true
+                    });
+                    startTime = slotEndTime;
+                }
 
-        const checkAvailability = (slots, appointments) => {
-            slots.forEach(slot => {
-                appointments.forEach(appointment => {
-                    if (
-                        moment(appointment.appointmentTime, "HH:mm").isBetween(
-                            moment(slot.start, "HH:mm"),
-                            moment(slot.end, "HH:mm"),
-                            null,
-                            "[)"
-                        )
-                    ) {
-                        slot.available = false;
-                    }
-                });
+                return slots;
+            };
+
+            const morningSlots = generateSlots(morningSession, timeduration);
+            const eveningSlots = generateSlots(eveningSession, timeduration);
+
+            const startOfDay = moment(targetDate).startOf("day").toISOString();
+            const endOfDay = moment(targetDate).endOf("day").toISOString();
+
+            const appointments = await Appointment.find({
+                doctorId,
+                date: { $gte: startOfDay, $lt: endOfDay }
             });
-        };
 
-        const applyHolidayFilter = (morningSlots, eveningSlots, holiday) => {
-            if (!holiday) return;
+            const holidays = await Holiday.findOne({
+                userId: doctorId,
+                date: targetDate
+            });
 
-            if (holiday.session === "morning") {
-                morningSlots.forEach(slot => slot.available = false);
-            } else if (holiday.session === "evening") {
-                eveningSlots.forEach(slot => slot.available = false);
-            } else if (holiday.session === "full_day") {
-                morningSlots.forEach(slot => slot.available = false);
-                eveningSlots.forEach(slot => slot.available = false);
-            }
-        };
+            const checkAvailability = (slots, appointments) => {
+                slots.forEach(slot => {
+                    appointments.forEach(appointment => {
+                        if (
+                            moment(appointment.appointmentTime, "HH:mm").isBetween(
+                                moment(slot.start, "HH:mm"),
+                                moment(slot.end, "HH:mm"),
+                                null,
+                                "[)"
+                            )
+                        ) {
+                            slot.available = false;
+                        }
+                    });
+                });
+            };
 
-        checkAvailability(morningSlots, appointments);
-        checkAvailability(eveningSlots, appointments);
+            const applyHolidayFilter = (morningSlots, eveningSlots, holiday) => {
+                if (!holiday) return;
 
-        applyHolidayFilter(morningSlots, eveningSlots, holidays);
+                if (holiday.session === "morning") {
+                    morningSlots.forEach(slot => slot.available = false);
+                } else if (holiday.session === "evening") {
+                    eveningSlots.forEach(slot => slot.available = false);
+                } else if (holiday.session === "full_day") {
+                    morningSlots.forEach(slot => slot.available = false);
+                    eveningSlots.forEach(slot => slot.available = false);
+                }
+            };
 
-        const data = {
-            morningSlots,
-            eveningSlots
-        };
+            checkAvailability(morningSlots, appointments);
+            checkAvailability(eveningSlots, appointments);
 
-        return ResponseService.send(res, StatusCodes.OK, 'Data fetched successfully', 1, data);
-    } catch (error) {
-        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+            applyHolidayFilter(morningSlots, eveningSlots, holidays);
+
+            const data = {
+                morningSlots,
+                eveningSlots
+            };
+
+            return ResponseService.send(res, StatusCodes.OK, 'Data fetched successfully', 1, data);
+        } catch (error) {
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+        }
     }
-}
-
-    
 
     async getAppointmentsWithoutBills(req, res) {
 
@@ -945,70 +810,6 @@ class AppointmentController {
         }
     }
 
-
-    // async getseacrchingforappointment(req, res) {
-
-    //     try {
-    //         const { country, state, city, hospitalName, speciality, doctor } = req.query;
-
-    //         // Filters to apply based on the query parameters
-    //         const hospitalFilters = {};
-    //         const doctorFilters = { role: "doctor" };
-
-    //         if (country) hospitalFilters.country = country;
-    //         if (state) hospitalFilters.state = state;
-    //         if (city) hospitalFilters.city = city;
-    //         if (hospitalName) hospitalFilters.name = hospitalName;
-
-    //         if (speciality) doctorFilters["metaData.doctorData.speciality"] = speciality;
-    //         if (doctor) doctorFilters.fullName = { $regex: new RegExp(doctor, "i") };
-
-    //         // Step 1: Fetch possible options for each dropdown
-    //         const countries = await hospitalModel.distinct("country", hospitalFilters);
-    //         const states = await hospitalModel.distinct("state", hospitalFilters);
-    //         const cities = await hospitalModel.distinct("city", hospitalFilters);
-    //         const hospitals = await hospitalModel.distinct("name", hospitalFilters);
-
-    //         let specialties = [];
-    //         if (hospitalName || country || state || city) {
-    //             const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
-    //             const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
-    //             specialties = await userModel.distinct("metaData.doctorData.speciality", {
-    //                 ...doctorFilters,
-    //                 hospitalId: { $in: hospitalIds },
-    //             });
-    //         } else {
-    //             specialties = await userModel.distinct("metaData.doctorData.speciality", doctorFilters);
-    //         }
-
-    //         let doctors = [];
-    //         if (speciality || hospitalName || country || state || city) {
-    //             const hospitalsMatchingFilters = await hospitalModel.find(hospitalFilters, { _id: 1 });
-    //             const hospitalIds = hospitalsMatchingFilters.map((h) => h._id);
-    //             doctors = await userModel.find(
-    //                 { ...doctorFilters, hospitalId: { $in: hospitalIds } },
-    //                 { fullName: 1, _id: 0 }
-    //             );
-    //         } else {
-    //             doctors = await userModel.find(doctorFilters, { fullName: 1, _id: 0 });
-    //         }
-
-    //         // Send response with all possible options
-    //         res.status(200).json({
-    //             countries,
-    //             states,
-    //             cities,
-    //             hospitals,
-    //             specialties,
-    //             doctors: doctors.map((d) => d.fullName),
-    //         });
-    //     } catch (error) {
-    //         console.error("Error in search-options API:", error);
-    //         res.status(500).json({ message: "Internal Server Error", error: error.message });
-    //     }
-
-    // }
-
     async chatcontect(req, res) {
 
         try {
@@ -1064,9 +865,7 @@ class AppointmentController {
             });
         }
 
-    }   
-
-    
+    }
 
 }
 

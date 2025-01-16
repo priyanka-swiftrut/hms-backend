@@ -2,14 +2,13 @@ import User from '../models/User.model.js';
 import AppointmentModel from "../models/Appointment.model.js";
 import BillModel from "../models/Bill.model.js";
 import PrescriptionModel from "../models/priscription.model.js";
-import InsuranceModel from "../models/Insurance.model.js";
 import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import EmailService from '../services/email.service.js';
 import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
-import { response } from 'express';
+import jwt from 'jsonwebtoken';
 
 class AdminController {
 
@@ -92,7 +91,8 @@ class AdminController {
                 }
                 let updatedUser = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
                 if (updatedUser) {
-                    return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, updatedUser);
+                    const token = jwt.sign({ userData: user }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
+                    return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, { updatedUser, token });
                 } else {
                     if (req.files?.profilePicture?.[0]?.path) {
                         await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
@@ -287,63 +287,6 @@ class AdminController {
         }
     }
 
-    // async searchData(req, res) {
-    //     try {
-    //         const { query, role } = req.query;
-
-    //         if (!query) {
-    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
-    //         }
-
-    //         const defaultRoles = ['doctor', 'patient', 'receptionist'];
-
-    //         const searchCriteria = {
-    //             fullName: { $regex: query, $options: 'i' }
-    //         };
-
-    //         if (role) {
-    //             searchCriteria.role = role;
-    //         } else {
-    //             searchCriteria.role = { $in: defaultRoles };
-    //         }
-
-    //         if (req.user.role !== 'patient') {
-    //             searchCriteria.hospitalId = req.user.hospitalId;
-    //         }
-
-    //         let results = [];
-
-    //         if (role === 'patient') {
-    //             const appointments = await AppointmentModel.find()
-    //                 .populate('patientId');
-
-    //             const patientsFromAppointments = appointments.map(appointment => appointment.patientId);
-    //             results = patientsFromAppointments.filter(patient => patient.fullName.match(new RegExp(query, 'i')));
-    //         } else {
-    //             results = await User.find(searchCriteria);
-
-    //             if (req.user.role === 'patient') {
-    //                 results = results.filter(user => user.role === 'doctor');
-    //             }
-    //         }
-
-    //         const data = results.filter((value, index, self) =>
-    //             index === self.findIndex((t) => (
-    //                 t._id.toString() === value._id.toString()
-    //             ))
-    //         );
-
-    //         if (data.length === 0) {
-    //             return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0, []);
-    //         }
-
-    //         return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
-    //     } catch (error) {
-    //         console.error("Error in searchData:", error);
-    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
-    //     }
-    // }
-
     async searchData(req, res) {
         try {
             const { query, role } = req.query;
@@ -408,8 +351,6 @@ class AdminController {
         }
     }
     
-
-
     async getDashboardData(req, res) {
         try {
             const { hospitalId } = req.user;
@@ -721,7 +662,7 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
             }
 
-            else if (req.user.role === "patient" || req.user.role === "receptionist") {
+            else if (req.user.role === "patient" ) {
                 try {
                     const { patientId: queryPatientId } = req.query; // Get patientId from query
                     const isReceptionist = req.user.role === "receptionist";
@@ -800,157 +741,6 @@ class AdminController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
     }
-
-    // async reportandanalysis(req, res) {
-    //     try {
-    //         // Initialize an empty result object to store all the data
-    //         let reportData = {};
-
-    //         // Fetch Total Patients
-    //         const totalPatients = await AppointmentModel.distinct("patientId");
-    //         reportData.totalPatients = totalPatients.length;
-
-    //         // Fetch Repeat Patients
-    //         const repeatPatients = await AppointmentModel.aggregate([
-    //             { $group: { _id: "$patientId", count: { $sum: 1 } } },
-    //             { $match: { count: { $gt: 1 } } }
-    //         ]);
-    //         reportData.repeatPatients = repeatPatients.length;
-
-    //         // Fetch Appointment Chart Data (Year and Month Wise)
-    //         const appointmentData = await AppointmentModel.aggregate([
-    //             {
-    //                 $group: {
-    //                     _id: {
-    //                         year: { $year: "$date" },
-    //                         month: { $month: "$date" },
-    //                         type: "$type",
-    //                     },
-    //                     count: { $sum: 1 },
-    //                 },
-    //             },
-    //         ]);
-
-    //         // Process Year-wise and Month-wise Appointment Data
-    //         reportData.appointmentData = {
-    //             yearWiseData: appointmentData.reduce((acc, cur) => {
-    //                 const yearIndex = acc.findIndex(item => item.year === cur._id.year);
-    //                 const typeKey = cur._id.type === "online" ? "onlineConsultation" : "otherAppointment";
-    //                 if (yearIndex === -1) {
-    //                     acc.push({ year: cur._id.year, [typeKey]: cur.count });
-    //                 } else {
-    //                     acc[yearIndex][typeKey] = (acc[yearIndex][typeKey] || 0) + cur.count;
-    //                 }
-    //                 return acc;
-    //             }, []),
-    //             monthWiseData: appointmentData.reduce((acc, cur) => {
-    //                 const monthKey = `${cur._id.year}-${cur._id.month}`;
-    //                 acc[monthKey] = acc[monthKey] || { onlineConsultation: 0, otherAppointment: 0 };
-    //                 acc[monthKey][cur._id.type === "online" ? "onlineConsultation" : "otherAppointment"] += cur.count;
-    //                 return acc;
-    //             }, {}),
-    //         };
-
-    //         // Fetch Patient Summary Data (Week Wise and Day Wise)
-    //         const summary = await AppointmentModel.aggregate([
-    //             {
-    //                 $project: {
-    //                     dayOfWeek: { $dayOfWeek: "$date" },
-    //                     patientId: 1,
-    //                 },
-    //             },
-    //             {
-    //                 $group: {
-    //                     _id: "$dayOfWeek",
-    //                     newPatients: { $addToSet: "$patientId" },
-    //                     totalPatients: { $sum: 1 },
-    //                 },
-    //             },
-    //         ]);
-
-    //         const weekData = Array(7).fill(0);
-    //         summary.forEach(({ _id, totalPatients }) => {
-    //             weekData[_id - 1] = totalPatients;
-    //         });
-
-    //         reportData.patientSummary = {
-    //             week: {
-    //                 categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    //                 data: weekData,
-    //             },
-    //         };
-
-    //         // Fetch Patient Count by Department
-    //         const departmentData = await AppointmentModel.aggregate([
-    //             {
-    //                 $lookup: {
-    //                     from: "users",
-    //                     localField: "doctorId",
-    //                     foreignField: "_id",
-    //                     as: "doctorData",
-    //                 },
-    //             },
-    //             { $unwind: { path: "$doctorData", preserveNullAndEmptyArrays: true } },
-    //             {
-    //                 $group: {
-    //                     _id: "$doctorData.metaData.speciality",
-    //                     count: { $sum: 1 },
-    //                 },
-    //             },
-    //         ]);
-
-    //         reportData.patientDepartmentData = departmentData.map((item, index) => ({
-    //             key: `${index + 1}`,
-    //             name: item._id,
-    //             count: item.count.toString(),
-    //         }));
-
-    //         // Fetch Doctor Count by Department
-    //         const doctorData = await User.aggregate([
-    //             { $match: { role: "doctor" } },
-    //             {
-    //                 $group: {
-    //                     _id: "$metaData.speciality",
-    //                     count: { $sum: 1 },
-    //                 },
-    //             },
-    //         ]);
-
-    //         reportData.doctorDepartmentData = doctorData.map((item, index) => ({
-    //             key: `${index + 1}`,
-    //             name: item._id,
-    //             count: item.count.toString(),
-    //         }));
-
-    //         // Fetch Patient Age Distribution
-    //         const ageGroups = [
-    //             { range: "0-2 Years", min: 0, max: 2 },
-    //             { range: "3-12 Years", min: 3, max: 12 },
-    //             { range: "13-19 Years", min: 13, max: 19 },
-    //             { range: "20-39 Years", min: 20, max: 39 },
-    //             { range: "40-59 Years", min: 40, max: 59 },
-    //             { range: "60 And Above", min: 60, max: Infinity },
-    //         ];
-
-    //         const patientData = await User.find({ role: "patient" }, "age");
-    //         reportData.patientAgeDistribution = ageGroups.map(group => ({
-    //             age: group.range,
-    //             value: patientData.filter(p => p.age >= group.min && p.age <= group.max).length,
-    //             color: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color for each range
-    //         }));
-
-    //         // Fetch Hour-wise Data for Current Day
-    //         const today = new Date();
-    //         today.setHours(0, 0, 0, 0); // Start of the day
-    //         const tomorrow = new Date(today);
-    //         tomorrow.setDate(today.getDate() + 1); // Start of the next day
-
-    //         res.json(reportData);
-
-    //     } catch (error) {
-    //         res.status(500).json({ error: error.message });
-    //     }
-    // }
 
     async reportandanalysis(req, res) {
         try {

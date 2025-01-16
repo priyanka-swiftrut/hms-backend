@@ -20,8 +20,8 @@ const doctorController = new DoctorController();
 // No Authorization Apis
 
 // Authorization Apis
-router.post("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.EditProfile.bind(receptionistController));      
-router.put("/edit", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.EditProfile.bind(receptionistController));      
+router.post("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.EditProfile.bind(receptionistController));      
+router.put("/editUser", upload.fields([{ name: 'profilePicture', maxCount: 1 }]), receptionistController.EditProfile.bind(receptionistController));      
 router.get("/getReceptionist", receptionistController.getreceptionist.bind(receptionistController));
 router.patch("/changePassword", authController.changePassword.bind(authController));
 
