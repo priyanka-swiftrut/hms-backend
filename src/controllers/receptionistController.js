@@ -416,6 +416,53 @@ class ReceptionistController {
         }
     }
 
+    async searchDoctor(req, res) {
+        try {
+            const { speciality } = req.query;  // Get the speciality from query parameters
+            const hospitalId = req.user.hospitalId;  // Get hospitalId from the authenticated user's data
+    
+            // Prepare the query to fetch doctors from the specific hospital
+            const query = {
+                "role": "doctor",
+                "hospitalId": hospitalId,
+            };
+    
+            // If a speciality is provided in the query, filter by that as well
+            if (speciality) {
+                query["metaData.doctorData.speciality"] = speciality;
+            }
+    
+            // Fetch doctors from the database based on the query
+            const doctors = await User.find(query)
+                .select("fullName role metaData.doctorData.speciality _id")  // Select fields directly
+                .lean();  // Convert to plain JavaScript object for easier manipulation
+    
+            // Modify the doctor data to directly include speciality (flattened)
+            const doctorList = doctors.map(doctor => ({
+                doctorId: doctor._id,  // Direct doctorId
+                fullName: doctor.fullName,  // Direct fullName
+                role: doctor.role,  // Direct role
+                speciality: doctor.metaData.doctorData.speciality  // Direct speciality
+            }));
+    
+            // Fetch all specialties for the hospital (doctors' specialties only)
+            const specialties = await User.distinct("metaData.doctorData.speciality", {
+                "role": "doctor",
+                "hospitalId": hospitalId,
+            });
+    
+            // Send response with the list of specialties and doctors
+            return res.status(200).json({
+                specialties,  // List of specialties
+                doctors: doctorList,  // Flattened doctor data
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+    
+
 }
 
 export default ReceptionistController;

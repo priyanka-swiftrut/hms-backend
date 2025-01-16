@@ -42,10 +42,11 @@ router.get("/getpatientfromappointment/:id", appointmentController.getpatientfro
 router.post("/createAppointment", appointmentController.createAppointment.bind(appointmentController));
 router.post("/editAppointment/:id", appointmentController.editAppointment.bind(appointmentController));
 router.put("/editAppointment/:id", appointmentController.editAppointment.bind(appointmentController));
+router.get("/searchAppointment", receptionistController.searchDoctor.bind(receptionistController));
 
 router.post("/createPrescription/:appointmentId", prescriptionController.createPrescription.bind(prescriptionController));
 router.get("/getappointmentforprescription" , prescriptionController.getAppointmentForPrescription.bind(prescriptionController)) 
-router.get("/searchAppointment", appointmentController.getseacrchingforappointment.bind(appointmentController));
+// router.get("/searchAppointment", appointmentController.getseacrchingforappointment.bind(appointmentController));
 router.get("/getDoctorSession/:doctorId", appointmentController.getDoctorSession.bind(appointmentController));
 
 
