@@ -611,35 +611,127 @@ class AppointmentController {
         }
     }
 
+    // async getDoctorSession(req, res) {
+    //     try {
+    //         const { doctorId } = req.params.doctorId || req.user.id;
+    //         const { date } = req.query;
+    //         const targetDate = date || moment().format("YYYY-MM-DD");
+
+    //         const doctor = await User.findById(doctorId);
+    //         if (!doctor) {
+    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
+    //         }
+
+    //         const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
+    //         if (!morning || !evening || !timeduration) {
+    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
+    //         }
+
+    //         const parseSession = (sessionString) => {
+    //             const [start, end] = sessionString.split(" to ");
+    //             return { start, end };
+    //         };
+
+    //         const morningSession = parseSession(morning);
+    //         const eveningSession = parseSession(evening);
+
+    //         const generateSlots = (session, duration) => {
+    //             const slots = [];
+    //             let startTime = moment(session.start, "HH:mm");
+    //             const endTime = moment(session.end, "HH:mm");
+
+    //             while (startTime < endTime) {
+    //                 const slotEndTime = moment(startTime).add(duration, "minutes");
+    //                 slots.push({
+    //                     start: startTime.format("HH:mm"),
+    //                     end: slotEndTime.format("HH:mm"),
+    //                     available: true
+    //                 });
+    //                 startTime = slotEndTime;
+    //             }
+
+    //             return slots;
+    //         };
+
+    //         const morningSlots = generateSlots(morningSession, timeduration);
+    //         const eveningSlots = generateSlots(eveningSession, timeduration);
+
+    //         const startOfDay = moment(targetDate).startOf("day").toISOString();
+    //         const endOfDay = moment(targetDate).endOf("day").toISOString();
+
+    //         const appointments = await Appointment.find({
+    //             doctorId,
+    //             date: { $gte: startOfDay, $lt: endOfDay }
+    //         });
+
+    //         const checkAvailability = (slots, appointments) => {
+    //             slots.forEach(slot => {
+    //                 appointments.forEach(appointment => {
+    //                     if (
+    //                         moment(appointment.appointmentTime, "HH:mm").isBetween(
+    //                             moment(slot.start, "HH:mm"),
+    //                             moment(slot.end, "HH:mm"),
+    //                             null,
+    //                             "[)"
+    //                         )
+    //                     ) {
+    //                         slot.available = false;
+    //                     }
+    //                 });
+    //             });
+    //         };
+
+    //         checkAvailability(morningSlots, appointments);
+    //         checkAvailability(eveningSlots, appointments);
+    //         const data = {
+    //             morningSlots,
+    //             eveningSlots
+    //         }
+    //         return ResponseService.send(res, StatusCodes.OK, ' Data fetched Succesfully', 1, data);
+    //     } catch (error) {
+    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+    //     }
+    // }
+
     async getDoctorSession(req, res) {
         try {
-            const { doctorId } = req.params;
+            // Prioritize `doctorId` from `req.params`, fallback to `req.user.id`
+            const doctorId = req.params.doctorId || req.user?.id;
+            if (!doctorId) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor ID is required.", 0);
+            }
+    
             const { date } = req.query;
             const targetDate = date || moment().format("YYYY-MM-DD");
-
+    
+            // Find doctor by ID
             const doctor = await User.findById(doctorId);
             if (!doctor) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
             }
-
+    
+    
+            // Destructure session data
             const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
             if (!morning || !evening || !timeduration) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
             }
-
+    
+            // Parse session string
             const parseSession = (sessionString) => {
                 const [start, end] = sessionString.split(" to ");
                 return { start, end };
             };
-
+    
             const morningSession = parseSession(morning);
             const eveningSession = parseSession(evening);
-
+    
+            // Generate time slots
             const generateSlots = (session, duration) => {
                 const slots = [];
                 let startTime = moment(session.start, "HH:mm");
                 const endTime = moment(session.end, "HH:mm");
-
+    
                 while (startTime < endTime) {
                     const slotEndTime = moment(startTime).add(duration, "minutes");
                     slots.push({
@@ -649,108 +741,28 @@ class AppointmentController {
                     });
                     startTime = slotEndTime;
                 }
-
+    
                 return slots;
             };
-
+    
             const morningSlots = generateSlots(morningSession, timeduration);
             const eveningSlots = generateSlots(eveningSession, timeduration);
-
+    
             const startOfDay = moment(targetDate).startOf("day").toISOString();
             const endOfDay = moment(targetDate).endOf("day").toISOString();
-
+    
+            // Find appointments and holidays
             const appointments = await Appointment.find({
                 doctorId,
                 date: { $gte: startOfDay, $lt: endOfDay }
             });
-
-            const checkAvailability = (slots, appointments) => {
-                slots.forEach(slot => {
-                    appointments.forEach(appointment => {
-                        if (
-                            moment(appointment.appointmentTime, "HH:mm").isBetween(
-                                moment(slot.start, "HH:mm"),
-                                moment(slot.end, "HH:mm"),
-                                null,
-                                "[)"
-                            )
-                        ) {
-                            slot.available = false;
-                        }
-                    });
-                });
-            };
-
-            checkAvailability(morningSlots, appointments);
-            checkAvailability(eveningSlots, appointments);
-            const data = {
-                morningSlots,
-                eveningSlots
-            }
-            return ResponseService.send(res, StatusCodes.OK, ' Data fetched Succesfully', 1, data);
-        } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-        }
-    }
-
-    async getDoctorSession(req, res) {
-        try {
-            const { doctorId } = req.params;
-            const { date } = req.query;
-            const targetDate = date || moment().format("YYYY-MM-DD");
-
-            const doctor = await User.findById(doctorId);
-            if (!doctor) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
-            }
-
-            const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
-            if (!morning || !evening || !timeduration) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
-            }
-
-            const parseSession = (sessionString) => {
-                const [start, end] = sessionString.split(" to ");
-                return { start, end };
-            };
-
-            const morningSession = parseSession(morning);
-            const eveningSession = parseSession(evening);
-
-            const generateSlots = (session, duration) => {
-                const slots = [];
-                let startTime = moment(session.start, "HH:mm");
-                const endTime = moment(session.end, "HH:mm");
-
-                while (startTime < endTime) {
-                    const slotEndTime = moment(startTime).add(duration, "minutes");
-                    slots.push({
-                        start: startTime.format("HH:mm"),
-                        end: slotEndTime.format("HH:mm"),
-                        available: true
-                    });
-                    startTime = slotEndTime;
-                }
-
-                return slots;
-            };
-
-            const morningSlots = generateSlots(morningSession, timeduration);
-            const eveningSlots = generateSlots(eveningSession, timeduration);
-
-            const startOfDay = moment(targetDate).startOf("day").toISOString();
-            const endOfDay = moment(targetDate).endOf("day").toISOString();
-
-            const appointments = await Appointment.find({
-                doctorId,
-                date: { $gte: startOfDay, $lt: endOfDay }
-            });
-
+    
             const holidays = await Holiday.findOne({
                 userId: doctorId,
                 date: targetDate
             });
-
+    
+            // Mark slots as unavailable based on appointments
             const checkAvailability = (slots, appointments) => {
                 slots.forEach(slot => {
                     appointments.forEach(appointment => {
@@ -767,35 +779,37 @@ class AppointmentController {
                     });
                 });
             };
-
+    
+            // Apply holiday filter to slots
             const applyHolidayFilter = (morningSlots, eveningSlots, holiday) => {
                 if (!holiday) return;
-
+    
                 if (holiday.session === "morning") {
-                    morningSlots.forEach(slot => slot.available = false);
+                    morningSlots.forEach(slot => (slot.available = false));
                 } else if (holiday.session === "evening") {
-                    eveningSlots.forEach(slot => slot.available = false);
+                    eveningSlots.forEach(slot => (slot.available = false));
                 } else if (holiday.session === "full_day") {
-                    morningSlots.forEach(slot => slot.available = false);
-                    eveningSlots.forEach(slot => slot.available = false);
+                    morningSlots.forEach(slot => (slot.available = false));
+                    eveningSlots.forEach(slot => (slot.available = false));
                 }
             };
-
+    
             checkAvailability(morningSlots, appointments);
             checkAvailability(eveningSlots, appointments);
-
             applyHolidayFilter(morningSlots, eveningSlots, holidays);
-
+    
             const data = {
                 morningSlots,
                 eveningSlots
             };
-
-            return ResponseService.send(res, StatusCodes.OK, 'Data fetched successfully', 1, data);
+    
+            return ResponseService.send(res, StatusCodes.OK, "Data fetched successfully", 1, data);
         } catch (error) {
+            console.error("Error in getDoctorSession:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
 
     async getAppointmentsWithoutBills(req, res) {
 

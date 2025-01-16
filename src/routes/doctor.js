@@ -68,5 +68,7 @@ router.put('/appointments/:appointmentId/records/:recordId', upload.fields([{ na
 router.delete('/appointments/:appointmentId/records/:recordId/images/:imageUrl', appointmentRecoedsController.deleteImages.bind(appointmentRecoedsController));
 
 
+router.get("/getDoctorSession", appointmentController.getDoctorSession.bind(appointmentController));
+
 
 export default router;
