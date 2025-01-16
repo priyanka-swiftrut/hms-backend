@@ -202,7 +202,6 @@ const UserSchema = new mongoose.Schema({
             },
             termsAccepted: {
                 type: Boolean,
-                default: false,
                 required: function () {
                     return this.role === "patient";
                 },

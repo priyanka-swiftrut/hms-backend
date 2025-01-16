@@ -322,9 +322,6 @@ class PrescriptionController {
         appointmentQuery.doctorId = userId;
       }
   
-      // Step 3: Find appointments not referenced in prescriptions
-      console.log(appointmentQuery, "appointmentquery");
-      
       const appointmentsWithoutPrescriptions = await Appointment.find(appointmentQuery)
         .populate("patientId doctorId", "fullName email gender age ");
       res.status(200).json({

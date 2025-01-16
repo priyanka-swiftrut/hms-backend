@@ -76,8 +76,8 @@ class AdminController {
                     await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
-
             }
+    
             let user = await User.findById(req.user._id);
             if (user) {
                 if (req.files) {
@@ -86,21 +86,30 @@ class AdminController {
                         req.body.profilePicture = req.files.profilePicture[0].path;
                     }
                 }
-                if(req.body.firstName && req.body.lastName){
+    
+                if (req.body.firstName && req.body.lastName) {
                     req.body.fullName = req.body.firstName + " " + req.body.lastName;
                 }
+    
                 let updatedUser = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
+    
                 if (updatedUser) {
-                    const token = jwt.sign({ userData: user }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
-                    return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, { updatedUser, token });
+                    const token = jwt.sign({ userData: updatedUser }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
+    
+                    // Add the token to the response data
+                    const responseData = {
+                        ...updatedUser._doc, // Spread the updatedUser's data
+                        token, // Include the token
+                    };
+    
+                    return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, responseData);
                 } else {
                     if (req.files?.profilePicture?.[0]?.path) {
                         await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
                     }
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to Update Profile", 0);
                 }
-            }
-            else {
+            } else {
                 if (req.files?.profilePicture?.[0]?.path) {
                     await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
                 }
