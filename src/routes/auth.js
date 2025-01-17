@@ -6,7 +6,6 @@ import AuthController from '../controllers/authController.js';
 const authController = new AuthController();
 
 router.post('/login', authController.Login.bind(authController));
-router.post('/login-phone', authController.LoginWithPhone.bind(authController));
 router.post('/forgot-password', authController.ForgotPassword.bind(authController));
 router.post('/reset-password', authController.ResetPassword.bind(authController));
 router.patch('/reset-password', authController.ResetPassword.bind(authController));

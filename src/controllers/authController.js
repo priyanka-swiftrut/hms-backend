@@ -73,44 +73,6 @@ class AuthController {
         }
     }
 
-    async LoginWithPhone(req, res) {
-        try {
-            const { phone, otp } = req.body;
-            if (!phone) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Phone number is required", 0);
-            }
-    
-            // Check if the user exists with the given phone number
-            const user = await User.findOne({ phone });
-            if (!user) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found", 0);
-            }
-    
-            if (!otp) {
-                // Send OTP if not provided
-                const response = await sendOtp(phone);
-                return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully", 1, { sid: response.sid });
-            } else {
-                // Verify OTP if provided
-                const verifyResponse = await verifyOtp(phone, otp);
-                if (verifyResponse.status === "approved") {
-                    const secret = user.role === 'admin' ? process.env.JWT_SECRET_ADMIN
-                        : user.role === 'doctor' ? process.env.JWT_SECRET_DOCTOR
-                            : user.role === 'patient' ? process.env.JWT_SECRET_PATIENT
-                                : process.env.JWT_SECRET_RECEPTIONIST;
-    
-                    const token = jwt.sign({ userData: user }, secret, { expiresIn: "1d" });
-                    return res.status(StatusCodes.OK).json({ message: "Login successful", status: 1, data: token, role: user.role });
-                } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
-                }
-            }
-        } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-        }
-    }
-    
-
     async ForgotPassword(req, res) {
         try {
             const { email, phone } = req.body;

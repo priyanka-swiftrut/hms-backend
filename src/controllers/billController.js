@@ -162,6 +162,7 @@ class BillController {
                 insurancePlan,
                 claimAmount,
                 claimedAmount,
+                
             });
 
             const savedInsurance = await newInsurance.save();
