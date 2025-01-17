@@ -4,7 +4,7 @@ import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
-
+import { sendOtp, verifyOtp } from '../services/twilioService.js';
 
 
 class AuthController {
@@ -15,43 +15,38 @@ class AuthController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
     
-            const { email, phoneNumber, password, otp } = req.body;
+            const { identifier, password } = req.body;
+    
+            if (!identifier) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Identifier (email or phone number) is required", 0);
+            }
+    
+            if (!password) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password is required", 0);
+            }
     
             let user;
-            if (email) {
-                // Find user by email
-                user = await User.findOne({ email });
-                if (!user) {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found", 0);
-                }
     
-                // Check password
-                const match = await bcrypt.compare(password, user.password);
-                if (!match) {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid Password", 0);
-                }
-            } else if (phoneNumber) {
-                // Find user by phone number
-                user = await User.findOne({ phoneNumber });
+            if (identifier.includes("@")) {
+                // Email-based login
+                user = await User.findOne({ email: identifier });
                 if (!user) {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found", 0);
-                }
-    
-                if (!otp) {
-                    // Send OTP if not provided
-                    const response = await sendOtp(phoneNumber);
-                    return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully", 1, { sid: response.sid });
-                } else {
-                    // Verify OTP if provided
-                    const verifyResponse = await verifyOtp(phoneNumber, otp);
-                    if (verifyResponse.status !== "approved") {
-                        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
-                    }
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found with this email", 0);
                 }
             } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email or Phone number is required", 0);
+                // Phone number-based login
+                user = await User.findOne({ phone: identifier });
+                if (!user) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found with this phone number", 0);
+                }
             }
-            
+    
+            // Password validation
+            const match = await bcrypt.compare(password, user.password);
+            if (!match) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid Password", 0);
+            }
+    
             const secret = user.role === 'admin' ? process.env.JWT_SECRET_ADMIN
                 : user.role === 'doctor' ? process.env.JWT_SECRET_DOCTOR
                     : user.role === 'patient' ? process.env.JWT_SECRET_PATIENT
@@ -75,60 +70,71 @@ class AuthController {
 
     async ForgotPassword(req, res) {
         try {
-            const { email, phone } = req.body;
+            const { identifier } = req.body;
     
-            if (!email && !phone) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email or Phone Number is required", 0);
+            if (!identifier) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Identifier (email or phone number) is required", 0);
             }
     
             let user;
-            if (email) {
-                user = await User.findOne({ email });
+            let otp;
+    
+            if (identifier.includes("@")) {
+                // Email-based forgot password
+                user = await User.findOne({ email: identifier });
                 if (!user) {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email not found", 0);
                 }
-            } else if (phone) {
-                user = await User.findOne({ phone });
+    
+                otp = Math.floor(100000 + Math.random() * 900000); // Generate a random OTP
+                res.cookie("otp", otp, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
+                res.cookie("email", user.email);
+    
+                const transporter = nodemailer.createTransport({
+                    host: "smtp.gmail.com",
+                    port: 465,
+                    secure: true,
+                    auth: {
+                        user: process.env.EMAIL,
+                        pass: process.env.PASSWORD,
+                    },
+                });
+    
+                await transporter.sendMail({
+                    from: process.env.EMAIL,
+                    to: user.email,
+                    subject: "Forgot Password OTP ✔",
+                    text: `Hello ${user.name}`,
+                    html: `<p>Your OTP is ${otp}</p>`,
+                });
+    
+                return ResponseService.send(res, StatusCodes.OK, "OTP Sent Successfully via Email", 1);
+            } else {
+                // Phone number-based forgot password
+                user = await User.findOne({ phone: identifier });
+    
                 if (!user) {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Phone number not found", 0);
                 }
     
-                // Generate OTP and send via SMS
-                const response = await sendOtp(phone);
-                return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully", 1, { sid: response.sid });
+                // Send OTP via SMS using Twilio
+                try {
+                    otp = Math.floor(100000 + Math.random() * 900000); // Generate OTP to send via SMS
+                    const response = await sendOtp(identifier, otp); // Send OTP using Twilio
+                    return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully via SMS", 1, { sid: response.sid });
+                } catch (error) {
+                    console.error("Failed to send OTP:", error.message);
+                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to send OTP", 0);
+                }
             }
-    
-            // Email flow remains the same
-            const otp = Math.floor(100000 + Math.random() * 900000);
-            res.cookie("otp", otp, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
-            this.OTP = otp;
-            res.cookie("email", user.email);
-    
-            const transporter = nodemailer.createTransport({
-                host: "smtp.gmail.com",
-                port: 465,
-                secure: true,
-                auth: {
-                    user: process.env.EMAIL,
-                    pass: process.env.PASSWORD,
-                },
-            });
-    
-            await transporter.sendMail({
-                from: process.env.EMAIL,
-                to: user.email,
-                subject: "Forgot Password OTP ✔",
-                text: `Hello ${user.name}`,
-                html: `<p>Your OTP is ${otp}</p>`,
-            });
-    
-            return ResponseService.send(res, StatusCodes.OK, "OTP Sent Successfully", 1);
         } catch (error) {
-            console.error(error.message);
+            console.error("Error in ForgotPassword:", error.message);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);
         }
     }
     
+    
+
 
     async ResetPassword(req, res) {
         try {
@@ -181,22 +187,32 @@ class AuthController {
 
     async VerifyOtp(req, res) {
         try {
-            if (req.body !== "") {
-                let sendedOtp = req.cookies.otp ? req.cookies.otp : this.OTP;
-                if (req.body.otp == sendedOtp) {
-                    this.OTP = "";
+            const { otp, phoneNumber } = req.body; // Include phoneNumber in the request
+    
+            if (!otp || !phoneNumber) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "OTP and phone number are required", 0);
+            }
+    
+            // Verify OTP sent via Twilio
+            const response = await verifyOtp(phoneNumber, otp); // Verify OTP using Twilio API
+    
+            if (response.status === "approved") {
+                // Check if the OTP in the cookie matches the one entered by the user (if using email-based verification)
+                const otpCookie = req.cookies.otp;
+                if (otpCookie && otpCookie.toString() === otp) {
                     return ResponseService.send(res, StatusCodes.OK, "OTP Verified Successfully 🎉", 1);
                 } else {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
                 }
             } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Data Not Found", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
             }
         } catch (error) {
             console.log(error.message);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);
         }
     }
+    
 
     async changePassword(req, res) {
         try {
