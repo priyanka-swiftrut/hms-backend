@@ -11,6 +11,7 @@ const storage = new CloudinaryStorage({
     switch (file.fieldname) {
       case 'signature' :
         folderName = "signatureImages";
+        break;
       case 'hospitalLogo' :
         folderName = 'hospitalLogoImages';
         break;

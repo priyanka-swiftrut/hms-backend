@@ -113,7 +113,7 @@ class AppointmentController {
             }
 
             // Calculate tax and total amount
-            const tax = amount * 0.18; // 18% tax
+            const tax = amount * 0.18; 
             const totalAmount = amount + tax;
 
             // Initialize variables for insurance and dueAmount
@@ -175,107 +175,8 @@ class AppointmentController {
         }
     }
 
-    // async getAppointments(req, res) {
-    //     try {
-    //         // Validate user ID
-    //         if (!req.user.id) {
-    //             return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
-    //         }
-
-    //         const { filter, date, startDate, endDate, page = 1, limit = 1500 } = req.query;
-    //         const paginationLimit = parseInt(limit, 1500);
-    //         const paginationSkip = (parseInt(page, 10) - 1) * paginationLimit;
-
-    //         const filters = {};
-    //         const today = new Date();
-    //         today.setHours(0, 0, 0, 0); // Start of the day
-    //         const tomorrow = new Date(today);
-    //         tomorrow.setDate(today.getDate() + 1);
-
-    //         // Apply role-based filters
-    //         if (req.user.role === "doctor") {
-    //             filters.doctorId = req.user.id;
-    //         } else if (req.user.role === "patient") {
-    //             filters.patientId = req.user.id;
-    //         } else {
-    //             // For non-patient roles, include hospitalId if available
-    //             if (req.user.hospitalId) {
-    //                 filters.hospitalId = req.user.hospitalId;
-    //             }
-    //         }
-
-    //         // Apply date-based filters
-    //         if (startDate && endDate) {
-    //             const start = new Date(startDate);
-    //             const end = new Date(endDate);
-    //             end.setHours(23, 59, 59, 999); // Include the end date's entire day
-    //             if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    //                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", 0);
-    //             }
-    //             filters.date = { $gte: start, $lte: end };
-    //         } else if (date) {
-    //             const selectedDate = new Date(date);
-    //             selectedDate.setHours(0, 0, 0, 0);
-    //             const nextDay = new Date(selectedDate);
-    //             nextDay.setDate(selectedDate.getDate() + 1);
-    //             filters.date = { $gte: selectedDate, $lt: nextDay };
-    //         } else if (filter === "today") {
-    //             filters.date = { $gte: today, $lt: tomorrow };
-    //             filters.status = { $ne: "canceled" };
-    //         } else if (filter === "upcoming") {
-    //             filters.date = { $gt: today };
-    //             filters.status = { $ne: "canceled" };
-    //         } else if (filter === "previous") {
-    //             filters.date = { $lt: today };
-    //             filters.status = { $ne: "canceled" };
-    //         }
-
-    //         // Apply status filter for canceled appointments
-    //         if (filter === "cancel") {
-    //             filters.status = "canceled";
-    //         }
-
-    //         // Fetch appointments with pagination
-    //         const appointments = await Appointment.find(filters)
-    //             .skip(paginationSkip)
-    //             .limit(paginationLimit)
-    //             .sort({ date: 1 }) // Sort by date (ascending)
-    //             .populate("doctorId", "fullName profilePicture email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metaData.doctorData.morningSession metaData.doctorData.eveningSession metaData.doctorData.emergencyContactNo")
-    //             .populate("patientId", "fullName email ")
-    //             .populate("hospitalId", "name emergencyContactNo");
-
-    //         // Format the date field
-    //         const formattedAppointments = appointments.map((appointment) => {
-    //             const formattedDate = new Date(appointment.date).toLocaleDateString("en-US", {
-    //                 day: "numeric",
-    //                 month: "short",
-    //                 year: "numeric",
-    //             });
-    //             return {
-    //                 ...appointment.toObject(),
-    //                 date: formattedDate,
-    //             };
-    //         });
-
-    //         const totalAppointments = await Appointment.countDocuments(filters);
-
-    //         return ResponseService.send(res, StatusCodes.OK, "Appointments retrieved successfully", 1, {
-    //             appointments: formattedAppointments,
-    //             pagination: {
-    //                 total: totalAppointments,
-    //                 page: parseInt(page, 10),
-    //                 limit: paginationLimit,
-    //                 totalPages: Math.ceil(totalAppointments / paginationLimit),
-    //             },
-    //         });
-    //     } catch (error) {
-    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-    //     }
-    // }    
-
     async getAppointments(req, res) {
         try {
-            // Validate user ID
             if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
@@ -286,7 +187,7 @@ class AppointmentController {
     
             const filters = {};
             const today = new Date();
-            today.setHours(0, 0, 0, 0); // Start of the day
+            today.setHours(0, 0, 0, 0); 
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
     
@@ -311,7 +212,7 @@ class AppointmentController {
             if (startDate && endDate) {
                 const start = new Date(startDate);
                 const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999); // Include the end date's entire day
+                end.setHours(23, 59, 59, 999); 
                 if (isNaN(start.getTime()) || isNaN(end.getTime())) {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", 0);
                 }
@@ -342,7 +243,7 @@ class AppointmentController {
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
                 .limit(paginationLimit)
-                .sort({ date: 1 }) // Sort by date (ascending)
+                .sort({ date: 1 }) 
                 .populate("doctorId", "fullName profilePicture email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metaData.doctorData.morningSession metaData.doctorData.eveningSession metaData.doctorData.emergencyContactNo")
                 .populate("patientId", "fullName email ")
                 .populate("hospitalId", "name emergencyContactNo");
@@ -376,10 +277,8 @@ class AppointmentController {
         }
     }
     
-
     async getAppointmentsTeleconsultation(req, res) {
         try {
-            // Validate user ID
             if (!req.user.id) {
                 return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
             }
@@ -390,7 +289,7 @@ class AppointmentController {
 
             const filters = {};
             const today = new Date();
-            today.setHours(0, 0, 0, 0); // Start of the day
+            today.setHours(0, 0, 0, 0); 
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
 
@@ -445,7 +344,7 @@ class AppointmentController {
             const appointments = await Appointment.find(filters)
                 .skip(paginationSkip)
                 .limit(paginationLimit)
-                .sort({ date: 1 }) // Sort by date (ascending)
+                .sort({ date: 1 }) 
                 .populate("doctorId", "fullName email profilePicture phone age gender address metaData.doctorData.speciality metaData.doctorData.description metaData.doctorData.experience metaData.doctorData.qualification metaData.doctorData.hospitalName metadata.doctorData.morningSession metaData.doctorData.eveningSession")
                 .populate("patientId", "fullName email")
                 .populate("hospitalId", "name");
@@ -525,9 +424,9 @@ class AppointmentController {
                     ...appointment.toObject(),
                     patientId: {
                         ...appointment.patientId.toObject(),
-                        address: appointment.patientId.formattedAddress, // Send formatted address
+                        address: appointment.patientId.formattedAddress, 
                     },
-                    date: appointment.formattedDate, // Send formatted date
+                    date: appointment.formattedDate, 
                     amount,
                     tax,
                 },
@@ -610,88 +509,6 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
-
-    // async getDoctorSession(req, res) {
-    //     try {
-    //         const { doctorId } = req.params.doctorId || req.user.id;
-    //         const { date } = req.query;
-    //         const targetDate = date || moment().format("YYYY-MM-DD");
-
-    //         const doctor = await User.findById(doctorId);
-    //         if (!doctor) {
-    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found.", 0);
-    //         }
-
-    //         const { morningSession: morning, eveningSession: evening, duration: timeduration } = doctor.metaData.doctorData;
-    //         if (!morning || !evening || !timeduration) {
-    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor session data is incomplete.", 0);
-    //         }
-
-    //         const parseSession = (sessionString) => {
-    //             const [start, end] = sessionString.split(" to ");
-    //             return { start, end };
-    //         };
-
-    //         const morningSession = parseSession(morning);
-    //         const eveningSession = parseSession(evening);
-
-    //         const generateSlots = (session, duration) => {
-    //             const slots = [];
-    //             let startTime = moment(session.start, "HH:mm");
-    //             const endTime = moment(session.end, "HH:mm");
-
-    //             while (startTime < endTime) {
-    //                 const slotEndTime = moment(startTime).add(duration, "minutes");
-    //                 slots.push({
-    //                     start: startTime.format("HH:mm"),
-    //                     end: slotEndTime.format("HH:mm"),
-    //                     available: true
-    //                 });
-    //                 startTime = slotEndTime;
-    //             }
-
-    //             return slots;
-    //         };
-
-    //         const morningSlots = generateSlots(morningSession, timeduration);
-    //         const eveningSlots = generateSlots(eveningSession, timeduration);
-
-    //         const startOfDay = moment(targetDate).startOf("day").toISOString();
-    //         const endOfDay = moment(targetDate).endOf("day").toISOString();
-
-    //         const appointments = await Appointment.find({
-    //             doctorId,
-    //             date: { $gte: startOfDay, $lt: endOfDay }
-    //         });
-
-    //         const checkAvailability = (slots, appointments) => {
-    //             slots.forEach(slot => {
-    //                 appointments.forEach(appointment => {
-    //                     if (
-    //                         moment(appointment.appointmentTime, "HH:mm").isBetween(
-    //                             moment(slot.start, "HH:mm"),
-    //                             moment(slot.end, "HH:mm"),
-    //                             null,
-    //                             "[)"
-    //                         )
-    //                     ) {
-    //                         slot.available = false;
-    //                     }
-    //                 });
-    //             });
-    //         };
-
-    //         checkAvailability(morningSlots, appointments);
-    //         checkAvailability(eveningSlots, appointments);
-    //         const data = {
-    //             morningSlots,
-    //             eveningSlots
-    //         }
-    //         return ResponseService.send(res, StatusCodes.OK, ' Data fetched Succesfully', 1, data);
-    //     } catch (error) {
-    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-    //     }
-    // }
 
     async getDoctorSession(req, res) {
         try {
@@ -810,7 +627,6 @@ class AppointmentController {
         }
     }
     
-
     async getAppointmentsWithoutBills(req, res) {
 
         try {
@@ -921,10 +737,10 @@ class AppointmentController {
                 })),
             }));
 
-            return res.status(200).json(result);
+            return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, result);
         } catch (error) {
             console.error("Error in hierarchical data API:", error);
-            return res.status(500).json({ message: "Internal Server Error", error: error.message });
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -947,10 +763,8 @@ class AppointmentController {
                     return acc;
                 }, []);
 
-                return res.status(200).json({
-                    success: true,
-                    data: uniqueDoctors,
-                });
+                return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, uniqueDoctors);
+                
             } else if (role === "doctor") {
                 // Fetch unique patients the doctor has appointments with
                 const appointments = await Appointment.find({ doctorId: id })
@@ -965,22 +779,13 @@ class AppointmentController {
                     return acc;
                 }, []);
 
-                return res.status(200).json({
-                    success: true,
-                    data: uniquePatients,
-                });
+                return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, uniquePatients);
             } else {
-                return res.status(403).json({
-                    success: false,
-                    message: "Access denied. Only patients and doctors can access this endpoint.",
-                });
+                return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Access denied. Only patients and doctors can access this endpoint.", 0);
             }
         } catch (error) {
             console.error("Error fetching chat connections:", error);
-            res.status(500).json({
-                success: false,
-                message: "An error occurred while fetching chat connections.",
-            });
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
 
     }

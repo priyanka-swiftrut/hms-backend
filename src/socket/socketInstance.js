@@ -4,7 +4,7 @@ import cloudinary from '../config/cloudinaryConfig.js';
 
 
 let io;
-export let onlineUsers = {}; // Track users by socket ID
+export let onlineUsers = {}; 
 export let checkonline = {}
 const chatRooms = new Map();
 
@@ -13,7 +13,7 @@ const init = (server) => {
     if (!io) {
         io = new Server(server, {
             cors: {
-                origin: "*", // Replace with specific origin in production
+                origin: "*", 
                 methods: ["GET", "POST"],  
             },
         });
@@ -48,61 +48,9 @@ const init = (server) => {
                 socket.emit("joined-room", { roomName });
             });
 
-
-            // Handle sending messages
-            // socket.on("send-message", async (data) => {
-            //     const { to, from, message: text, roomId } = data;
-                
-            //     console.log(data, "----------------------------------------------------------------");
-                
-                
-
-            //     // Validate required fields
-            //     if (!to || !from || !text || !roomId) {
-            //         console.warn(`Invalid message data received from socket ${socket.id}`);
-            //         socket.emit("error", { message: "Invalid message data." });
-            //         return;
-
-            //     }
-            
-            //     // Validate ObjectId fields
-            //     const isValidObjectId = (id) => /^[a-f\d]{24}$/i.test(id);
-            //     if (!isValidObjectId(from) || !isValidObjectId(to)) {
-            //         console.warn(`Invalid ObjectId(s): from=${from}, to=${to}`);
-            //         socket.emit("error", { message: "Invalid user IDs provided." });
-            //         return;
-            //     }
-            
-            //     try {
-            //         // Save the message
-            //         const chat = new Message({ from, to, message: text, roomId });
-            //         await chat.save();
-            
-            //         // Send message to the specific user in the room
-            //         const recipientSocketId = Object.keys(onlineUsers).find(
-            //             (id) => onlineUsers[id].userId === to
-            //         );
-            
-            //         if (recipientSocketId) {
-            //             io.to(recipientSocketId).emit("receive-message", {
-            //                 from,
-            //                 to,
-            //                 message: text,
-            //                 roomId,
-            //             });
-            //             console.log(`Message sent from ${from} to ${to} in room ${roomId}`);
-            //         } else {
-            //             console.log(`User ${to} is not online. Message not delivered.`);
-            //         }
-            //     } catch (error) {
-            //         console.error("Error saving message:", error);
-            //         socket.emit("error", { message: "Failed to send message. Please try again." });
-            //     }
-            // });
-
             socket.on("send-message", async (data, callback = () => {}) => {
 
-                const { to, from, roomId, fileDetails , type:resource_type } = data; // Assuming file data is sent as `file`
+                const { to, from, roomId, fileDetails , type:resource_type } = data; 
                 let message = data.message;
 
                 if (!to || !from || !roomId) {
@@ -155,8 +103,6 @@ const init = (server) => {
                     callback({ error: "Failed to send message." });
                 }
             });
-
-          
 
             // Handle receiving messages
             socket.on("receive-message", (data) => {

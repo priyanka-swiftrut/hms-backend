@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 
 
 class PatientController {
+
     async Register(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {
@@ -122,9 +123,9 @@ class PatientController {
             // Restructure patientData (metaData)
             if (req.body.height || req.body.weight || req.body.bloodGroup || req.body.dob || req.body.phoneCode || req.body.termsAccepted) {
                 req.body.metaData = {
-                    ...patient.metaData, // Keep existing metaData
+                    ...patient.metaData, 
                     patientData: {
-                        ...patient.metaData?.patientData, // Keep existing patientData
+                        ...patient.metaData?.patientData, 
                         height: req.body.height || patient.metaData?.patientData?.height,
                         weight: req.body.weight || patient.metaData?.patientData?.weight,
                         bloodGroup: req.body.bloodGroup || patient.metaData?.patientData?.bloodGroup,
@@ -158,7 +159,6 @@ class PatientController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
         }
     }
-    
 
     async deleteProfile(req, res) {
         try {
@@ -180,7 +180,6 @@ class PatientController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
-
     
     async getPatients(req, res) {
         try {
@@ -192,9 +191,9 @@ class PatientController {
                 // Add search filter if provided
                 if (search) {
                     query.$or = [
-                        { "fullName": { $regex: search, $options: 'i' } }, // Case-insensitive search on fullName
-                        { "email": { $regex: search, $options: 'i' } },    // Case-insensitive search on email
-                        { "phone": { $regex: search, $options: 'i' } }     // Case-insensitive search on phone
+                        { "fullName": { $regex: search, $options: 'i' } }, 
+                        { "email": { $regex: search, $options: 'i' } },    
+                        { "phone": { $regex: search, $options: 'i' } }     
                     ];
                 }
     
@@ -210,7 +209,7 @@ class PatientController {
                 }
     
                 // Fetch all patients based on the query
-                const patients = await User.find(query).select("-password"); // Exclude sensitive fields like password
+                const patients = await User.find(query).select("-password"); 
                 if (patients.length > 0) {
                     const formattedPatients = patients.map(patient => ({
                         id: patient._id,
@@ -253,8 +252,6 @@ class PatientController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
-    
-    
 
     async deleteImage(path) {
         if (path) {
@@ -281,12 +278,12 @@ class PatientController {
                 if (status !== "paid" && status !== "unpaid") {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid status value", 0);
                 }
-                query.status = status === "paid"; // `true` for paid, `false` for unpaid
+                query.status = status === "paid"; 
             }
     
             // Fetch bills based on the query
             const billsData = await billModel.find(query)
-                .sort({ createdAt: -1 }) // Optional: Sort by newest first
+                .sort({ createdAt: -1 }) 
                 .populate("hospitalId", "name")
                 .populate("patientId", "fullName email phone age gender address")
             
@@ -299,7 +296,7 @@ class PatientController {
                     year: "numeric",
                     month: "short",
                     day: "numeric",
-                }), // Format the date to "2 Jan, 2022"
+                }), 
                 time: bill.time,
                 totalAmount: bill.totalAmount,
                 hospitalName: bill.hospitalId?.name || "N/A",
@@ -384,8 +381,6 @@ class PatientController {
             );
         }
     }
-    
-    
 
 }
 
