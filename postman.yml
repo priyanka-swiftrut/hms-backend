@@ -3,7 +3,7 @@ info:
   title: HMS
   version: 1.0.0
 servers:
-  - url: https://hms-backend-1-jyts.onrender.com
+  - url: http://{{base_url}}
 components:
   securitySchemes:
     bearerAuth:
