@@ -213,22 +213,22 @@ class ReceptionistController {
     
             // Check if no patient is found
             if (!patient) {
-                return res.status(404).json({
+                return ResponseService.send(res, StatusCodes.NOT_FOUND, {
                     message: "Patient not found",
                     data: [],
                     count: 0,
-                });
+                }, 0);
             }
     
             // Return patient details directly in the "data" field
-            return res.status(200).json({
+            return ResponseService.send(res, StatusCodes.OK, {
                 message: "Patient detail for appointment booking",
                 data: patient,
                 count: 1,
             });
         } catch (error) {
             // Handle server errors
-            return res.status(500).json({
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, {
                 message: "Internal Server Error",
                 error: error.message, // Provide additional error details for debugging
             });
@@ -452,13 +452,13 @@ class ReceptionistController {
             });
     
             // Send response with the list of specialties and doctors
-            return res.status(200).json({
+            return ResponseService.send(res, StatusCodes.OK, {
                 specialties,  // List of specialties
                 doctors: doctorList,  // Flattened doctor data
-            });
+            } , 0);
         } catch (error) {
             console.error(error);
-            return res.status(500).json({ message: "Server error" });
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error", 0);
         }
     }
     

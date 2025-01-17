@@ -96,10 +96,10 @@ class AdminController {
                 if (updatedUser) {
                     const token = jwt.sign({ userData: updatedUser }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
     
-                    // Add the token to the response data
+                   
                     const responseData = {
-                        ...updatedUser._doc, // Spread the updatedUser's data
-                        token, // Include the token
+                        ...updatedUser._doc, 
+                        token, 
                     };
     
                     return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, responseData);
@@ -129,7 +129,7 @@ class AdminController {
             if (user) {
                 return ResponseService.send(res, StatusCodes.OK, "Admin fetched successfully", 1, user);
             } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Admin not found", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Admin not found", 0 ,[]);
             }
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
@@ -149,10 +149,10 @@ class AdminController {
                 if (deletedUser) {
                     return ResponseService.send(res, StatusCodes.OK, "Profile Deleted Successfully", 1, deletedUser);
                 } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to Delete Profile", 0);
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to Delete Profile", 0 ,);
                 }
             } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User Not Found", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User Not Found", 0 , []);
             }
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
@@ -306,9 +306,8 @@ class AdminController {
     
             const defaultRoles = ['doctor', 'patient', 'receptionist'];
     
-            // Use "starts with" regex pattern for the search
             const searchCriteria = {
-                fullName: { $regex: `^${query}`, $options: 'i' } // Match strings starting with `query`, case-insensitive
+                fullName: { $regex: `^${query}`, $options: 'i' } 
             };
     
             if (role) {
@@ -324,17 +323,14 @@ class AdminController {
             let results = [];
     
             if (role === 'patient') {
-                // Fetch appointments with populated patient details
                 const appointments = await AppointmentModel.find()
                     .populate('patientId');
     
                 const patientsFromAppointments = appointments.map(appointment => appointment.patientId);
-                // Filter patients whose fullName starts with the query
                 results = patientsFromAppointments.filter(patient => 
                     patient.fullName && patient.fullName.toLowerCase().startsWith(query.toLowerCase())
                 );
             } else {
-                // Fetch users based on search criteria
                 results = await User.find(searchCriteria);
     
                 if (req.user.role === 'patient') {
@@ -342,7 +338,6 @@ class AdminController {
                 }
             }
     
-            // Remove duplicates based on `_id`
             const data = results.filter((value, index, self) =>
                 index === self.findIndex((t) => (
                     t._id.toString() === value._id.toString()
@@ -371,7 +366,6 @@ class AdminController {
             const appointmentFilter = {};
             if (hospitalId) appointmentFilter.hospitalId = hospitalId;
 
-            // Match appointments for the current date
             const now = new Date();
             const startOfDay = new Date(now.setHours(0, 0, 0, 0));
             const endOfDay = new Date(now.setHours(23, 59, 59, 999));
@@ -443,7 +437,7 @@ class AdminController {
             return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
         } catch (error) {
             console.error("Error in getDashboardData:", error);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0 , []);
         }
     }
 
@@ -482,7 +476,7 @@ class AdminController {
             const { type } = req.query;
 
             if (!hospitalId) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0 , []);
             }
 
             let bills = [];
@@ -550,9 +544,9 @@ class AdminController {
 
                 const billdata = billfilter.map((bill) => ({
                     "billsNo": bill.billNumber,
-                    "patientName": bill.patientId?.fullName || "Unknown", // Safe navigation
-                    "diseaseName": bill.appointmentId?.dieseas_name || "Unknown", // Safe navigation
-                    "status": bill.status ? "Paid" : "Unpaid", // Convert Boolean to readable string
+                    "patientName": bill.patientId?.fullName || "Unknown", 
+                    "diseaseName": bill.appointmentId?.dieseas_name || "Unknown", 
+                    "status": bill.status ? "Paid" : "Unpaid", 
                 }));
 
                 const UnpaindBills = billfilter.filter((bill) => !bill.status).length;
@@ -563,7 +557,6 @@ class AdminController {
 
                 appointmentFilter.date = { $gte: startOfDay, $lte: endOfDay };
 
-                // Fetch distinct patientIds for the current day
                 const uniquePatientIds = await AppointmentModel.distinct("patientId");
 
                 const totalPatients = uniquePatientIds.length;
@@ -588,7 +581,6 @@ class AdminController {
                     totalPatients,
                 };
 
-                // Adjust the dates for different time ranges
                 const startOfYear = new Date(now.getFullYear(), 0, 1);
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 const startOfWeek = new Date(now);
@@ -673,9 +665,8 @@ class AdminController {
 
             else if (req.user.role === "patient" ) {
                 try {
-                    const { patientId: queryPatientId } = req.query; // Get patientId from query
+                    const { patientId: queryPatientId } = req.query; 
                     const isReceptionist = req.user.role === "receptionist";
-                    // Determine the patientId to fetch data for
                     const patientId = isReceptionist ? queryPatientId : req.user._id;
             
                     if (!patientId) {
@@ -686,7 +677,6 @@ class AdminController {
                             "error"
                         );
                     }
-                    // Fetch patient profile
                     const patientProfile = await User.findById(patientId);
                     if (!patientProfile) {
                         return ResponseService.send(
@@ -696,7 +686,6 @@ class AdminController {
                             "error"
                         );
                     }
-                    // Fetch prescriptions and populate hospital details
                     let prescriptionsdata = await PrescriptionModel.find({ patientId })
                         .sort({ createdAt: -1 })
                         .populate("patientId", "fullName gender address age phone")
@@ -732,12 +721,10 @@ class AdminController {
                             dieseas_name: prescription.appointmentId?.dieseas_name || "N/A",
                         };
                     });
-                    // Prepare dashboard data
                     const dashboardData = {
                         patientProfile,
                         prescriptions,
                     };
-                    // Return success response with dashboard data
                     return ResponseService.send(res, StatusCodes.OK, "Dashboard data fetched successfully", "success", dashboardData);
                 } catch (error) {
                     console.error("Error fetching patient dashboard data:", error);
@@ -753,14 +740,12 @@ class AdminController {
 
     async reportandanalysis(req, res) {
         try {
-            // Initialize an empty result object to store all the data
+
             let reportData = {};
 
-            // Fetch Total Patients
             const totalPatients = await AppointmentModel.distinct("patientId");
             reportData.totalPatients = totalPatients.length;
 
-            // Fetch Repeat Patients
             const repeatPatients = await AppointmentModel.aggregate([
                 { $group: { _id: "$patientId", count: { $sum: 1 } } },
                 { $match: { count: { $gt: 1 } } }
@@ -831,9 +816,9 @@ class AdminController {
             });
 
             const today = new Date();
-            today.setHours(0, 0, 0, 0); // Start of the day
+            today.setHours(0, 0, 0, 0);
             const tomorrow = new Date(today);
-            tomorrow.setDate(today.getDate() + 1); // Start of the next day
+            tomorrow.setDate(today.getDate() + 1); 
 
             const dailySummary = await AppointmentModel.aggregate([
                 {
@@ -901,16 +886,14 @@ class AdminController {
                 { $unwind: { path: "$doctorData", preserveNullAndEmptyArrays: true } },
                 {
                     $group: {
-                        _id: "$doctorData.metaData.doctorData.speciality", // Group by doctor speciality
+                        _id: "$doctorData.metaData.doctorData.speciality", 
                         count: { $sum: 1 },
                     },
                 },
             ]);
 
-            // For patientDepartmentData, we need to ensure we count only unique patients for each speciality
             const patientDepartmentDataMap = new Map();
 
-            // Aggregate data based on appointments, ensuring each patient is counted only once per speciality
             await AppointmentModel.aggregate([
                 {
                     $lookup: {
@@ -930,39 +913,36 @@ class AdminController {
                 results.forEach(({ _id }) => {
                     if (_id.speciality) {
                         if (!patientDepartmentDataMap.has(_id.speciality)) {
-                            patientDepartmentDataMap.set(_id.speciality, 1); // Count unique speciality per patient
+                            patientDepartmentDataMap.set(_id.speciality, 1); 
                         }
                     }
                 });
             });
 
-            // Convert map to array for the final result
             reportData.patientDepartmentData = Array.from(patientDepartmentDataMap.entries()).map((entry, index) => ({
                 key: `${index + 1}`,
                 name: entry[0],
                 count: entry[1].toString(),
             }));
 
-            // Fetch Doctor Count by Department (Group doctors by speciality)
             const doctorData = await User.aggregate([
                 { $match: { role: "doctor" } },
                 {
                     $group: {
-                        _id: "$metaData.doctorData.speciality", // Group by doctor speciality
+                        _id: "$metaData.doctorData.speciality", 
                         count: { $sum: 1 },
                     },
                 },
             ]);
 
             reportData.doctorDepartmentData = doctorData
-                .filter(item => item._id) // Filter out null specialities
+                .filter(item => item._id) 
                 .map((item, index) => ({
                     key: `${index + 1}`,
                     name: item._id,
                     count: item.count.toString(),
                 }));
 
-            // Fetch Patient Age Distribution
             const ageGroups = [
                 { range: "0-2 Years", min: 0, max: 2 },
                 { range: "3-12 Years", min: 3, max: 12 },
@@ -976,13 +956,15 @@ class AdminController {
             reportData.patientAgeDistribution = ageGroups.map(group => ({
                 age: group.range,
                 value: patientData.filter(p => p.age >= group.min && p.age <= group.max).length,
-                color: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color for each range
+                color: "#" + Math.floor(Math.random() * 16777215).toString(16),
             }));
 
-            res.json(reportData);
+            return ResponseService.send(res, StatusCodes.OK, "Report data retrieved successfully", 1, reportData);
 
         } catch (error) {
-            res.status(500).json({ error: error.message }, 0);
+
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Error retrieving report data", 0, error.message);
+            
         }
     }
 

@@ -271,10 +271,9 @@ class PrescriptionController {
       const { hospitalId, role, _id: userId } = req.user;
   
       if (!hospitalId) {
-        return res.status(400).json({
-          success: false,
-          message: "Hospital ID is required.",
-        });
+
+        return ResponseService.send(res , StatusCodes.NOT_FOUND , {success: false,message: "Hospital ID is required.",} , 0)
+
       }
   
       // Extract query parameters
@@ -294,10 +293,8 @@ class PrescriptionController {
         // Filter for a specific date
         const specificDate = new Date(date);
         if (isNaN(specificDate)) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid date format. Use YYYY-MM-DD.",
-          });
+
+          return ResponseService.send(res , StatusCodes.BAD_REQUEST , {success: false,message: "Invalid date format. Use YYYY-MM-DD.",} , 0)
         }
         specificDate.setHours(0, 0, 0, 0); // Start of the specific date
         const nextDay = new Date(specificDate);
@@ -324,17 +321,12 @@ class PrescriptionController {
   
       const appointmentsWithoutPrescriptions = await Appointment.find(appointmentQuery)
         .populate("patientId doctorId", "fullName email gender age ");
-      res.status(200).json({
-        success: true,
-        data: appointmentsWithoutPrescriptions,
-      });
+
+        return ResponseService.send(res , StatusCodes.OK , {success: true,data: appointmentsWithoutPrescriptions,} , 1)
     } catch (error) {
       console.error("Error fetching appointments without prescriptions:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch appointments. Please try again later.",
-        error: error.message,
-      });
+
+      return ResponseService.send(res , StatusCodes.INTERNAL_SERVER_ERROR , {success: false,message: "Failed to fetch appointments. Please try again later.",error: error.message,} , 0)
     }
   }
 

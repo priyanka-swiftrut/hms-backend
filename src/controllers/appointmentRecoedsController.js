@@ -83,7 +83,7 @@ class AppointmentRecordController {
             // Handle images
 
             const newImages = req.files ? req.files.map(file => file.path) : [];
-            imagePaths.push(...newImages); // Track newly uploaded images
+            imagePaths.push(...newImages); 
 
 
             if (newImages.length > 0) {
@@ -92,11 +92,11 @@ class AppointmentRecordController {
                     await this.deleteImage(record.images);
                     await deleteImages(record.images);
                 }
-                record.images = newImages; // Replace with new images
+                record.images = newImages; 
                 record.images = newImages;
 
             } else if (existingImages && existingImages.length > 0) {
-                record.images = existingImages; // Keep existing images
+                record.images = existingImages; 
                 record.images = existingImages;
             }
 

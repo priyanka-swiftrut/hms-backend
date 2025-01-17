@@ -2,6 +2,9 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import User from '../models/User.model.js';
 import Appointment from '../models/Appointment.model.js';
+import ResponseService from '../services/response.services.js';
+import { StatusCodes } from 'http-status-codes';
+
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -16,13 +19,13 @@ export const createOrder = async (req, res) => {
 
         // Validate required fields
         if (!appointmentType || !doctorId || !paymentType) {
-            return res.status(400).json({ error: "All fields are required." });
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid request data.", 0);
         }
 
         // Find the doctor
         const doctor = await User.findById(doctorId);
         if (!doctor) {
-            return res.status(404).json({ error: "Doctor not found." });
+            return ResponseService.send(res, StatusCodes.NOT_FOUND, "Doctor not found.", 0);
         }
 
         // Calculate amount and tax
@@ -36,7 +39,7 @@ export const createOrder = async (req, res) => {
             amount = doctor.metaData.doctorData.consultationRate;
             tax = amount * 0.18; // 18% tax
         } else {
-            return res.status(400).json({ error: "Invalid appointment type." });
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid appointment type.", 0);
         }
 
         const totalAmount = Math.round((amount + tax) * 100); // Convert to paise (smallest currency unit)
@@ -46,10 +49,10 @@ export const createOrder = async (req, res) => {
             
             // Validate insurance details
             if (claimAmount === undefined || claimedAmount === undefined) {
-                return res.status(400).json({ error: "Insurance details are incomplete." });
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Insurance details are incomplete.", 0);
             }
             if (claimAmount < claimedAmount) {
-                return res.status(400).json({ error: "Claim amount cannot be less than claimed amount." });
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Claim amount cannot be less than claimed amount.", 0);
             }
 
             // Calculate the remaining amount to be paid by the user
@@ -71,17 +74,17 @@ export const createOrder = async (req, res) => {
                 const order = await razorpay.orders.create(options);
                 console.log("Order created successfully:", order);
 
-                return res.status(200).json({
+                return ResponseService.send(res, StatusCodes.OK, {
                     order,
                     dueAmountInRupees: dueAmount / 100, // Return due amount in rupees
                     paymentCoveredByInsurance: claimedAmount / 100,
-                });
+                } ,1 );
             } else {
                 // Full amount is covered by insurance
-                return res.status(200).json({
+                return ResponseService.send(res, StatusCodes.OK, {
                     message: "Total amount covered by insurance.",
                     paymentCoveredByInsurance: claimedAmount / 100,
-                });
+                } , 1);
             }
         } else if (paymentType === "Direct") {
             // Handle direct payment via Razorpay
@@ -96,13 +99,13 @@ export const createOrder = async (req, res) => {
             const order = await razorpay.orders.create(options);
             console.log("Order created successfully:", order);
 
-            return res.status(200).json({ order, totalAmountInRupees: totalAmount / 100 });
+            return ResponseService.send(res, StatusCodes.OK, { order, totalAmountInRupees: totalAmount / 100 } , 1);
         } else {
-            return res.status(400).json({ error: "Invalid payment type." });
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
         }
     } catch (error) {
         console.error("Error creating order:", error);
-        res.status(500).json({ error: error.message });
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
 };
 
@@ -130,11 +133,12 @@ export const verifyPayment = async (req, res) => {
 
         if (razorpay_signature === expectedSign) {
             // Payment is verified
-            res.json({ verified: true, message: "Payment verified successfully" });
+
+            return ResponseService.send(res, StatusCodes.OK, { verified: true, message: "Payment verified successfully" } , 1);
         } else {
-            res.status(400).json({ verified: false, message: "Invalid signature" });
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid signature", 0);
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+        }
 }
