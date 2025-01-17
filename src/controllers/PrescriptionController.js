@@ -64,7 +64,7 @@ class PrescriptionController {
       );
     } catch (error) {
       console.error("Error creating prescription:", error.message);
-      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", "error");
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", 0);
     }
   }
 
@@ -103,7 +103,7 @@ class PrescriptionController {
       );
     } catch (error) {
       console.error("Error updating prescription:", error.message);
-      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", "error");
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", 0);
     }
   }
 
@@ -139,7 +139,7 @@ class PrescriptionController {
       } else if (specificDate) {
         const specificDateObj = new Date(specificDate);
         if (isNaN(specificDateObj.getTime())) {
-          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid date format", "error");
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid date format", 0);
         }
         const specificStartOfDay = new Date(specificDateObj.setHours(0, 0, 0, 0));
         const specificEndOfDay = new Date(specificDateObj.setHours(23, 59, 59, 999));
@@ -150,7 +150,7 @@ class PrescriptionController {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999); // Include the end date's entire day
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", "error");
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid start or end date format", 0);
         }
         prescriptionQuery.date = { $gte: start, $lte: end };
       }
@@ -159,7 +159,7 @@ class PrescriptionController {
         if (mongoose.isValidObjectId(prescriptionId)) {
           prescriptionQuery._id = prescriptionId;
         } else {
-          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid prescription ID format", "error");
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid prescription ID format", 0);
         }
       }
 
@@ -207,7 +207,7 @@ class PrescriptionController {
       return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, prescriptions);
     } catch (error) {
       console.error("Error fetching prescriptions:", error);
-      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred.", "error");
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred.", 0);
     }
   }
 
@@ -258,7 +258,7 @@ class PrescriptionController {
       }
 
       // Respond with the prescriptions
-      return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, { prescriptions });
+      return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, prescriptions);
     } catch (error) {
       console.error("Error fetching prescriptions:", error);
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
@@ -272,7 +272,7 @@ class PrescriptionController {
 
       if (!hospitalId) {
 
-        return ResponseService.send(res, StatusCodes.NOT_FOUND, { success: false, message: "Hospital ID is required.", }, 0)
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Hospital ID is required.", 0)
 
       }
 
@@ -294,7 +294,7 @@ class PrescriptionController {
         const specificDate = new Date(date);
         if (isNaN(specificDate)) {
 
-          return ResponseService.send(res, StatusCodes.BAD_REQUEST, { success: false, message: "Invalid date format. Use YYYY-MM-DD.", }, 0)
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid date format. Use YYYY-MM-DD.", 0)
         }
         specificDate.setHours(0, 0, 0, 0); // Start of the specific date
         const nextDay = new Date(specificDate);
@@ -326,7 +326,7 @@ class PrescriptionController {
     } catch (error) {
       console.error("Error fetching appointments without prescriptions:", error);
 
-      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, { success: false, message: "Failed to fetch appointments. Please try again later.", error: error.message, }, 0)
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to fetch appointments. Please try again later.", error.message, 0)
     }
   }
 
