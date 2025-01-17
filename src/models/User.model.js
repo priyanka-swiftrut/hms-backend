@@ -158,13 +158,13 @@ const UserSchema = new mongoose.Schema({
             hospitalName: {
                 type: String,
                 required: function () {
-                    // return this.role === "doctor";
+                    return this.role === "doctor";
                 },
             },
             hospitalAddress: {
                 type: String,
                 required: function () {
-                    // return this.role === "doctor";
+                    return this.role === "doctor";
                 },
             },
         },
