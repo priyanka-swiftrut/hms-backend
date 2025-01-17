@@ -75,7 +75,7 @@ class ReceptionistController {
             const newReceptionist = new User(newReceptionistData);
             await newReceptionist.save();
             try {
-                const emailHtml = EmailService.registrationTemplate(newReceptionist.fullName, newReceptionist.email, req.body.password);
+                const emailHtml = EmailService.registrationTemplate(newReceptionist.fullName, newReceptionist.email, password);
                 await EmailService.sendEmail(newReceptionist.email, "Registration Successful ✔", emailHtml);
             } catch (emailError) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist registered, but email sending failed", 0);

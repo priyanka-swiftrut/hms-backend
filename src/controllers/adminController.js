@@ -196,6 +196,9 @@ class AdminController {
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
+            if(req.body.experience > req.body.age){
+                
+            }
             const password = crypto.randomBytes(8).toString("hex");
             const hashedPassword = await bcrypt.hash(password, 10);
             const newDoctor = {
