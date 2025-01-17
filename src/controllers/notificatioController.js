@@ -35,7 +35,7 @@ export const getNotifications = async (req, res) => {
             .limit(15)
             .exec();
 
-        return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, notification);
+        return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, notifications);
     } catch (error) {
         console.error("Error fetching notifications:", error);
         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
