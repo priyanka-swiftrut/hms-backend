@@ -30,30 +30,35 @@ class EmailService {
 
     static registrationTemplate(fullName, email, password) {
         return `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
-                <div style="background-color: #4CAF50; color: white; padding: 20px; text-align: center;">
-                    <h1 style="margin: 0;">Registration Successful</h1>
-                </div>
-                <div style="padding: 20px; color: #333; line-height: 1.6;">
-                    <p>Dear <strong>${fullName}</strong>,</p>
-                    <p>You've successfully registered on our platform! Below are your login details:</p>
-                    <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9; width: 30%;"><strong>Email:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">${email}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Password:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">${password}</td>
-                        </tr>
-                    </table>
-                    <p style="color: #888; font-size: 0.9em;">* For security reasons, we recommend changing your password after your first login.</p>
-                    <p>If you have any questions or need assistance, feel free to contact our support team.</p>
-                </div>
-                <div style="background-color: #f4f4f4; color: #666; text-align: center; padding: 15px; font-size: 0.8em;">
-                    <p style="margin: 0;">&copy; 2024 Team 1. All rights reserved.</p>
-                    <p style="margin: 0;">1234 Street, City, State, 56789</p>
-                </div>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+            <!-- Header Section -->
+            <div style="background-color: #4AC0F0; color: #ffffff; padding: 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">Welcome to Our Platform!</h1>
+            </div>
+            
+            <!-- Body Section -->
+            <div style="padding: 20px; color: #333; line-height: 1.6; background-color: #ffffff;">
+                <p style="font-size: 16px;">Hello <strong>${fullName}</strong>,</p>
+                <p style="font-size: 14px;">Congratulations! Your registration was successful. Below are your login details:</p>
+                <table style="width: 100%; margin: 20px 0; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd; background-color: #f1f9ff; font-weight: bold; width: 30%;">Email:</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${email}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd; background-color: #f1f9ff; font-weight: bold;">Password:</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${password}</td>
+                    </tr>
+                </table>
+                <p style="font-size: 13px; color: #888;">* For your security, please change your password after logging in for the first time.</p>
+                <p style="margin-top: 20px; font-size: 14px;">If you have any questions or need help, feel free to contact our support team. We're here to assist you.</p>
+            </div>
+            
+            <!-- Footer Section -->
+            <div style="background-color: #f4f9ff; color: #666; text-align: center; padding: 15px; font-size: 12px; border-top: 1px solid #ddd;">
+                <p style="margin: 0;">&copy; 2024 Team 1. All rights reserved.</p>
+                <p style="margin: 0;">1234 Street, City, State, 56789</p>
+            </div>
         </div>`;
     }
 
