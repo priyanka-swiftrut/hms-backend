@@ -21,9 +21,9 @@ class PrescriptionController {
         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
       }
 
-      const prescriptiondata = await Prescription.findOne({appointmentId:appointmentId}); 
+      const prescriptiondata = await Prescription.findOne({ appointmentId: appointmentId });
 
-      if(prescriptiondata){
+      if (prescriptiondata) {
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "you already creted prescription", 0);
       }
 
@@ -112,17 +112,17 @@ class PrescriptionController {
       if (!req.user?.id) {
         return ResponseService.send(res, StatusCodes.UNAUTHORIZED, "User not authorized", 0);
       }
-  
+
       const { dateFilter, prescriptionId, specificDate, startDate, endDate } = req.query;
       let prescriptionQuery = {};
       const currentDate = new Date();
       const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0));
       const endOfDay = new Date(currentDate.setHours(23, 59, 59, 999));
-  
+
       if (req.user.role !== "patient") {
         prescriptionQuery = { hospitalId: req.user.hospitalId };
       }
-  
+
       if (req.user.role === "doctor") {
         prescriptionQuery.doctorId = req.user.id;
       } else if (req.user.role === "patient") {
@@ -130,7 +130,7 @@ class PrescriptionController {
       } else if (req.user.role === "receptionist") {
         prescriptionQuery.hospitalId = req.user.hospitalId;
       }
-  
+
       // Apply date filters
       if (dateFilter === "today") {
         prescriptionQuery.date = { $gte: startOfDay, $lte: endOfDay };
@@ -154,7 +154,7 @@ class PrescriptionController {
         }
         prescriptionQuery.date = { $gte: start, $lte: end };
       }
-  
+
       if (prescriptionId) {
         if (mongoose.isValidObjectId(prescriptionId)) {
           prescriptionQuery._id = prescriptionId;
@@ -162,27 +162,27 @@ class PrescriptionController {
           return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid prescription ID format", "error");
         }
       }
-  
+
       let prescriptions = await Prescription.find(prescriptionQuery)
         .populate("patientId", "fullName gender address age phone")
         .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
         .populate("appointmentId", "dieseas_name type appintmentTime date")
         .populate("hospitalId", "name");
-  
+
       prescriptions = prescriptions.map((prescription) => {
         const addressObj = prescription.patientId?.address;
         const formattedAddress = addressObj
           ? `${addressObj.fullAddress || "N/A"}, ${addressObj.city || "N/A"}, ${addressObj.state || "N/A"}, ${addressObj.country || "N/A"}, ${addressObj.zipCode || "N/A"}`
           : "N/A";
-  
+
         return {
           prescriptionId: prescription._id,
-          prescriptionDate: new Date(prescription.date).toLocaleDateString("en-US", {day: "numeric",month: "short",year: "numeric",}),
+          prescriptionDate: new Date(prescription.date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", }),
           hospitalName: prescription.hospitalId?.name || "N/A",
           DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
           DoctorName: prescription.doctorId?.fullName || "N/A",
           patientName: prescription.patientId?.fullName || "N/A",
-          patientNumber : prescription.patientId?.phone || "N/A",
+          patientNumber: prescription.patientId?.phone || "N/A",
           doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
           gender: prescription.patientId?.gender || "N/A",
           age: prescription.patientId?.age || "N/A",
@@ -195,13 +195,13 @@ class PrescriptionController {
           dieseas_name: prescription.appointmentId?.dieseas_name || "N/A",
         };
       });
-  
-      if (dateFilter == "today" &&  !prescriptions.length) {
-        return ResponseService.send(res, StatusCodes.OK, "No prescriptions found.", 0 ,[]);
+
+      if (dateFilter == "today" && !prescriptions.length) {
+        return ResponseService.send(res, StatusCodes.OK, "No prescriptions found.", 0, []);
       }
-      
-      if ( !prescriptions.length) {
-        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0 );
+
+      if (!prescriptions.length) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
       }
 
       return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, prescriptions);
@@ -210,7 +210,7 @@ class PrescriptionController {
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred.", "error");
     }
   }
-  
+
   async getpatientdetails(req, res) {
     try {
       const { prescriptionId } = req.params; // Prescription ID from route params
@@ -248,20 +248,20 @@ class PrescriptionController {
 
       // Fetch prescriptions from the database
       const prescriptions = await Prescription.find(prescriptionQuery)
-      .populate("patientId", "fullName phone age gender")
-      .populate("appointmentId", "dieseas_name type ")
+        .populate("patientId", "fullName phone age gender")
+        .populate("appointmentId", "dieseas_name type ")
 
 
       // Check if prescriptions exist
       if (!prescriptions || prescriptions.length === 0) {
-        return ResponseService.send(res,StatusCodes.NOT_FOUND,"No prescriptions found.",0);
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No prescriptions found.", 0);
       }
 
       // Respond with the prescriptions
-      return ResponseService.send(res,StatusCodes.OK,"Prescriptions retrieved successfully",1,{ prescriptions });
+      return ResponseService.send(res, StatusCodes.OK, "Prescriptions retrieved successfully", 1, { prescriptions });
     } catch (error) {
       console.error("Error fetching prescriptions:", error);
-      return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
   }
 
@@ -269,19 +269,19 @@ class PrescriptionController {
     try {
       // Get hospitalId and role from the logged-in user
       const { hospitalId, role, _id: userId } = req.user;
-  
+
       if (!hospitalId) {
 
-        return ResponseService.send(res , StatusCodes.NOT_FOUND , {success: false,message: "Hospital ID is required.",} , 0)
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, { success: false, message: "Hospital ID is required.", }, 0)
 
       }
-  
+
       // Extract query parameters
       const { date } = req.query; // `date` is optional
-  
+
       // Initialize date range filter
       let dateFilter = {};
-  
+
       if (date === "today") {
         // Filter for today's appointments
         const today = new Date();
@@ -294,18 +294,18 @@ class PrescriptionController {
         const specificDate = new Date(date);
         if (isNaN(specificDate)) {
 
-          return ResponseService.send(res , StatusCodes.BAD_REQUEST , {success: false,message: "Invalid date format. Use YYYY-MM-DD.",} , 0)
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, { success: false, message: "Invalid date format. Use YYYY-MM-DD.", }, 0)
         }
         specificDate.setHours(0, 0, 0, 0); // Start of the specific date
         const nextDay = new Date(specificDate);
         nextDay.setDate(specificDate.getDate() + 1); // Start of the next day
         dateFilter = { date: { $gte: specificDate, $lt: nextDay } };
       }
-  
+
       // Step 1: Get all prescription appointment IDs
       const prescriptions = await Prescription.find({ hospitalId }).select("appointmentId");
       const prescriptionAppointmentIds = prescriptions.map((p) => p.appointmentId.toString());
-  
+
       // Step 2: Build the query for appointments
       const appointmentQuery = {
         hospitalId,
@@ -313,20 +313,20 @@ class PrescriptionController {
         status: { $ne: "canceled" },
         ...dateFilter, // Apply the date filter if provided
       };
-  
+
       // If the user is a doctor, filter by doctorId
       if (role === "doctor") {
         appointmentQuery.doctorId = userId;
       }
-  
+
       const appointmentsWithoutPrescriptions = await Appointment.find(appointmentQuery)
         .populate("patientId doctorId", "fullName email gender age ");
 
-        return ResponseService.send(res , StatusCodes.OK , {success: true,data: appointmentsWithoutPrescriptions,} , 1)
+      return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, appointmentsWithoutPrescriptions)
     } catch (error) {
       console.error("Error fetching appointments without prescriptions:", error);
 
-      return ResponseService.send(res , StatusCodes.INTERNAL_SERVER_ERROR , {success: false,message: "Failed to fetch appointments. Please try again later.",error: error.message,} , 0)
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, { success: false, message: "Failed to fetch appointments. Please try again later.", error: error.message, }, 0)
     }
   }
 
