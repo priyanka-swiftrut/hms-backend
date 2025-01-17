@@ -4,7 +4,8 @@ import ResponseService from '../services/response.services.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
-import { sendOtp, verifyOtp } from '../services/twilioService.js';
+import  TwilioService from '../services/twilioService.js';
+import EmailService from '../services/email.service.js';
 
 
 class AuthController {
@@ -25,10 +26,16 @@ class AuthController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password is required", 0);
             }
     
+            // Find user by email or phone number
             const user = await User.findOne({
-                $or: [{ email: identifier }, { phoneNumber: identifier }]
-            });    
-
+                $or: [{ email: identifier }, { phone: identifier }]
+            });
+            
+            // If no user found, return an error
+            if (!user) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "No user found with this email or phone number", 0);
+            }
+    
             // Password validation
             const match = await bcrypt.compare(password, user.password);
             if (!match) {
@@ -66,6 +73,7 @@ class AuthController {
     
             let user;
             let otp;
+            let otpCookie;
     
             if (identifier.includes("@")) {
                 // Email-based forgot password
@@ -78,23 +86,8 @@ class AuthController {
                 res.cookie("otp", otp, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
                 res.cookie("email", user.email);
     
-                const transporter = nodemailer.createTransport({
-                    host: "smtp.gmail.com",
-                    port: 465,
-                    secure: true,
-                    auth: {
-                        user: process.env.EMAIL,
-                        pass: process.env.PASSWORD,
-                    },
-                });
-    
-                await transporter.sendMail({
-                    from: process.env.EMAIL,
-                    to: user.email,
-                    subject: "Forgot Password OTP ✔",
-                    text: `Hello ${user.name}`,
-                    html: `<p>Your OTP is ${otp}</p>`,
-                });
+                const emailHtml = EmailService.otptamplate(user.fullName, user.email, otp);
+                await EmailService.sendEmail(user.email, "Forgot Password OTP ✔", emailHtml);
     
                 return ResponseService.send(res, StatusCodes.OK, "OTP Sent Successfully via Email", 1);
             } else {
@@ -105,15 +98,11 @@ class AuthController {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Phone number not found", 0);
                 }
     
-                // Send OTP via SMS using Twilio
-                try {
-                    otp = Math.floor(100000 + Math.random() * 900000); // Generate OTP to send via SMS
-                    const response = await sendOtp(identifier, otp); // Send OTP using Twilio
-                    return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully via SMS", 1, { sid: response.sid });
-                } catch (error) {
-                    console.error("Failed to send OTP:", error.message);
-                    return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to send OTP", 0);
-                }
+                otp = Math.floor(100000 + Math.random() * 900000); // Generate OTP to send via SMS
+                const response = await TwilioService.sendOtp(identifier, otp); // Send OTP using Twilio
+    
+                // Save OTP in Twilio verification service (optional: you can track the SID or other details here)
+                return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully via SMS", 1, { sid: response.sid });
             }
         } catch (error) {
             console.error("Error in ForgotPassword:", error.message);
@@ -121,7 +110,39 @@ class AuthController {
         }
     }
     
+    async VerifyOtp(req, res) {
+        try {
+            const { otp, phoneNumber, email } = req.body; // Include phoneNumber in the request
     
+            if (!otp || (!phoneNumber && !email)) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "OTP and phone number/email are required", 0);
+            }
+    
+            let response;
+    
+            if (email) {
+                // If it's email-based OTP verification
+                const otpCookie = req.cookies.otp;
+                if (otpCookie && otpCookie.toString() === otp) {
+                    return ResponseService.send(res, StatusCodes.OK, "OTP Verified Successfully 🎉", 1);
+                } else {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
+                }
+            } else if (phoneNumber) {
+                // If it's phone number-based OTP verification
+                response = await TwilioService.verifyOtp(phoneNumber, otp); // Verify OTP using Twilio API
+    
+                if (response.status === "approved") {
+                    return ResponseService.send(res, StatusCodes.OK, "OTP Verified Successfully 🎉", 1);
+                } else {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
+                }
+            }
+        } catch (error) {
+            console.error("Error in VerifyOtp:", error.message);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);
+        }
+    }
 
 
     async ResetPassword(req, res) {
@@ -173,33 +194,7 @@ class AuthController {
         }
     }
 
-    async VerifyOtp(req, res) {
-        try {
-            const { otp, phoneNumber } = req.body; // Include phoneNumber in the request
     
-            if (!otp || !phoneNumber) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "OTP and phone number are required", 0);
-            }
-    
-            // Verify OTP sent via Twilio
-            const response = await verifyOtp(phoneNumber, otp); // Verify OTP using Twilio API
-    
-            if (response.status === "approved") {
-                // Check if the OTP in the cookie matches the one entered by the user (if using email-based verification)
-                const otpCookie = req.cookies.otp;
-                if (otpCookie && otpCookie.toString() === otp) {
-                    return ResponseService.send(res, StatusCodes.OK, "OTP Verified Successfully 🎉", 1);
-                } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
-                }
-            } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
-            }
-        } catch (error) {
-            console.log(error.message);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Internal Server Error", 0);
-        }
-    }
     
 
     async changePassword(req, res) {
