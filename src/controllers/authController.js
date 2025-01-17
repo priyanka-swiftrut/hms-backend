@@ -25,22 +25,10 @@ class AuthController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password is required", 0);
             }
     
-            let user;
-    
-            if (identifier.includes("@")) {
-                // Email-based login
-                user = await User.findOne({ email: identifier });
-                if (!user) {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found with this email", 0);
-                }
-            } else {
-                // Phone number-based login
-                user = await User.findOne({ phone: identifier });
-                if (!user) {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User not found with this phone number", 0);
-                }
-            }
-    
+            const user = await User.findOne({
+                $or: [{ email: identifier }, { phoneNumber: identifier }]
+            });    
+
             // Password validation
             const match = await bcrypt.compare(password, user.password);
             if (!match) {
