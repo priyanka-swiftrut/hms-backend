@@ -108,7 +108,7 @@ class AppointmentController {
             }
 
             // Calculate tax and total amount
-            const tax = amount * 0.18; // 18% tax
+            const tax = amount * 0.18; 
             const totalAmount = amount + tax;
 
             // Initialize variables for insurance and dueAmount
@@ -271,7 +271,6 @@ class AppointmentController {
         }
     }
     
-
     async getAppointmentsTeleconsultation(req, res) {
         try {
             if (!req.user.id) {
@@ -411,7 +410,7 @@ class AppointmentController {
                         ...appointment.patientId.toObject(),
                         address: appointment.patientId.formattedAddress, 
                     },
-                    date: appointment.formattedDate,
+                    date: appointment.formattedDate, 
                     amount,
                     tax,
                 },
@@ -493,7 +492,6 @@ class AppointmentController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
-
 
     async getDoctorSession(req, res) {
         try {
@@ -612,7 +610,6 @@ class AppointmentController {
         }
     }
     
-
     async getAppointmentsWithoutBills(req, res) {
 
         try {
@@ -723,10 +720,10 @@ class AppointmentController {
                 })),
             }));
 
-            return res.status(200).json(result);
+            return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, result);
         } catch (error) {
             console.error("Error in hierarchical data API:", error);
-            return res.status(500).json({ message: "Internal Server Error", error: error.message });
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
 
@@ -749,10 +746,8 @@ class AppointmentController {
                     return acc;
                 }, []);
 
-                return res.status(200).json({
-                    success: true,
-                    data: uniqueDoctors,
-                });
+                return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, uniqueDoctors);
+                
             } else if (role === "doctor") {
                 // Fetch unique patients the doctor has appointments with
                 const appointments = await Appointment.find({ doctorId: id })
@@ -767,22 +762,13 @@ class AppointmentController {
                     return acc;
                 }, []);
 
-                return res.status(200).json({
-                    success: true,
-                    data: uniquePatients,
-                });
+                return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, uniquePatients);
             } else {
-                return res.status(403).json({
-                    success: false,
-                    message: "Access denied. Only patients and doctors can access this endpoint.",
-                });
+                return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Access denied. Only patients and doctors can access this endpoint.", 0);
             }
         } catch (error) {
             console.error("Error fetching chat connections:", error);
-            res.status(500).json({
-                success: false,
-                message: "An error occurred while fetching chat connections.",
-            });
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
 
     }

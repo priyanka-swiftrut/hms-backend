@@ -1,21 +1,23 @@
+import { StatusCodes } from "http-status-codes";
 import Notification from "../models/Notification.model.js";
 import sendNotification from "../services/notificationService.js";
+import ResponseService from "../services/response.services.js";
 
 // Controller to create a new notification
-    export const createNotification = async (req, res) => {
+export const createNotification = async (req, res) => {
     try {
         const { type, message, hospitalId, targetUsers } = req.body;
 
         if (!type || !message || !hospitalId || !targetUsers) {
-            return res.status(400).json({ error: "All fields are required." });
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "All fields are required.", 0);
         }
 
         const notification = await sendNotification({ type, message, hospitalId, targetUsers });
 
-        res.status(201).json({ success: true, notification });
+        return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, notification);
     } catch (error) {
         console.error("Error creating notification:", error);
-        res.status(500).json({ error: "Failed to create notification." });
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
 };
 
@@ -25,18 +27,18 @@ export const getNotifications = async (req, res) => {
         const { userId } = req.params;
 
         if (!userId) {
-            return res.status(400).json({ error: "User ID is required." });
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User ID is required.", 0);
         }
 
         const notifications = await Notification.find({ targetUsers: userId })
-            .sort({ createdAt: -1 }) // Sort by createdAt in descending order
-            .limit(15) // Limit to the 15 most recent notifications
+            .sort({ createdAt: -1 })
+            .limit(15)
             .exec();
 
-        res.status(200).json({ success: true, notifications });
+        return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, notification);
     } catch (error) {
         console.error("Error fetching notifications:", error);
-        res.status(500).json({ error: "Failed to fetch notifications." });
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
 };
 
@@ -47,7 +49,7 @@ export const markAsRead = async (req, res) => {
         const { notificationId } = req.params;
 
         if (!notificationId) {
-            return res.status(400).json({ error: "Notification ID is required." });
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Notification ID is required.", 0);
         }
 
         const notification = await Notification.findByIdAndUpdate(
@@ -57,16 +59,16 @@ export const markAsRead = async (req, res) => {
         );
 
         if (!notification) {
-            return res.status(404).json({ error: "Notification not found." });
+            return ResponseService.send(res, StatusCodes.NOT_FOUND, "Notification not found.", 0);
         }
 
-        res.status(200).json({ success: true, notification });
+        return ResponseService.send(res, StatusCodes.OK, "Data fetched Succesfully", 1, notification);
     } catch (error) {
         console.error("Error marking notification as read:", error);
-        res.status(500).json({ error: "Failed to mark notification as read." });
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
 };
 
 
-                
+
 

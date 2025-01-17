@@ -8,129 +8,6 @@ import { StatusCodes } from 'http-status-codes';
 class BillController {
 
 
-  // async createBillManualy(req, res) {
-  //   try {
-  //     const {
-  //       appointmentId,
-  //       amount,
-  //       discount,
-  //       tax,
-  //       paymentType,
-  //       description,
-  //       insuranceDetails,
-  //       notes,
-  //     } = req.body;
-
-  //     // Ensure required fields are provided
-  //     if (!appointmentId || !amount) {
-  //       return ResponseService.send(
-  //         res,
-  //         StatusCodes.BAD_REQUEST,
-  //         "Missing required fields: appointmentId or amount.",
-  //         0
-  //       );
-  //     }
-
-  //     // Fetch appointment details from the AppointmentModel using appointmentId
-  //     const appointment = await AppointmentModel.findById(appointmentId).populate('patientId doctorId');
-
-  //     if(req.user.role !== "receptionist"  && paymentType === "cash" && appointmentType === "online"){
-  //       response.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
-  //     }
-
-
-
-  //     if (!appointment) {
-  //       return ResponseService.send(res,StatusCodes.NOT_FOUND,"Appointment not found.",0);
-  //     }
-
-  //     const { patientId, doctorId, hospitalId } = appointment;
-
-  //     // Validate the discount and tax values
-  //     if (discount && (discount < 0 || discount > 100)) {
-  //       return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Discount must be between 0 and 100.", 0);
-  //     }
-
-  //     if (tax && tax < 0) {
-  //       return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Tax cannot be negative.", 0);
-  //     }
-
-  //     // Validate and calculate extra charges from description
-  //     let extraCharges = 0;
-  //     if (description && Array.isArray(description)) {
-  //       description.forEach((item) => {
-  //         if (typeof item.value === "number") {
-  //           extraCharges += item.value;
-  //         } else {
-  //           return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Each description entry must have a numeric value.",0);
-  //         }
-  //       });
-  //     }
-
-  //     // Validate insurance details if payment type is "Insurance"
-  //     let insuranceId = null;
-  //     if (paymentType === "Insurance") {
-  //       const { insuranceCompany, insurancePlan, claimAmount, claimedAmount } =
-  //         insuranceDetails || {};
-
-  //       if (
-  //         !insuranceCompany ||
-  //         !insurancePlan ||
-  //         claimAmount === undefined ||
-  //         claimedAmount === undefined
-  //       ) {
-  //         return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",0);
-  //       }
-
-  //       if (claimAmount < claimedAmount) {
-  //         return ResponseService.send(res,StatusCodes.BAD_REQUEST,"Claim amount cannot be less than claimed amount.",0);
-  //       }
-
-  //       // Create insurance entry
-  //       const newInsurance = new Insurance({
-  //         patientId,
-  //         insuranceCompany,
-  //         insurancePlan,
-  //         claimAmount,
-  //         claimedAmount,
-  //       });
-
-  //       const savedInsurance = await newInsurance.save();
-  //       insuranceId = savedInsurance._id;
-  //     }
-
-  //     // Calculate total amount
-  //     const discountedAmount = (amount + extraCharges) - ((amount + extraCharges) * (discount || 0)) / 100;
-  //     const totalAmount = discountedAmount + (discountedAmount * (tax || 0)) / 100;
-
-  //     // Create bill
-  //     const billData = {
-  //       patientId,
-  //       doctorId,
-  //       hospitalId: appointment.hospitalId,
-  //       amount,
-  //       discount,
-  //       tax,
-  //       totalAmount,
-  //       paymentType,
-  //       insuranceId,
-  //       description,
-  //       notes,
-  //       status: false,
-  //       date: new Date(),
-  //       time: new Date().toLocaleTimeString(),
-  //     };
-
-  //     const newBill = new Bill(billData);
-  //     await newBill.save();
-
-  //     return ResponseService.send(res,StatusCodes.CREATED,"Bill created successfully.",1,newBill);
-  //   } catch (error) {
-  //     console.error("Error creating bill manually:", error);
-  //     return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,error.message,0);
-  //   }
-  // }
-
   async createBillManualy(req, res) {
     try {
         const {
@@ -222,7 +99,7 @@ class BillController {
             );
         }
 
-        const tax = customTax !== undefined ? customTax : 18; // Default to 18% tax
+        const tax = customTax !== undefined ? customTax : 18; 
         if (tax < 0) {
             return ResponseService.send(
                 res,
@@ -251,9 +128,9 @@ class BillController {
 
         // Validate insurance details
         let insuranceId = null;
-        let dueAmount = 0; // Declare `dueAmount` with a default value
-        let totalAmount = 0; // Declare `totalAmount` with a default value
-
+        let dueAmount = 0; 
+        let totalAmount = 0; 
+        
         const discountedAmount = (amount + extraCharges) - ((amount + extraCharges) * (discount || 0)) / 100;
         totalAmount = discountedAmount + (discountedAmount * tax) / 100;
 

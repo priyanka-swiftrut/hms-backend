@@ -104,7 +104,6 @@ class HolidayController {
             }
 
             const holiday = await holidayModel.findById(holidayId);
-            console.log(holiday);
             
             if (!holiday ) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "Holiday not found", 0);
