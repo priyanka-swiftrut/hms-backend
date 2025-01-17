@@ -10,6 +10,6 @@ router.post("/create", createNotification);
 router.get("/user/:userId", getNotifications);
 
 // Route to mark a notification as read
-router.patch("/mark-read/:notificationId", markAsRead);
+router.put("/mark-read/:notificationId", markAsRead);
 
 export default router;
