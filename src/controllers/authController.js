@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import  TwilioService from '../services/twilioService.js';
 import EmailService from '../services/email.service.js';
-
+var OTP;
 
 class AuthController {
 
@@ -66,13 +66,13 @@ class AuthController {
     async ForgotPassword(req, res) {
         try {
             const { identifier } = req.body;
-    
+            console.log(identifier);
+            
             if (!identifier) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Identifier (email or phone number) is required", 0);
             }
     
             let user;
-            let otp;
             let otpCookie;
     
             if (identifier.includes("@")) {
@@ -82,11 +82,11 @@ class AuthController {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email not found", 0);
                 }
     
-                otp = Math.floor(100000 + Math.random() * 900000); // Generate a random OTP
-                res.cookie("otp", otp, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
+                OTP = Math.floor(100000 + Math.random() * 900000); // Generate a random OTP
+                res.cookie("otp", OTP, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "Strict" });
                 res.cookie("email", user.email);
     
-                const emailHtml = EmailService.otptamplate(user.fullName, user.email, otp);
+                const emailHtml = EmailService.otptamplate(user.fullName, user.email, OTP);
                 await EmailService.sendEmail(user.email, "Forgot Password OTP ✔", emailHtml);
     
                 return ResponseService.send(res, StatusCodes.OK, "OTP Sent Successfully via Email", 1);
@@ -98,8 +98,8 @@ class AuthController {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Phone number not found", 0);
                 }
     
-                otp = Math.floor(100000 + Math.random() * 900000); // Generate OTP to send via SMS
-                const response = await TwilioService.sendOtp(identifier, otp); // Send OTP using Twilio
+                OTP = Math.floor(100000 + Math.random() * 900000); // Generate OTP to send via SMS
+                const response = await TwilioService.sendOtp(identifier, OTP); // Send OTP using Twilio
     
                 // Save OTP in Twilio verification service (optional: you can track the SID or other details here)
                 return ResponseService.send(res, StatusCodes.OK, "OTP sent successfully via SMS", 1, { sid: response.sid });
@@ -112,25 +112,25 @@ class AuthController {
     
     async VerifyOtp(req, res) {
         try {
-            const { otp, phoneNumber, email } = req.body; // Include phoneNumber in the request
+            const { otp, identifier } = req.body; // Include identifier in the request
     
-            if (!otp || (!phoneNumber && !email)) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "OTP and phone number/email are required", 0);
+            if (!otp || !identifier) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "OTP and identifier (email or phone number) are required", 0);
             }
     
             let response;
-    
-            if (email) {
-                // If it's email-based OTP verification
-                const otpCookie = req.cookies.otp;
-                if (otpCookie && otpCookie.toString() === otp) {
+            const receievdOtp = parseInt(otp)
+            console.log(typeof OTP, typeof receievdOtp);
+             
+            if (identifier.includes("@")) {
+                if (OTP.toString() === otp) {
                     return ResponseService.send(res, StatusCodes.OK, "OTP Verified Successfully 🎉", 1);
                 } else {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid OTP", 0);
                 }
-            } else if (phoneNumber) {
+            } else {
                 // If it's phone number-based OTP verification
-                response = await TwilioService.verifyOtp(phoneNumber, otp); // Verify OTP using Twilio API
+                response = await TwilioService.verifyOtp(identifier, otp); // Verify OTP using Twilio API
     
                 if (response.status === "approved") {
                     return ResponseService.send(res, StatusCodes.OK, "OTP Verified Successfully 🎉", 1);
@@ -148,7 +148,9 @@ class AuthController {
     async ResetPassword(req, res) {
         try {
             if (req.body !== "") {
-                let checkmail = await User.findOne({ email: req.body.email });
+                let checkmail = await User.findOne({
+                    $or: [{ email: req.body.identifier }, { phone: req.body.identifier }]
+                });
                 if (checkmail) {
                     const isSamePassword = await bcrypt.compare(
                         req.body.password,
