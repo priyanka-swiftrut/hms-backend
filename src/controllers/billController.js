@@ -4,7 +4,7 @@ import AppointmentModel from "../models/Appointment.model.js";
 import User from "../models/User.model.js";
 import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
-
+import sendNotification from '../services/notificationService.js';
 class BillController {
 
 

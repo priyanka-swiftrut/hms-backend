@@ -8,65 +8,77 @@ class PrescriptionController {
 
   async createPrescription(req, res) {
     try {
-      const { appointmentId } = req.params;
-      const { medications, instructions, date } = req.body;
-      const hospitalId = req.user.hospitalId;
+        const { appointmentId } = req.params;
+        const { medications, instructions, date } = req.body;
+        const hospitalId = req.user.hospitalId;
 
-      if (!hospitalId) {
-        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required.", 0);
-      }
+        if (!hospitalId) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required.", 0);
+        }
 
-      // Validate appointment ID
-      if (!appointmentId) {
-        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
-      }
+        // Validate appointment ID
+        if (!appointmentId) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
+        }
 
-      const prescriptiondata = await Prescription.findOne({ appointmentId: appointmentId });
+        // Check if a prescription already exists for the appointment
+        const prescriptiondata = await Prescription.findOne({ appointmentId });
+        if (prescriptiondata) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "You already created a prescription for this appointment.", 0);
+        }
 
-      if (prescriptiondata) {
-        return ResponseService.send(res, StatusCodes.NOT_FOUND, "you already creted prescription", 0);
-      }
+        // Validate medications
+        if (!medications || medications.length === 0) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Medications are required.", 0);
+        }
 
-      // Validate medications
-      if (!medications || medications.length === 0) {
-        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Medications are required.", 0);
-      }
+        // Fetch the appointment details
+        const appointment = await Appointment.findById(appointmentId)
+            .populate("patientId", "fullName ")
+            .populate("doctorId", "fullName ");
+        if (!appointment) {
+            return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment not found.", 0);
+        }
 
-      // Fetch the appointment details
-      const appointment = await Appointment.findById(appointmentId);
-      if (!appointment) {
-        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment not found.", 0);
-      }
+        const { patientId, doctorId } = appointment;
 
-      const { patientId, doctorId } = appointment;
+        // Prepare prescription data
+        const prescriptionData = {
+            patientId,
+            doctorId,
+            hospitalId,
+            appointmentId,
+            medications,
+            instructions,
+            date: date || new Date(), // Use provided date or default to current date
+        };
 
-      // Prepare prescription data
-      const prescriptionData = {
-        patientId,
-        doctorId,
-        hospitalId,
-        appointmentId,
-        medications,
-        instructions,
-        date: date || new Date(), // Use provided date or default to current date
-      };
-      // Create and save the prescription
-      const newPrescription = new Prescription(prescriptionData);
-      await newPrescription.save();
+        // Create and save the prescription
+        const newPrescription = new Prescription(prescriptionData);
+        await newPrescription.save();
 
-      // Send success response
-      return ResponseService.send(
-        res,
-        StatusCodes.CREATED,
-        "Prescription created successfully.",
-        1,
-        { prescription: newPrescription }
-      );
+        // Send notification to the patient
+        await sendNotification({
+            type: "Prescription",
+            message: `A new prescription has been created for you by your doctor ${appointment.doctorId.fullName}. Date: ${prescriptionData.date.toDateString()}, Medications: ${medications.join(", ")}.`,
+            hospitalId,
+            targetUsers: patientId,
+        });
+
+        // Send success response
+        return ResponseService.send(
+            res,
+            StatusCodes.CREATED,
+            "Prescription created successfully.",
+            1,
+            { prescription: newPrescription }
+        );
     } catch (error) {
-      console.error("Error creating prescription:", error.message);
-      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", 0);
+        console.error("Error creating prescription:", error.message);
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error. Please try again.", 0);
     }
   }
+
 
   async editPrescription(req, res) {
     try {
@@ -92,6 +104,8 @@ class PrescriptionController {
 
       // Save updated prescription
       await prescription.save();
+
+      
 
       // Send success response
       return ResponseService.send(

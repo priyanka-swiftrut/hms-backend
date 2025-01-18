@@ -421,77 +421,120 @@ class AppointmentController {
     }
 
     async editAppointment(req, res) {
-        try {
-            const { id } = req.params;
-            const { doctorId, patientId, date, appointmentTime, patient_issue, dieseas_name, city, state, country, status } = req.body;
+    try {
+        const { id } = req.params;
+        const { doctorId, patientId, date, appointmentTime, patient_issue, dieseas_name, city, state, country, status } = req.body;
 
-           
-            const appointment = await Appointment.findById(id);
-            if (!appointment) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
-            }
-
-           
-            if (req.user.role !== "receptionist" && (doctorId || patientId)) {
-                return ResponseService.send(
-                    res,
-                    StatusCodes.FORBIDDEN,
-                    "You do not have permission to update sensitive fields like doctorId or patientId.",
-                    0
-                );
-            }
-
-         
-            if (doctorId || patientId || date || appointmentTime) {
-                const conflictQuery = {
-                    $or: [
-                        { doctorId: doctorId || appointment.doctorId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime },
-                        { patientId: patientId || appointment.patientId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime }
-                    ],
-                    _id: { $ne: id }
-                };
-
-                const conflict = await Appointment.findOne(conflictQuery);
-                if (conflict) {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Another appointment already exists at the given time.", 0);
-                }
-            }
-
-          
-            const allowedStatuses = ["scheduled", "canceled", "pending", "completed", "checkin", "checkout"];
-            if (status && !allowedStatuses.includes(status)) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, `Invalid status. Allowed statuses are: ${allowedStatuses.join(", ")}.`, 0);
-            }
-
-         
-            const updateData = {};
-            if (doctorId) updateData.doctorId = doctorId;
-            if (patientId) updateData.patientId = patientId;
-            if (date) updateData.date = date;
-            if (appointmentTime) updateData.appointmentTime = appointmentTime;
-            if (patient_issue !== undefined) updateData.patient_issue = patient_issue;
-            if (dieseas_name !== undefined) updateData.dieseas_name = dieseas_name;
-            if (city !== undefined) updateData.city = city;
-            if (state !== undefined) updateData.state = state;
-            if (country !== undefined) updateData.country = country;
-            if (status) updateData.status = status;
-
-            const updatedAppointment = await Appointment.findByIdAndUpdate(
-                id,
-                { $set: updateData },
-                { new: true, runValidators: true }
-            );
-
-            if (!updatedAppointment) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update appointment.", 0);
-            }
-
-            return ResponseService.send(res, StatusCodes.OK, "Appointment updated successfully", 1, { appointment: updatedAppointment });
-        } catch (error) {
-            console.error('Error updating appointment:', error);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+        const appointment = await Appointment.findById(id);
+        if (!appointment) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment not found.", 0);
         }
+
+        if (req.user.role !== "receptionist" && (doctorId || patientId)) {
+            return ResponseService.send(
+                res,
+                StatusCodes.FORBIDDEN,
+                "You do not have permission to update sensitive fields like doctorId or patientId.",
+                0
+            );
+        }
+
+        if (doctorId || patientId || date || appointmentTime) {
+            const conflictQuery = {
+                $or: [
+                    { doctorId: doctorId || appointment.doctorId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime },
+                    { patientId: patientId || appointment.patientId, date: date || appointment.date, appointmentTime: appointmentTime || appointment.appointmentTime }
+                ],
+                _id: { $ne: id }
+            };
+
+            const conflict = await Appointment.findOne(conflictQuery);
+            if (conflict) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Another appointment already exists at the given time.", 0);
+            }
+        }
+
+        const allowedStatuses = ["scheduled", "canceled", "pending", "completed", "checkin", "checkout"];
+        if (status && !allowedStatuses.includes(status)) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, `Invalid status. Allowed statuses are: ${allowedStatuses.join(", ")}.`, 0);
+        }
+
+        const updateData = {};
+        if (doctorId) updateData.doctorId = doctorId;
+        if (patientId) updateData.patientId = patientId;
+        if (date) updateData.date = date;
+        if (appointmentTime) updateData.appointmentTime = appointmentTime;
+        if (patient_issue !== undefined) updateData.patient_issue = patient_issue;
+        if (dieseas_name !== undefined) updateData.dieseas_name = dieseas_name;
+        if (city !== undefined) updateData.city = city;
+        if (state !== undefined) updateData.state = state;
+        if (country !== undefined) updateData.country = country;
+        if (status) updateData.status = status;
+
+        const updatedAppointment = await Appointment.findByIdAndUpdate(
+            id,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedAppointment) {
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update appointment.", 0);
+        }
+
+        // Notification Logic
+        const isDoctor = req.user.role === "doctor";
+        const isPatient = req.user.role === "patient";
+        const { doctorId: currentDoctorId, patientId: currentPatientId } = appointment;
+
+        if (isDoctor) {
+            // Doctor changed date/time
+            if (date || appointmentTime) {
+                await sendNotification({
+                    type: "Appointment",
+                    message: `Your appointment has been rescheduled by the doctor to ${updatedAppointment.date} at ${updatedAppointment.appointmentTime}.`,
+                    hospitalId: req.user.hospitalId,
+                    targetUsers: currentPatientId,
+                });
+            }
+            // Doctor changed status
+            if (status) {
+                await sendNotification({
+                    type: "Appointment",
+                    message: `Your appointment on ${appointment.date} at ${appointment.appointmentTime} has been ${status} by the doctor.`,
+                    hospitalId: req.user.hospitalId,
+                    targetUsers: currentPatientId,
+                });
+            }
+        }
+        
+        if (isPatient) {
+            // Patient changed date/time
+            if (date || appointmentTime) {
+                await sendNotification({
+                    type: "Appointment",
+                    message: `The appointment with the doctor has been rescheduled by the patient to ${updatedAppointment.date} at ${updatedAppointment.appointmentTime}.`,
+                    hospitalId: appointment.hospitalId,
+                    targetUsers: currentDoctorId,
+                });
+            }
+            // Patient changed status
+            if (status) {
+                await sendNotification({
+                    type: "Appointment",
+                    message: `The appointment on ${appointment.date} at ${appointment.appointmentTime} has been ${status} by the patient.`,
+                    hospitalId: appointment.hospitalId,
+                    targetUsers: currentDoctorId,
+                });
+            }
+        }
+
+        return ResponseService.send(res, StatusCodes.OK, "Appointment updated successfully", 1, { appointment: updatedAppointment });
+    } catch (error) {
+        console.error("Error updating appointment:", error);
+        return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
+}
+
 
     async getDoctorSession(req, res) {
         try {
