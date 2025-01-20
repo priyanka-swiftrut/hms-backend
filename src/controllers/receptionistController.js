@@ -418,47 +418,46 @@ class ReceptionistController {
 
     async searchDoctor(req, res) {
         try {
-            const { speciality } = req.query;  // Get the speciality from query parameters
-            const hospitalId = req.user.hospitalId;  // Get hospitalId from the authenticated user's data
+            const { speciality } = req.query;  
+            const { hospitalId } = req.user;  
     
             // Prepare the query to fetch doctors from the specific hospital
             const query = {
-                "role": "doctor",
-                "hospitalId": hospitalId,
+                role: 'doctor',
+                hospitalId,
             };
     
             // If a speciality is provided in the query, filter by that as well
             if (speciality) {
-                query["metaData.doctorData.speciality"] = speciality;
+                query['metaData.doctorData.speciality'] = speciality;
             }
     
             // Fetch doctors from the database based on the query
             const doctors = await User.find(query)
-                .select("fullName role metaData.doctorData.speciality _id")  // Select fields directly
-                .lean();  // Convert to plain JavaScript object for easier manipulation
-    
+                .select('fullName role metaData.doctorData.speciality _id')  
+                .lean();  
             // Modify the doctor data to directly include speciality (flattened)
-            const doctorList = doctors.map(doctor => ({
-                doctorId: doctor._id,  // Direct doctorId
-                fullName: doctor.fullName,  // Direct fullName
-                role: doctor.role,  // Direct role
-                speciality: doctor.metaData.doctorData.speciality  // Direct speciality
+            const doctorList = doctors.map(({ _id, fullName, role, metaData }) => ({
+                doctorId: _id,
+                fullName,
+                role,
+                speciality: metaData.doctorData.speciality,  
             }));
     
             // Fetch all specialties for the hospital (doctors' specialties only)
-            const specialties = await User.distinct("metaData.doctorData.speciality", {
-                "role": "doctor",
-                "hospitalId": hospitalId,
+            const specialties = await User.distinct('metaData.doctorData.speciality', {
+                role: 'doctor',
+                hospitalId,
             });
     
             // Send response with the list of specialties and doctors
             return ResponseService.send(res, StatusCodes.OK, {
-                specialties,  // List of specialties
-                doctors: doctorList,  // Flattened doctor data
-            } , 0);
+                specialties,  
+                doctors: doctorList, 
+            }, 0);
         } catch (error) {
             console.error(error);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Server error", 0);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, 'Server error', 0);
         }
     }
     
