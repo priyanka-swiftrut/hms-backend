@@ -196,6 +196,13 @@ class BillController {
 
         const newBill = new Bill(billData);
         await newBill.save();
+        
+        await sendNotification({
+          type: 'Bill',
+          message: `Bill Created Succesfully: ${newBill.date} at ${newBill.time}`,
+          hospitalId: hospitalId,
+          targetUsers: patientId,
+        });
 
         return ResponseService.send(
             res,
