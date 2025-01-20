@@ -14,56 +14,65 @@ class AdminController {
 
     async Register(req, res) {
         try {
-            if (!req.body || Object.keys(req.body).length === 0) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+            const { body, files } = req;
+            const { profilePicture } = files || {};
+            const profileImagePath = profilePicture?.[0]?.path;
+
+            if (!body || Object.keys(body).length === 0) {
+                if (profileImagePath) {
+                    await this.deleteImage(profileImagePath, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-            if (req.body.password !== "" && req.body.password === req.body.confirmPassword) {
-                let checkmail = await User.findOne({ email: req.body.email });
-                if (checkmail) {
-                    if (req.files?.profilePicture?.[0]?.path) {
-                        await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+
+            const { email, password, confirmPassword, firstName, lastName } = body;
+
+            if (password && password === confirmPassword) {
+                const existingUser = await User.findOne({ email });
+                if (existingUser) {
+                    if (profileImagePath) {
+                        await this.deleteImage(profileImagePath, "profileImages");
                     }
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email Already Exists", 0);
-                } else {
-                    const password = req.body.password;
-                    let pass = await bcrypt.hash(req.body.password, 10);
-                    req.body.password = pass;
-                    req.body.role = "admin";
-                    req.body.fullName = req.body.firstName + " " + req.body.lastName;
-                    if (req.files) {
-                        if (req.files?.profilePicture?.[0]?.path) {
-                            req.body.profilePicture = req.files.profilePicture[0].path;
-                        }
-                    }
-                    let newUser = new User(req.body);
-                    await newUser.save();
-                    if (newUser) {
-                        try {
-                            const emailHtml = EmailService.registrationTemplate(newUser.fullName, newUser.email, password);
-                            await EmailService.sendEmail(newUser.email, "Registration Successful ✔", emailHtml);
-                        } catch (emailError) {
-                            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User registered, but email sending failed", 0);
-                        }
+                }
+
+                const hashedPassword = await bcrypt.hash(password, 10);
+                const fullName = `${firstName} ${lastName}`;
+                const userPayload = {
+                    ...body,
+                    password: hashedPassword,
+                    role: "admin",
+                    fullName,
+                    profilePicture: profileImagePath || undefined,
+                };
+
+                const newUser = new User(userPayload);
+                await newUser.save();
+
+                if (newUser) {
+                    try {
+                        const emailHtml = EmailService.registrationTemplate(fullName, email, password);
+                        await EmailService.sendEmail(email, "Registration Successful ✔", emailHtml);
                         return ResponseService.send(res, StatusCodes.OK, "Admin Registered Successfully", 1, newUser);
-                    } else {
-                        if (req.files?.profilePicture?.[0]?.path) {
-                            await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
-                        }
-                        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Something went wrong", 0);
+                    } catch (emailError) {
+                        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User registered, but email sending failed", 0);
                     }
+                } else {
+                    if (profileImagePath) {
+                        await this.deleteImage(profileImagePath, "profileImages");
+                    }
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Something went wrong", 0);
                 }
             } else {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+                if (profileImagePath) {
+                    await this.deleteImage(profileImagePath, "profileImages");
                 }
-                return ResponseService.send(res, 400, "Password and Confirm Password is Not Matched", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
             }
         } catch (error) {
-            if (req.files?.profilePicture?.[0]?.path) {
-                await this.deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
+            const profileImagePath = req.files?.profilePicture?.[0]?.path;
+            if (profileImagePath) {
+                await this.deleteImage(profileImagePath, "profileImages");
             }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
@@ -77,7 +86,7 @@ class AdminController {
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-    
+
             let user = await User.findById(req.user._id);
             if (user) {
                 if (req.files) {
@@ -86,22 +95,22 @@ class AdminController {
                         req.body.profilePicture = req.files.profilePicture[0].path;
                     }
                 }
-    
+
                 if (req.body.firstName && req.body.lastName) {
                     req.body.fullName = req.body.firstName + " " + req.body.lastName;
                 }
-    
+
                 let updatedUser = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
-    
+
                 if (updatedUser) {
                     const token = jwt.sign({ userData: updatedUser }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1d" });
-    
-                   
+
+
                     const responseData = {
-                        ...updatedUser._doc, 
-                        token, 
+                        ...updatedUser._doc,
+                        token,
                     };
-    
+
                     return ResponseService.send(res, StatusCodes.OK, "Profile Updated Successfully", 1, responseData);
                 } else {
                     if (req.files?.profilePicture?.[0]?.path) {
@@ -129,7 +138,7 @@ class AdminController {
             if (user) {
                 return ResponseService.send(res, StatusCodes.OK, "Admin fetched successfully", 1, user);
             } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Admin not found", 0 ,[]);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Admin not found", 0, []);
             }
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
@@ -149,10 +158,10 @@ class AdminController {
                 if (deletedUser) {
                     return ResponseService.send(res, StatusCodes.OK, "Profile Deleted Successfully", 1, deletedUser);
                 } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to Delete Profile", 0 ,);
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to Delete Profile", 0,);
                 }
             } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User Not Found", 0 , []);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User Not Found", 0, []);
             }
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
@@ -196,8 +205,8 @@ class AdminController {
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
-            if(req.body.experience > req.body.age){
-                
+            if (req.body.experience > req.body.age) {
+
             }
             const password = crypto.randomBytes(8).toString("hex");
             const hashedPassword = await bcrypt.hash(password, 10);
@@ -302,62 +311,62 @@ class AdminController {
     async searchData(req, res) {
         try {
             const { query, role } = req.query;
-    
+
             if (!query) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Query parameter is required", 0);
             }
-    
+
             const defaultRoles = ['doctor', 'patient', 'receptionist'];
-    
+
             const searchCriteria = {
-                fullName: { $regex: `^${query}`, $options: 'i' } 
+                fullName: { $regex: `^${query}`, $options: 'i' }
             };
-    
+
             if (role) {
                 searchCriteria.role = role;
             } else {
                 searchCriteria.role = { $in: defaultRoles };
             }
-    
+
             if (req.user.role !== 'patient') {
                 searchCriteria.hospitalId = req.user.hospitalId;
             }
-    
+
             let results = [];
-    
+
             if (role === 'patient') {
                 const appointments = await AppointmentModel.find()
                     .populate('patientId');
-    
+
                 const patientsFromAppointments = appointments.map(appointment => appointment.patientId);
-                results = patientsFromAppointments.filter(patient => 
+                results = patientsFromAppointments.filter(patient =>
                     patient.fullName && patient.fullName.toLowerCase().startsWith(query.toLowerCase())
                 );
             } else {
                 results = await User.find(searchCriteria);
-    
+
                 if (req.user.role === 'patient') {
                     results = results.filter(user => user.role === 'doctor');
                 }
             }
-    
+
             const data = results.filter((value, index, self) =>
                 index === self.findIndex((t) => (
                     t._id.toString() === value._id.toString()
                 ))
             );
-    
+
             if (data.length === 0) {
                 return ResponseService.send(res, StatusCodes.METHOD_NOT_ALLOWED, "No results found", 0, []);
             }
-    
+
             return ResponseService.send(res, StatusCodes.OK, "Success", 1, data);
         } catch (error) {
             console.error("Error in searchData:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0);
         }
     }
-    
+
     async getDashboardData(req, res) {
         try {
             const { hospitalId } = req.user;
@@ -440,7 +449,7 @@ class AdminController {
             return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
         } catch (error) {
             console.error("Error in getDashboardData:", error);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0 , []);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred", 0, []);
         }
     }
 
@@ -479,7 +488,7 @@ class AdminController {
             const { type } = req.query;
 
             if (!hospitalId) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0 , []);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0, []);
             }
 
             let bills = [];
@@ -547,9 +556,9 @@ class AdminController {
 
                 const billdata = billfilter.map((bill) => ({
                     "billsNo": bill.billNumber,
-                    "patientName": bill.patientId?.fullName || "Unknown", 
-                    "diseaseName": bill.appointmentId?.dieseas_name || "Unknown", 
-                    "status": bill.status ? "Paid" : "Unpaid", 
+                    "patientName": bill.patientId?.fullName || "Unknown",
+                    "diseaseName": bill.appointmentId?.dieseas_name || "Unknown",
+                    "status": bill.status ? "Paid" : "Unpaid",
                 }));
 
                 const UnpaindBills = billfilter.filter((bill) => !bill.status).length;
@@ -666,12 +675,12 @@ class AdminController {
                 return ResponseService.send(res, StatusCodes.OK, "Dashboard data retrieved successfully", 1, dashboardData);
             }
 
-            else if (req.user.role === "patient" ) {
+            else if (req.user.role === "patient") {
                 try {
-                    const { patientId: queryPatientId } = req.query; 
+                    const { patientId: queryPatientId } = req.query;
                     const isReceptionist = req.user.role === "receptionist";
                     const patientId = isReceptionist ? queryPatientId : req.user._id;
-            
+
                     if (!patientId) {
                         return ResponseService.send(
                             res,
@@ -695,18 +704,18 @@ class AdminController {
                         .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
                         .populate("appointmentId", "dieseas_name type appointmentTime date")
                         .populate("hospitalId", "name");
-                    
+
                     const prescriptions = prescriptionsdata.map((prescription) => {
                         const addressObj = prescription.patientId?.address;
                         const formattedAddress = addressObj
                             ? `${addressObj.fullAddress || "N/A"}, ${addressObj.city || "N/A"}, ${addressObj.state || "N/A"}, ${addressObj.country || "N/A"}, ${addressObj.zipCode || "N/A"}`
                             : "N/A";
-            
+
                         return {
                             prescriptionId: prescription._id,
                             prescriptionDate: new Date(prescription.date).getDate().toString().padStart(2, '0') + '/' + // DD
-                            (new Date(prescription.date).getMonth() + 1).toString().padStart(2, '0') + '/' + // MM
-                            new Date(prescription.date).getFullYear().toString().slice(-2),
+                                (new Date(prescription.date).getMonth() + 1).toString().padStart(2, '0') + '/' + // MM
+                                new Date(prescription.date).getFullYear().toString().slice(-2),
                             hospitalName: prescription.hospitalId?.name || "N/A",
                             DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
                             DoctorName: prescription.doctorId?.fullName || "N/A",
@@ -821,7 +830,7 @@ class AdminController {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const tomorrow = new Date(today);
-            tomorrow.setDate(today.getDate() + 1); 
+            tomorrow.setDate(today.getDate() + 1);
 
             const dailySummary = await AppointmentModel.aggregate([
                 {
@@ -889,7 +898,7 @@ class AdminController {
                 { $unwind: { path: "$doctorData", preserveNullAndEmptyArrays: true } },
                 {
                     $group: {
-                        _id: "$doctorData.metaData.doctorData.speciality", 
+                        _id: "$doctorData.metaData.doctorData.speciality",
                         count: { $sum: 1 },
                     },
                 },
@@ -916,7 +925,7 @@ class AdminController {
                 results.forEach(({ _id }) => {
                     if (_id.speciality) {
                         if (!patientDepartmentDataMap.has(_id.speciality)) {
-                            patientDepartmentDataMap.set(_id.speciality, 1); 
+                            patientDepartmentDataMap.set(_id.speciality, 1);
                         }
                     }
                 });
@@ -932,14 +941,14 @@ class AdminController {
                 { $match: { role: "doctor" } },
                 {
                     $group: {
-                        _id: "$metaData.doctorData.speciality", 
+                        _id: "$metaData.doctorData.speciality",
                         count: { $sum: 1 },
                     },
                 },
             ]);
 
             reportData.doctorDepartmentData = doctorData
-                .filter(item => item._id) 
+                .filter(item => item._id)
                 .map((item, index) => ({
                     key: `${index + 1}`,
                     name: item._id,
@@ -967,7 +976,7 @@ class AdminController {
         } catch (error) {
 
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "Error retrieving report data", 0, error.message);
-            
+
         }
     }
 
