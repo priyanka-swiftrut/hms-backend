@@ -34,7 +34,7 @@ router.put("/editAppointment/:id", appointmentController.editAppointment.bind(ap
 
 router.get("/getAppointment", appointmentController.getAppointments.bind(appointmentController));
 router.get("/getAppointmentsTeleconcsultation", appointmentController.getAppointmentsTeleconsultation.bind(appointmentController));
-router.get("/searchAppointment", appointmentController.getseacrchingforappointment.bind(appointmentController));
+router.get("/searchAppointment", appointmentController.getSearchingForAppointment.bind(appointmentController));
 // router.get("/searchAppointmentdata", appointmentController.getseacrchingforappointment.bind(appointmentController));
 router.get("/getpatientfromappointment/:id", appointmentController.getpatientfromappointment.bind(appointmentController));
 
@@ -53,6 +53,6 @@ router.get("/getDashboardData", adminController.getDashboardDatademo.bind(adminC
 router.get("/getDoctor", doctorController.getdoctor.bind(doctorController));
 router.get("/getDoctorandhospital", patientController.getDoctorAndHospital.bind(patientController));
 
-router.get("/chatcontect" ,appointmentController.chatcontect.bind(appointmentController))
+router.get("/chatcontect" ,appointmentController.chatContext.bind(appointmentController))
 
 export default router;

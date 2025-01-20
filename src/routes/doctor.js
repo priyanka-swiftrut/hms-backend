@@ -42,7 +42,7 @@ router.post("/editPrescription/:prescriptionId", prescriptionController.editPres
 router.put("/editPrescription/:prescriptionId", prescriptionController.editPrescription.bind(prescriptionController));
 router.get("/getpatientdetails", prescriptionController.getpatientdetails.bind(prescriptionController));
 router.get("/getappointmentforprescription" , prescriptionController.getAppointmentForPrescription.bind(prescriptionController)) 
-router.get("/chatcontect" ,appointmentController.chatcontect.bind(appointmentController))
+router.get("/chatcontect" ,appointmentController.chatContext.bind(appointmentController))
 
 
 
