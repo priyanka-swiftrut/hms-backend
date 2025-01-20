@@ -5,15 +5,18 @@ import { StatusCodes } from 'http-status-codes';
 import cloudinary from '../config/cloudinaryConfig.js';
 import sendNotification from '../services/notificationService.js';
 import jwt from 'jsonwebtoken';
+import deleteImage from '../services/deleteImagesServices.js';
+
 
 class DoctorController {
 
 
     async EditProfile(req, res) {
         try {
+            // Check if request body is empty
             if (!req.body || Object.keys(req.body).length === 0) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await deleteImage(req.files?.profilePicture?.[0]?.path, 'profileImages');
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
@@ -25,7 +28,7 @@ class DoctorController {
             const doctor = await User.findById(userId);
             if (!doctor) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await deleteImage(req.files?.profilePicture?.[0]?.path, 'profileImages');
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found", 0);
             }
@@ -39,7 +42,7 @@ class DoctorController {
             if (req.files?.profilePicture?.[0]?.path) {
                 if (doctor.profilePicture && doctor.profilePicture !== "") {
                     const publicId = doctor.profilePicture.split("/").pop().split(".")[0];
-                    await cloudinary.uploader.destroy(`profileImages/${publicId}`);
+                    await cloudinary.uploader.destroy(`profileImages/${publicId}`);  // Delete the old image
                 }
                 req.body.profilePicture = req.files.profilePicture[0].path;
             }
@@ -90,13 +93,13 @@ class DoctorController {
                 return ResponseService.send(res, StatusCodes.OK, "Doctor profile updated successfully", 1, responseData);
             } else {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await deleteImage(req.files?.profilePicture?.[0]?.path, 'profileImages');
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update doctor profile", 0);
             }
         } catch (error) {
             if (req.files?.profilePicture?.[0]?.path) {
-                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                await deleteImage(req.files?.profilePicture?.[0]?.path, 'profileImages');
             }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
@@ -104,45 +107,60 @@ class DoctorController {
     
 
     async getdoctor(req, res) {
-        try { 
-            if (!req.query.id) {
+        try {
+            const { id } = req.query;
+    
+            // Fetch all active doctors if no ID is provided
+            if (!id) {
                 const doctors = await User.find({ role: 'doctor', isActive: true });
-                if (doctors.length > 0) {
-                    return ResponseService.send(res, StatusCodes.OK, "Doctors fetched successfully", 1, doctors);
-                } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "No doctors found", 0);
-                }
-            } else {
-                const doctor = await User.findOne({ _id: req.query.id, role: 'doctor' })
-                    .populate("hospitalId", "name worksiteLink address country state city zipcode emergencyContactNo");
     
-                if (doctor) {
-                    let formattedHospitalDetails = null;
-    
-                    if (doctor.hospitalId) {
-                        const hospital = doctor.hospitalId;
-                        const formattedAddress = `${hospital.address || "N/A"}, ${hospital.city || "N/A"}, ${hospital.state || "N/A"}, ${hospital.country || "N/A"}, ${hospital.zipcode || "N/A"}`;
-    
-                        // Create a formatted hospital object with the additional address
-                        formattedHospitalDetails = {
-                            ...hospital.toObject(),
-                            formattedAddress,
-                        };
-                    }
-    
-                    // Attach the formatted hospital details to the response
-                    const doctorWithFormattedHospital = {
-                        ...doctor.toObject(),
-                        hospitalId: formattedHospitalDetails,
-                    };
-    
-                    return ResponseService.send(res, StatusCodes.OK, "Doctor fetched successfully", 1, doctorWithFormattedHospital);
-                } else {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch doctor", 0);
-                }
+                return doctors.length > 0
+                    ? ResponseService.send(res, StatusCodes.OK, "Doctors fetched successfully", 1, doctors)
+                    : ResponseService.send(res, StatusCodes.BAD_REQUEST, "No doctors found", 0);
             }
+    
+            // Fetch a specific doctor based on the provided ID
+            const doctor = await User.findOne({ _id: id, role: 'doctor' })
+                .populate("hospitalId", "name worksiteLink address country state city zipcode emergencyContactNo");
+    
+            if (!doctor) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor not found", 0);
+            }
+    
+            // Format hospital details if available
+            const formattedHospitalDetails = doctor.hospitalId
+                ? {
+                    ...doctor.hospitalId.toObject(),
+                    formattedAddress: [
+                        doctor.hospitalId.address || "N/A",
+                        doctor.hospitalId.city || "N/A",
+                        doctor.hospitalId.state || "N/A",
+                        doctor.hospitalId.country || "N/A",
+                        doctor.hospitalId.zipcode || "N/A",
+                    ].join(", "),
+                }
+                : null;
+    
+            // Attach the formatted hospital details to the doctor object
+            const doctorWithFormattedHospital = {
+                ...doctor.toObject(),
+                hospitalId: formattedHospitalDetails,
+            };
+    
+            return ResponseService.send(
+                res,
+                StatusCodes.OK,
+                "Doctor fetched successfully",
+                1,
+                doctorWithFormattedHospital
+            );
         } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+            return ResponseService.send(
+                res,
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                error.message,
+                0
+            );
         }
     }
     
@@ -171,27 +189,36 @@ class DoctorController {
     
             // If no appointment is found
             if (!latestAppointment) {
-                return ResponseService.send(res,StatusCodes.NOT_FOUND,"No appointment found for this patient",0);
+                return ResponseService.send(
+                    res,
+                    StatusCodes.NOT_FOUND,
+                    "No appointment found for this patient",
+                    0
+                );
             }
     
-            const patient = latestAppointment.patientId;
-            const doctor = latestAppointment.doctorId;
+            const { patientId: patient, doctorId: doctor } = latestAppointment;
     
-            // Reformat address to a single-line string
-            const address = patient.address
-                ? `${patient.address.fullAddress || ""}, ${patient.address.city || ""}, ${
-                      patient.address.state || ""
-                  }, ${patient.address.country || ""}, ${patient.address.zipCode || ""}`
-                      .replace(/,\s*,/g, ",")
-                      .trim(", ")
+            // Format address to a single-line string
+            const formattedAddress = patient.address
+                ? [
+                    patient.address.fullAddress || "",
+                    patient.address.city || "",
+                    patient.address.state || "",
+                    patient.address.country || "",
+                    patient.address.zipCode || "",
+                ]
+                    .filter(Boolean)
+                    .join(", ")
                 : "N/A";
     
             // Fetch all appointments for the patient with the current doctor
-            const allAppointments = await Appointment.find({ patientId, doctorId: req.user._id }).select(
-                "dieseas_name patient_issue date appointmentTime type"
-            );
+            const allAppointments = await Appointment.find({
+                patientId,
+                doctorId: req.user._id,
+            }).select("dieseas_name patient_issue date appointmentTime type");
     
-            // Format response
+            // Format the response
             const response = {
                 profilePicture: patient.profilePicture || "https://vectorified.com/images/default-user-icon-33.jpg",
                 patientFullName: patient.fullName || "N/A",
@@ -207,18 +234,25 @@ class DoctorController {
                     : "N/A",
                 doctorName: doctor.fullName || "N/A",
                 age: patient.age ? `${patient.age} Years` : "N/A",
-                height: patient.metaData.patientData.height ? `${patient.metaData.patientData.height} cm` : "N/A",
-                weight: patient.metaData.patientData.weight ? `${patient.metaData.patientData.weight} kg` : "N/A",
-                bloodGroup: patient.metaData.patientData.bloodGroup || "N/A",
-                dob: patient.metaData.patientData.dob
-                    ? new Date(patient.dob).toLocaleDateString("en-US", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                      })
+                height: patient.metaData?.patientData?.height
+                    ? `${patient.metaData.patientData.height} cm`
+                    : "N/A",
+                weight: patient.metaData?.patientData?.weight
+                    ? `${patient.metaData.patientData.weight} kg`
+                    : "N/A",
+                bloodGroup: patient.metaData?.patientData?.bloodGroup || "N/A",
+                dob: patient.metaData?.patientData?.dob
+                    ? new Date(patient.metaData.patientData.dob).toLocaleDateString(
+                          "en-US",
+                          {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                          }
+                      )
                     : "N/A",
                 appointmentType: latestAppointment.type || "N/A",
-                address,
+                address: formattedAddress,
                 lastAppointmentTime: latestAppointment.appointmentTime || "N/A",
                 allAppointments: allAppointments.map((appointment) => ({
                     dieseasName: appointment.dieseas_name || "N/A",
@@ -237,10 +271,22 @@ class DoctorController {
             };
     
             // Send the response
-            return ResponseService.send(res,StatusCodes.OK,"Patient record fetched successfully","success",response , 1);
+            return ResponseService.send(
+                res,
+                StatusCodes.OK,
+                "Patient record fetched successfully",
+                "success",
+                response,
+                1
+            );
         } catch (error) {
             console.error("Error fetching patient record:", error);
-            return ResponseService.send(res,StatusCodes.INTERNAL_SERVER_ERROR,"An error occurred while fetching patient record",0);
+            return ResponseService.send(
+                res,
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "An error occurred while fetching patient record",
+                0
+            );
         }
     }
 
@@ -248,12 +294,11 @@ class DoctorController {
 
     async getPatientRecord(req, res) {
         try {
-            const { role, _id: userId, hospitalId } = req.user; 
-            const { filter, search } = req.query; 
+            const { role, _id: userId, hospitalId } = req.user;
+            const { filter, search } = req.query;
     
+            // Initialize query based on user role
             let query = {};
-    
-            // Determine query based on role
             if (role === "doctor") {
                 query.doctorId = userId;
             } else if (role === "receptionist") {
@@ -267,56 +312,53 @@ class DoctorController {
                 );
             }
     
-            // Date range filter
+            // Date range filtering
             const today = new Date();
             today.setHours(0, 0, 0, 0);
     
             let startDate = null;
             let endDate = null;
     
-            if (filter === "day") {
-                startDate = new Date(today);
-                endDate = new Date(today);
-                endDate.setDate(today.getDate() + 1);
-            } else if (filter === "week") {
-                const dayOfWeek = today.getDay();
-                startDate = new Date(today);
-                startDate.setDate(today.getDate() - dayOfWeek);
-                endDate = new Date(startDate);
-                endDate.setDate(startDate.getDate() + 7);
-            } else if (filter === "month") {
-                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-                endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+            switch (filter) {
+                case "day":
+                    startDate = new Date(today);
+                    endDate = new Date(today);
+                    endDate.setDate(today.getDate() + 1);
+                    break;
+                case "week":
+                    const dayOfWeek = today.getDay();
+                    startDate = new Date(today);
+                    startDate.setDate(today.getDate() - dayOfWeek);
+                    endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + 7);
+                    break;
+                case "month":
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+                    break;
             }
     
             if (startDate && endDate) {
                 query.date = { $gte: startDate, $lt: endDate };
             }
     
-            // Fetch appointments (without filtering by fullName yet)
+            // Fetch appointments without applying search filters yet
             const appointments = await Appointment.find(query)
                 .populate("patientId", "fullName age gender profilePicture")
                 .limit(10);
     
-            if (!appointments || appointments.length === 0) {
-                return ResponseService.send(
-                    res,
-                    StatusCodes.BAD_REQUEST,
-                    "No appointments found",
-                    0
-                );
+            if (!appointments?.length) {
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "No appointments found", 0);
             }
     
-            // Apply search filter on the populated data (case-insensitive, starts with)
-            let filteredAppointments = appointments;
-            if (search) {
-                const searchRegex = new RegExp(`^${search}`, "i"); 
-                filteredAppointments = appointments.filter((appointment) => 
-                    searchRegex.test(appointment.patientId?.fullName || "")
-                );
-            }
+            // Apply search filter (case-insensitive)
+            const filteredAppointments = search
+                ? appointments.filter(({ patientId }) =>
+                      new RegExp(`^${search}`, "i").test(patientId?.fullName || "")
+                  )
+                : appointments;
     
-            if (filteredAppointments.length === 0) {
+            if (!filteredAppointments.length) {
                 return ResponseService.send(
                     res,
                     StatusCodes.BAD_REQUEST,
@@ -325,29 +367,31 @@ class DoctorController {
                 );
             }
     
-            // Format the patient records
+            // Map filtered appointments to patient records
             const patientRecords = filteredAppointments.map((appointment, index) => {
                 const patient = appointment.patientId;
     
                 return {
-                    key: (index + 1).toString(),
+                    key: `${index + 1}`,
                     patientName: patient?.fullName || "N/A",
                     patientId: patient?._id || "N/A",
                     avatar: patient?.profilePicture || "https://vectorified.com/images/default-user-icon-33.jpg",
                     diseaseName: appointment.disease_name || "N/A",
                     patientIssue: appointment.patient_issue || "N/A",
-                    lastAppointmentDate: new Date(appointment.date).toLocaleDateString("en-US", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                    }),
+                    lastAppointmentDate: appointment.date
+                        ? new Date(appointment.date).toLocaleDateString("en-US", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                          })
+                        : "N/A",
                     lastAppointmentTime: appointment.appointmentTime || "N/A",
                     age: patient?.age ? `${patient.age} Years` : "N/A",
                     gender: patient?.gender || "N/A",
                 };
             });
     
-            // Respond with the formatted records
+            // Send the response
             return ResponseService.send(
                 res,
                 StatusCodes.OK,

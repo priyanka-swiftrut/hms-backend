@@ -1,175 +1,148 @@
 import AppointmentRecord from "../models/appointmentRecord.model.js";
-import appointmentmodel from "../models/Appointment.model.js";
+import AppointmentModel from "../models/Appointment.model.js";
 import ResponseService from "../services/response.services.js";
 import { StatusCodes } from "http-status-codes";
 import cloudinary from "../config/cloudinaryConfig.js";
 
 class AppointmentRecordController {
-    // Create Appointment Record
-    async createAppointmentRecord(req, res) {
-        const imagePaths = [];
-        try {
-            const { appointmentId } = req.params;
-            const { description } = req.body;
+  // Create Appointment Record
+  async createAppointmentRecord(req, res) {
+    const imagePaths = [];
+    try {
+      const { appointmentId } = req.params;
+      const { description } = req.body;
 
+      if (!appointmentId) {
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
+      }
 
-            if (!appointmentId) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Appointment ID is required.", 0);
-            }
+      if (!req.body || !Object.keys(req.body).length) {
+        const uploadedImages = req.files?.map(file => file.path) || [];
+        if (uploadedImages.length) await this.deleteImages(uploadedImages);
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
+      }
 
-            if (!req.body || Object.keys(req.body).length === 0) {
-                // Delete uploaded images if request body is empty
-                const uploadedImages = req.files?.map(file => file.path) || [];
-                if (uploadedImages.length > 0) {
-                    await this.deleteImage(uploadedImages);
-                }
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
-            }
+      const appointment = await AppointmentModel.findById(appointmentId);
+      if (!appointment) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment not found.", 0);
+      }
 
-            let appointment = await appointmentmodel.findOne({ _id: appointmentId });
+      const existingRecord = await AppointmentRecord.findOne({ appointmentId });
+      if (existingRecord) {
+        return ResponseService.send(res, StatusCodes.CONFLICT, "Appointment record already exists.", 0);
+      }
 
-            if (!appointment) {
-                return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment not found.", 0);
-            }
+      const images = req.files?.map(file => file.path) || [];
+      imagePaths.push(...images);
 
-            const existingRecord = await AppointmentRecord.findOne({ appointmentId });
+      const newRecord = new AppointmentRecord({
+        appointmentId,
+        hospitalId: appointment.hospitalId,
+        doctorId: appointment.doctorId,
+        patientId: appointment.patientId,
+        description,
+        images,
+        date: new Date(),
+      });
 
-            if (existingRecord) {
-                return ResponseService.send(res, StatusCodes.CONFLICT, "Appointment record already exists.", 0);
-            }
-
-            // Handle images
-            const images = req.files ? req.files.map(file => file.path) : [];
-            imagePaths.push(...images); // Track uploaded images
-
-            const newRecord = new AppointmentRecord({
-                appointmentId,
-                hospitalId: appointment.hospitalId,
-                doctorId: appointment.doctorId,
-                patientId: appointment.patientId,
-                description,
-                images,
-                date: new Date(),
-            });
-
-            await newRecord.save();
-
-            return ResponseService.send(res, StatusCodes.CREATED, "Appointment record created successfully.", 1, newRecord);
-        } catch (error) {
-            // If any error occurs, delete uploaded images from Cloudinary
-            if (imagePaths.length > 0) {
-                await this.deleteImage(imagePaths);
-            }
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-        }
+      await newRecord.save();
+      return ResponseService.send(res, StatusCodes.CREATED, "Appointment record created successfully.", 1, newRecord);
+    } catch (error) {
+      if (imagePaths.length) await this.deleteImages(imagePaths);
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
+  }
 
-    // Edit Appointment Record
-    async editAppointmentRecord(req, res) {
-        const imagePaths = [];
-        try {
-            const { recordId } = req.params;
-            const { description, existingImages } = req.body;
+  // Edit Appointment Record
+  async editAppointmentRecord(req, res) {
+    const imagePaths = [];
+    try {
+      const { recordId } = req.params;
+      const { description, existingImages } = req.body;
 
-            const record = await AppointmentRecord.findById(recordId);
-            if (!record) {
-                return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
-            }
+      const record = await AppointmentRecord.findById(recordId);
+      if (!record) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
+      }
 
-            if (description) {
-                record.description = description;
-            }
+      if (description) record.description = description;
 
-            // Handle images
+      const newImages = req.files?.map(file => file.path) || [];
+      imagePaths.push(...newImages);
 
-            const newImages = req.files ? req.files.map(file => file.path) : [];
-            imagePaths.push(...newImages); 
+      if (newImages.length) {
+        if (record.images.length) await this.deleteImages(record.images);
+        record.images = newImages;
+      } else if (existingImages?.length) {
+        record.images = existingImages;
+      }
 
-
-            if (newImages.length > 0) {
-                // Delete old images from Cloudinary
-                if (record.images.length > 0) {
-                    await this.deleteImage(record.images);
-                    await deleteImages(record.images);
-                }
-                record.images = newImages; 
-                record.images = newImages;
-
-            } else if (existingImages && existingImages.length > 0) {
-                record.images = existingImages; 
-                record.images = existingImages;
-            }
-
-
-            await record.save();
-
-
-            return ResponseService.send(res, StatusCodes.OK, "Appointment record updated successfully.", 1, record);
-        } catch (error) {
-            // Delete newly uploaded images if an error occurs
-            if (imagePaths.length > 0) {
-                await this.deleteImage(imagePaths);
-            }
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-        }
+      await record.save();
+      return ResponseService.send(res, StatusCodes.OK, "Appointment record updated successfully.", 1, record);
+    } catch (error) {
+      if (imagePaths.length) await this.deleteImages(imagePaths);
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
+  }
 
-    async deleteImages(req, res) {
-        try {
-            const { appointmentId } = req.params;
-            const { imageUrl } = req.body;
+  // Delete an Image
+  async deleteImages(req, res) {
+    try {
+      const { appointmentId } = req.params;
+      const { imageUrl } = req.body;
 
-            const record = await AppointmentRecord.findOne({ appointmentId });
-            if (!record) {
-                return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
-            }
+      const record = await AppointmentRecord.findOne({ appointmentId });
+      if (!record) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
+      }
 
-            if (!imageUrl || !record.images.includes(imageUrl)) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Image not found in the record.", 0);
-            }
+      if (!imageUrl || !record.images.includes(imageUrl)) {
+        return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Image not found in the record.", 0);
+      }
 
-            const publicId = imageUrl.split('/').pop().split('.')[0]; 
-            await cloudinary.uploader.destroy(publicId);
+      const publicId = this.extractPublicId(imageUrl);
+      await cloudinary.uploader.destroy(publicId);
 
-            // Remove image from the record
-            record.images = record.images.filter(img => img !== imageUrl);
-            await record.save();
+      record.images = record.images.filter(img => img !== imageUrl);
+      await record.save();
 
-            return ResponseService.send(res, StatusCodes.OK, "Image deleted successfully.", 1, record);
-        } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-        }
+      return ResponseService.send(res, StatusCodes.OK, "Image deleted successfully.", 1, record);
+    } catch (error) {
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
+  }
 
-    // Utility to delete images from Cloudinary
-    async deleteImage(paths) {
-        if (paths) {
-            if (Array.isArray(paths)) {
-                for (const path of paths) {
-                    const publicId = path.split("/").pop().split(".")[0];
-                    await cloudinary.uploader.destroy(publicId);
-                }
-            } else {
-                const publicId = paths.split("/").pop().split(".")[0];
-                await cloudinary.uploader.destroy(publicId);
-            }
-        }
+  // Utility to delete images from Cloudinary
+  async deleteImages(paths) {
+    if (!paths) return;
+
+    const deletePromises = Array.isArray(paths)
+      ? paths.map(path => cloudinary.uploader.destroy(this.extractPublicId(path)))
+      : [cloudinary.uploader.destroy(this.extractPublicId(paths))];
+
+    await Promise.all(deletePromises);
+  }
+
+  // Extract Public ID from Cloudinary URL
+  extractPublicId(url) {
+    return url.split("/").pop().split(".")[0];
+  }
+
+  // Fetch Appointment Record
+  async getAppointmentRecord(req, res) {
+    try {
+      const { appointmentId } = req.params;
+
+      const record = await AppointmentRecord.findOne({ appointmentId });
+      if (!record) {
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
+      }
+
+      return ResponseService.send(res, StatusCodes.OK, "Appointment record fetched successfully.", 1, record);
+    } catch (error) {
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
-
-    // Fetch Appointment Record
-    async getAppointmentRecord(req, res) {
-        try {
-            const { appointmentId } = req.params;
-
-            const record = await AppointmentRecord.findOne({ appointmentId });
-            if (!record) {
-                return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment record not found.", 0);
-            }
-            return ResponseService.send(res, StatusCodes.OK, "Appointment record fetched successfully.", 1, record);
-        } catch (error) {
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-        }
-    }
+  }
 }
 
 export default AppointmentRecordController;

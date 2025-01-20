@@ -9,41 +9,52 @@ import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
 import EmailService from '../services/email.service.js';
 import jwt from 'jsonwebtoken';
+import deleteImage from '../services/deleteImagesServices.js';
+
 
 class ReceptionistController {
 
     async Register(req, res) {
         try {
+            // Check if the user is an admin (access control)
             if (!req.user || req.user.role !== "admin") {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
             }
+    
+            // Check if request body is empty
             if (!req.body || Object.keys(req.body).length === 0) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
+    
             const hospitalId = req.user.hospitalId;
+    
+            // Ensure hospital ID is provided
             if (!hospitalId) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
             }
+    
+            // Check if the email already exists
             const existingUser = await User.findOne({ email: req.body.email });
             if (existingUser) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
-
+    
             const password = crypto.randomBytes(8).toString("hex");
             const hashedPassword = await bcrypt.hash(password, 10);
-
+    
+            // Prepare the new receptionist data
             const newReceptionistData = {
                 fullName: `${req.body.firstName} ${req.body.lastName}`,
                 email: req.body.email,
@@ -69,20 +80,32 @@ class ReceptionistController {
                     },
                 },
             };
+    
+            // Add profile picture path if available
             if (req.files?.profilePicture?.[0]?.path) {
                 newReceptionistData.profilePicture = req.files.profilePicture[0].path;
             }
+    
+            // Create the new receptionist
             const newReceptionist = new User(newReceptionistData);
             await newReceptionist.save();
+    
             try {
                 const emailHtml = EmailService.registrationTemplate(newReceptionist.fullName, newReceptionist.email, password);
                 await EmailService.sendEmail(newReceptionist.email, "Registration Successful ✔", emailHtml);
             } catch (emailError) {
+                if (req.files?.profilePicture?.[0]?.path) {
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
+                }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist registered, but email sending failed", 0);
             }
+    
             return ResponseService.send(res, StatusCodes.OK, "Receptionist registered successfully", 1, newReceptionist);
         } catch (error) {
-            this.deleteImage(req.files?.profilePicture?.[0]?.path);
+            // Handle error and clean up any uploaded images if they exist
+            if (req.files?.profilePicture?.[0]?.path) {
+                await deleteImage(req.files.profilePicture[0].path, "profileImages");
+            }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
@@ -92,7 +115,7 @@ class ReceptionistController {
             // Validate request body
             if (!req.body || Object.keys(req.body).length === 0) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files.profilePicture[0].path);
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
@@ -104,16 +127,20 @@ class ReceptionistController {
             const receptionist = await User.findById(userId);
             if (!receptionist) {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files.profilePicture[0].path);
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Receptionist not found", 0);
             }
+    
+            // Update fullName if firstName and lastName are provided
             if (req.body.firstName && req.body.lastName) {
-                req.body.fullName = req.body.firstName + " " + req.body.lastName;
+                req.body.fullName = `${req.body.firstName} ${req.body.lastName}`;
             }
+    
             // Handle profile picture update
             if (req.files?.profilePicture?.[0]?.path) {
-                if (receptionist.profilePicture && receptionist.profilePicture !== "") {
+                // Delete old profile picture if exists
+                if (receptionist.profilePicture) {
                     const publicId = receptionist.profilePicture.split("/").pop().split(".")[0];
                     await cloudinary.uploader.destroy(`profileImages/${publicId}`);
                 }
@@ -121,13 +148,14 @@ class ReceptionistController {
             }
     
             // Restructure address fields
-            if (req.body.country || req.body.state || req.body.city || req.body.zipCode || req.body.fullAddress) {
+            const { country, state, city, zipCode, fullAddress } = req.body;
+            if (country || state || city || zipCode || fullAddress) {
                 req.body.address = {
-                    country: req.body.country || receptionist.address?.country,
-                    state: req.body.state || receptionist.address?.state,
-                    city: req.body.city || receptionist.address?.city,
-                    zipCode: req.body.zipCode || receptionist.address?.zipCode,
-                    fullAddress: req.body.fullAddress || receptionist.address?.fullAddress,
+                    country: country || receptionist.address?.country,
+                    state: state || receptionist.address?.state,
+                    city: city || receptionist.address?.city,
+                    zipCode: zipCode || receptionist.address?.zipCode,
+                    fullAddress: fullAddress || receptionist.address?.fullAddress,
                 };
             }
     
@@ -140,26 +168,25 @@ class ReceptionistController {
     
                 // Prepare response payload
                 const responseData = {
-                    ...updatedReceptionist._doc, // Spread updated receptionist data
-                    token, // Include the token
+                    ...updatedReceptionist._doc,
+                    token,
                 };
     
                 return ResponseService.send(res, StatusCodes.OK, "Receptionist profile updated successfully", 1, responseData);
             } else {
                 if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files.profilePicture[0].path);
+                    await deleteImage(req.files.profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update receptionist profile", 0);
             }
         } catch (error) {
             if (req.files?.profilePicture?.[0]?.path) {
-                await this.deleteImage(req.files.profilePicture[0].path);
+                await deleteImage(req.files.profilePicture[0].path, "profileImages");
             }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
     
-
     async deleteProfile(req, res) {
         try {
             const receptionist = await User.findById(req.params.id);
@@ -176,6 +203,7 @@ class ReceptionistController {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
         }
     }
+    
     async getreceptionist(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
@@ -199,145 +227,99 @@ class ReceptionistController {
         }
     }
 
-    async deleteImage(path) {
-        if (path) {
-            const publicId = path.split("/").pop().split(".")[0];
-            await cloudinary.uploader.destroy(`profileImages/${publicId}`);
-        }
-    };
-
     async getPatient(req, res) {
         try {
             // Find a patient with the role "patient" and select specific fields
-            const patient = await User.find({ role: "patient" }).select("fullName _id number");
+            const patient = await User.find({ role: 'patient' }).select('fullName _id number');
     
             // Check if no patient is found
-            if (!patient) {
-                return ResponseService.send(res, StatusCodes.NOT_FOUND, {
-                    message: "Patient not found",
-                    data: [],
-                    count: 0,
-                }, 0);
+            if (!patient || patient.length === 0) {
+                return ResponseService.send(
+                    res,
+                    StatusCodes.NOT_FOUND,
+                    {
+                        message: 'Patient not found',
+                        data: [],
+                        count: 0,
+                    },
+                    0
+                );
             }
     
             // Return patient details directly in the "data" field
-            return ResponseService.send(res, StatusCodes.OK, {
-                message: "Patient detail for appointment booking",
-                data: patient,
-                count: 1,
-            });
+            return ResponseService.send(
+                res,
+                StatusCodes.OK,
+                {
+                    message: 'Patient detail for appointment booking',
+                    data: patient,
+                    count: 1,
+                }
+            );
         } catch (error) {
             // Handle server errors
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, {
-                message: "Internal Server Error",
-                error: error.message, // Provide additional error details for debugging
-            });
+            return ResponseService.send(
+                res,
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                {
+                    message: 'Internal Server Error',
+                    error: error.message, // Provide additional error details for debugging
+                }
+            );
         }
     }
     
-    // async getpatientdetailforreception(req, res) {
-
-    //     try {
-    //         const hospitalId = req.user.hospitalId; // Assuming hospitalId is passed from req.user
-    
-    //         if (!hospitalId) {
-    //             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
-    //         }
-    
-    //         const patients = await appointmentModel.aggregate([
-    //             {
-    //                 $match: { hospitalId: new mongoose.Types.ObjectId(hospitalId) }, // Use 'new' with ObjectId
-    //             },
-    //             {
-    //                 $group: {
-    //                     _id: "$patientId", // Group by patientId to avoid duplication
-    //                     latestAppointment: { $last: "$$ROOT" }, // Get the latest appointment for each patient
-    //                 },
-    //             },
-    //             {
-    //                 $lookup: {
-    //                     from: "users", // Name of the User collection in MongoDB
-    //                     localField: "_id",
-    //                     foreignField: "_id",
-    //                     as: "patientDetails",
-    //                 },
-    //             },
-    //             {
-    //                 $unwind: "$patientDetails", // Flatten the patientDetails array
-    //             },
-    //             {
-    //                 $project: {
-    //                     _id: 0,
-    //                     patientId: "$_id",
-    //                     patientName: "$patientDetails.fullName",
-    //                     patientEmail: "$patientDetails.email",
-    //                     latestAppointmentDate: "$latestAppointment.date",
-    //                     latestAppointmentStatus: "$latestAppointment.status",
-    //                 },
-    //             },
-    //         ]);
-    
-    //         if (patients.length > 0) {
-    //             return ResponseService.send(res, StatusCodes.OK, "Unique patients fetched successfully", 1, patients);
-    //         } else {
-    //             return ResponseService.send(res, StatusCodes.OK, "No patients found", 1, []);
-    //         }
-    //     } catch (error) {
-    //         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
-    //     }
-
-    // }
 
     async getpatientdetailforreception(req, res) {
         try {
-            const hospitalId = req.user.hospitalId; // Assuming hospitalId is passed from req.user
+            const { hospitalId } = req.user; // Assuming hospitalId is passed from req.user
             const { search } = req.query; // Query parameter to search by patient name
     
             if (!hospitalId) {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, 'Hospital ID is required', 0);
             }
     
             // Fetch patients directly from the User model
             let query = {
-                role: "patient",
+                role: 'patient',
                 isActive: true,
             };
     
             // Add search condition if provided
             if (search) {
-                query.fullName = { $regex: `^${search}`, $options: "i" }; // Case-insensitive search for patient names
+                query.fullName = { $regex: `^${search}`, $options: 'i' }; // Case-insensitive search for patient names
             }
     
             // Fetch patients and sort them by latest (e.g., based on `createdAt`)
             const patients = await User.find(query).sort({ createdAt: -1 });
     
             // Map the results to the desired format
-            const response = patients.map((patient) => ({
-                patientId: patient._id,
-                patientName: patient.fullName,
-                patientEmail: patient.email,
-                patientNumber: patient.phone,
-                patientGender: patient.gender,
-                patientAge: patient.age,
+            const response = patients.map(({ _id: patientId, fullName: patientName, email: patientEmail, phone: patientNumber, gender: patientGender, age: patientAge }) => ({
+                patientId,
+                patientName,
+                patientEmail,
+                patientNumber,
+                patientGender,
+                patientAge,
             }));
     
             if (response.length > 0) {
                 return ResponseService.send(
                     res,
                     StatusCodes.OK,
-                    "Unique patients fetched successfully",
+                    'Unique patients fetched successfully',
                     1,
                     response
                 );
             } else {
-                return ResponseService.send(res, StatusCodes.OK, "No patients found", 1, []);
+                return ResponseService.send(res, StatusCodes.OK, 'No patients found', 1, []);
             }
         } catch (error) {
             return ResponseService.send(
                 res,
                 StatusCodes.INTERNAL_SERVER_ERROR,
                 error.message,
-                "error"
+                'error'
             );
         }
     }
@@ -345,7 +327,8 @@ class ReceptionistController {
     async patientdeshboardforreceptionist(req, res) {
         try {
             const { patientId: queryPatientId } = req.query; // Get patientId from query
-            const isReceptionist = req.user.role === "receptionist";
+            const isReceptionist = req.user.role === 'receptionist';
+            
             // Determine the patientId to fetch data for
             const patientId = isReceptionist ? queryPatientId : req.user._id;
     
@@ -353,66 +336,76 @@ class ReceptionistController {
                 return ResponseService.send(
                     res,
                     StatusCodes.BAD_REQUEST,
-                    "Patient ID is required.",
-                    "error"
+                    'Patient ID is required.',
+                    'error'
                 );
             }
+    
             // Fetch patient profile
             const patientProfile = await User.findById(patientId);
             if (!patientProfile) {
                 return ResponseService.send(
                     res,
                     StatusCodes.NOT_FOUND,
-                    "Patient profile not found",
-                    "error"
+                    'Patient profile not found',
+                    'error'
                 );
             }
+    
             // Fetch prescriptions and populate hospital details
-            let prescriptionsdata = await PrescriptionModel.find({ patientId })
+            const prescriptionsData = await PrescriptionModel.find({ patientId })
                 .sort({ createdAt: -1 })
-                .populate("patientId", "fullName gender address age phone")
-                .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
-                .populate("appointmentId", "dieseas_name type appointmentTime date")
-                .populate("hospitalId", "name");
-            
-            const prescriptions = prescriptionsdata.map((prescription) => {
-                const addressObj = prescription.patientId?.address;
+                .populate('patientId', 'fullName gender address age phone')
+                .populate('doctorId', 'fullName metaData.doctorData.speciality metaData.doctorData.signature')
+                .populate('appointmentId', 'dieseas_name type appointmentTime date')
+                .populate('hospitalId', 'name');
+    
+            // Map prescription data to desired structure
+            const prescriptions = prescriptionsData.map(({
+                _id: prescriptionId,
+                date,
+                hospitalId,
+                appointmentId,
+                doctorId,
+                patientId,
+                medications = 'N/A',
+                instructions: additionalNote,
+                ...rest
+            }) => {
+                const addressObj = patientId?.address;
                 const formattedAddress = addressObj
-                    ? `${addressObj.fullAddress || "N/A"}, ${addressObj.city || "N/A"}, ${addressObj.state || "N/A"}, ${addressObj.country || "N/A"}, ${addressObj.zipCode || "N/A"}`
-                    : "N/A";
+                    ? `${addressObj.fullAddress || 'N/A'}, ${addressObj.city || 'N/A'}, ${addressObj.state || 'N/A'}, ${addressObj.country || 'N/A'}, ${addressObj.zipCode || 'N/A'}`
+                    : 'N/A';
     
                 return {
-                    prescriptionId: prescription._id,
-                    prescriptionDate: new Date(prescription.date).getDate().toString().padStart(2, '0') + '/' + // DD
-                    (new Date(prescription.date).getMonth() + 1).toString().padStart(2, '0') + '/' + // MM
-                    new Date(prescription.date).getFullYear().toString().slice(-2),
-                    hospitalName: prescription.hospitalId?.name || "N/A",
-                    DiseaseName: prescription.appointmentId?.dieseas_name || "N/A",
-                    DoctorName: prescription.doctorId?.fullName || "N/A",
-                    patientName: prescription.patientId?.fullName || "N/A",
-                    patientNumber: prescription.patientId?.phone || "N/A",
-                    doctorspecialty: prescription.doctorId?.metaData?.doctorData?.speciality || "N/A",
-                    gender: prescription.patientId?.gender || "N/A",
-                    age: prescription.patientId?.age || "N/A",
+                    prescriptionId,
+                    prescriptionDate: new Date(date).toLocaleDateString('en-GB'),
+                    hospitalName: hospitalId?.name || 'N/A',
+                    DiseaseName: appointmentId?.dieseas_name || 'N/A',
+                    DoctorName: doctorId?.fullName || 'N/A',
+                    patientName: patientId?.fullName || 'N/A',
+                    patientNumber: patientId?.phone || 'N/A',
+                    doctorspecialty: doctorId?.metaData?.doctorData?.speciality || 'N/A',
+                    gender: patientId?.gender || 'N/A',
+                    age: patientId?.age || 'N/A',
                     address: formattedAddress,
-                    medications: prescription.medications || "N/A",
-                    additionalNote: prescription.instructions || "N/A",
-                    doctorsignature: prescription.doctorId?.metaData?.doctorData?.signature || "N/A",
-                    appointmentTime: prescription.appointmentId?.appointmentTime || "N/A",
-                    appointmentDate: prescription.appointmentId?.date || "N/A",
-                    dieseas_name: prescription.appointmentId?.dieseas_name || "N/A",
+                    medications,
+                    additionalNote,
+                    doctorsignature: doctorId?.metaData?.doctorData?.signature || 'N/A',
+                    appointmentTime: appointmentId?.appointmentTime || 'N/A',
+                    appointmentDate: appointmentId?.date || 'N/A',
+                    dieseas_name: appointmentId?.dieseas_name || 'N/A',
                 };
             });
+    
             // Prepare dashboard data
-            const dashboardData = {
-                patientProfile,
-                prescriptions,
-            };
+            const dashboardData = { patientProfile, prescriptions };
+    
             // Return success response with dashboard data
-            return ResponseService.send(res, StatusCodes.OK, "Dashboard data fetched successfully", "success", dashboardData);
+            return ResponseService.send(res, StatusCodes.OK, 'Dashboard data fetched successfully', 'success', dashboardData);
         } catch (error) {
-            console.error("Error fetching patient dashboard data:", error);
-            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred while fetching patient dashboard data", 0);
+            console.error('Error fetching patient dashboard data:', error);
+            return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, 'An error occurred while fetching patient dashboard data', 0);
         }
     }
 
@@ -453,7 +446,7 @@ class ReceptionistController {
             // Send response with the list of specialties and doctors
             return ResponseService.send(res, StatusCodes.OK, {
                 specialties,  
-                doctors: doctorList, 
+                doctors: doctorList,  // Flattened doctor data
             }, 0);
         } catch (error) {
             console.error(error);

@@ -8,153 +8,171 @@ import EmailService from '../services/email.service.js';
 import cloudinary from '../config/cloudinaryConfig.js';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import deleteImage from '../services/deleteImagesServices.js';
 
 
 class PatientController {
 
     async Register(req, res) {
         try {
-            if (!req.body || Object.keys(req.body).length === 0) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
-                }
+            const { body, files } = req;
+            const { profilePicture } = files || {};
+            const profileImagePath = profilePicture?.[0]?.path;
+    
+            // Check if the request body is empty
+            if (!body || Object.keys(body).length === 0) {
+                if (profileImagePath) await deleteImage(profileImagePath, "profileImages");
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
-            if (req.body.password !== req.body.confirmPassword) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
-                }
+    
+            // Check if password and confirm password match
+            if (body.password !== body.confirmPassword) {
+                if (profileImagePath) await deleteImage(profileImagePath, "profileImages");
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Password and Confirm Password do not match", 0);
             }
-            const existingUser = await User.findOne({ email: req.body.email });
+    
+            // Check if the email already exists
+            const existingUser = await User.findOne({ email: body.email });
             if (existingUser) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
-                }
+                if (profileImagePath) await deleteImage(profileImagePath, "profileImages");
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
             }
-            const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    
+            // Hash the password
+            const hashedPassword = await bcrypt.hash(body.password, 10);
+    
+            // Create the new patient data
             const newPatientData = {
-                fullName: `${req.body.firstName} ${req.body.lastName}`,
-                email: req.body.email,
-                phone: req.body.phone,
-                age: req.body.age,
-                gender: req.body.gender,
+                fullName: `${body.firstName} ${body.lastName}`,
+                email: body.email,
+                phone: body.phone,
+                age: body.age,
+                gender: body.gender,
                 address: {
-                    country: req.body.country,
-                    state: req.body.state,
-                    city: req.body.city,
-                    zipCode: req.body.zipCode,
-                    fullAddress: req.body.fullAddress,
+                    country: body.country,
+                    state: body.state,
+                    city: body.city,
+                    zipCode: body.zipCode,
+                    fullAddress: body.fullAddress,
                 },
                 role: "patient",
                 password: hashedPassword,
                 metaData: {
                     patientData: {
-                        height: req.body.height,
-                        weight: req.body.weight,
-                        bloodGroup: req.body.bloodGroup,
-                        dob: req.body.dob,
-                        phoneCode: req.body.phoneCode,
-                        termsAccepted: req.body.termsAccepted,
+                        height: body.height,
+                        weight: body.weight,
+                        bloodGroup: body.bloodGroup,
+                        dob: body.dob,
+                        phoneCode: body.phoneCode,
+                        termsAccepted: body.termsAccepted,
                     },
                 },
+                profilePicture: profileImagePath || undefined,
             };
-            if (req.files?.profilePicture?.[0]?.path) {
-                newPatientData.profilePicture = req.files.profilePicture[0].path;
-            }
+    
+            // Create and save the new patient user
             const newPatient = new User(newPatientData);
             await newPatient.save();
+    
+            // Send registration email
             try {
-                const emailHtml = EmailService.registrationTemplate(newPatient.fullName, newPatient.email, req.body.password);
+                const emailHtml = EmailService.registrationTemplate(newPatient.fullName, newPatient.email, body.password);
                 await EmailService.sendEmail(newPatient.email, "Registration Successful ✔", emailHtml);
             } catch (emailError) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient registered, but email sending failed", 0);
             }
+    
+            // Send successful response
             return ResponseService.send(res, StatusCodes.OK, "Patient registered successfully", 1, newPatient);
         } catch (error) {
+            // Delete the profile image if any error occurs
+            if (profileImagePath) await deleteImage(profileImagePath, "profileImages");
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
     }
 
     async EditProfile(req, res) {
         try {
+            const { body, files, user } = req;
+            const { profilePicture } = files || {};
+            const { _id } = user;
+    
             // Check if the request body is empty
-            if (!req.body || Object.keys(req.body).length === 0) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+            if (!body || Object.keys(body).length === 0) {
+                if (profilePicture?.[0]?.path) {
+                    await deleteImage(profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
             }
     
-            const patient = await User.findById(req.user._id);
+            const patient = await User.findById(_id);
             if (!patient) {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+                if (profilePicture?.[0]?.path) {
+                    await deleteImage(profilePicture[0].path, "profileImages");
                 }
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
     
             // Handle fullName if firstName and lastName are provided
-            if (req.body.firstName && req.body.lastName) {
-                req.body.fullName = `${req.body.firstName} ${req.body.lastName}`;
+            if (body.firstName && body.lastName) {
+                body.fullName = `${body.firstName} ${body.lastName}`;
             }
     
             // Handle profilePicture upload and deletion
-            if (req.files?.profilePicture?.[0]?.path) {
-                if (patient.profilePicture && patient.profilePicture !== "") {
+            if (profilePicture?.[0]?.path) {
+                if (patient.profilePicture) {
                     const publicId = patient.profilePicture.split("/").pop().split(".")[0];
                     await cloudinary.uploader.destroy(`profileImages/${publicId}`);
                 }
-                req.body.profilePicture = req.files.profilePicture[0].path;
+                body.profilePicture = profilePicture[0].path;
             }
     
             // Restructure address fields
-            if (req.body.country || req.body.state || req.body.city || req.body.zipCode || req.body.fullAddress) {
-                req.body.address = {
-                    country: req.body.country || patient.address?.country,
-                    state: req.body.state || patient.address?.state,
-                    city: req.body.city || patient.address?.city,
-                    zipCode: req.body.zipCode || patient.address?.zipCode,
-                    fullAddress: req.body.fullAddress || patient.address?.fullAddress,
+            if (body.country || body.state || body.city || body.zipCode || body.fullAddress) {
+                body.address = {
+                    country: body.country || patient.address?.country,
+                    state: body.state || patient.address?.state,
+                    city: body.city || patient.address?.city,
+                    zipCode: body.zipCode || patient.address?.zipCode,
+                    fullAddress: body.fullAddress || patient.address?.fullAddress,
                 };
             }
     
             // Restructure patientData (metaData)
-            if (req.body.height || req.body.weight || req.body.bloodGroup || req.body.dob || req.body.phoneCode || req.body.termsAccepted) {
-                req.body.metaData = {
-                    ...patient.metaData, 
+            if (body.height || body.weight || body.bloodGroup || body.dob || body.phoneCode || body.termsAccepted) {
+                body.metaData = {
+                    ...patient.metaData,
                     patientData: {
-                        ...patient.metaData?.patientData, 
-                        height: req.body.height || patient.metaData?.patientData?.height,
-                        weight: req.body.weight || patient.metaData?.patientData?.weight,
-                        bloodGroup: req.body.bloodGroup || patient.metaData?.patientData?.bloodGroup,
-                        dob: req.body.dob || patient.metaData?.patientData?.dob,
-                        phoneCode: req.body.phoneCode || patient.metaData?.patientData?.phoneCode,
-                        termsAccepted: req.body.termsAccepted !== undefined ? req.body.termsAccepted : patient.metaData?.patientData?.termsAccepted,
+                        ...patient.metaData?.patientData,
+                        height: body.height || patient.metaData?.patientData?.height,
+                        weight: body.weight || patient.metaData?.patientData?.weight,
+                        bloodGroup: body.bloodGroup || patient.metaData?.patientData?.bloodGroup,
+                        dob: body.dob || patient.metaData?.patientData?.dob,
+                        phoneCode: body.phoneCode || patient.metaData?.patientData?.phoneCode,
+                        termsAccepted: body.termsAccepted !== undefined ? body.termsAccepted : patient.metaData?.patientData?.termsAccepted,
                     },
                 };
             }
     
             // Update the patient document
-            const updatedPatient = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
+            const updatedPatient = await User.findByIdAndUpdate(_id, body, { new: true });
             if (updatedPatient) {
-                // Generate the JWT token
                 const token = jwt.sign({ userData: updatedPatient }, process.env.JWT_SECRET_PATIENT, { expiresIn: "1d" });
     
                 return ResponseService.send(res, StatusCodes.OK, "Patient profile updated successfully", 1, {
                     ...updatedPatient.toObject(),
                     token
                 });
-            } else {
-                if (req.files?.profilePicture?.[0]?.path) {
-                    await this.deleteImage(req.files?.profilePicture?.[0]?.path);
-                }
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update patient profile", 0);
             }
+    
+            // If update fails, delete the uploaded image if any
+            if (profilePicture?.[0]?.path) {
+                await deleteImage(profilePicture[0].path, "profileImages");
+            }
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to update patient profile", 0);
         } catch (error) {
-            if (req.files?.profilePicture?.[0]?.path) {
-                await this.deleteImage(req.files?.profilePicture?.[0]?.path);
+            if (profilePicture?.[0]?.path) {
+                await deleteImage(profilePicture[0].path, "profileImages");
             }
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, "error");
         }
@@ -162,20 +180,24 @@ class PatientController {
 
     async deleteProfile(req, res) {
         try {
-            const patient = await User.findById(req.params.id);
+            const { id } = req.params;
+            
+            const patient = await User.findById(id);
             if (!patient) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Patient not found", 0);
             }
+    
             if (patient.profilePicture) {
                 const publicId = patient.profilePicture.split("/").pop().split(".")[0];
                 await cloudinaryConfig.uploader.destroy(`profileImages/${publicId}`);
             }
-            const updatedPatient = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    
+            const updatedPatient = await User.findByIdAndUpdate(id, { isActive: false }, { new: true });
             if (updatedPatient) {
                 return ResponseService.send(res, StatusCodes.OK, "Patient profile deleted successfully", 1, updatedPatient);
-            } else {
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to delete patient profile", 0);
             }
+    
+            return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to delete patient profile", 0);
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
         }
@@ -185,68 +207,65 @@ class PatientController {
         try {
             const { id, search, bloodGroup, age, gender } = req.query;
     
-            if (!id) {
-                let query = { role: 'patient', isActive: true };
+            let query = { role: 'patient', isActive: true };
     
+            if (!id) {
                 // Add search filter if provided
                 if (search) {
                     query.$or = [
-                        { "fullName": { $regex: search, $options: 'i' } }, 
-                        { "email": { $regex: search, $options: 'i' } },    
-                        { "phone": { $regex: search, $options: 'i' } }     
+                        { fullName: { $regex: search, $options: 'i' } },
+                        { email: { $regex: search, $options: 'i' } },
+                        { phone: { $regex: search, $options: 'i' } },
                     ];
                 }
     
                 // Add filters for bloodGroup, age, and gender if provided
-                if (bloodGroup) {
-                    query["metaData.patientData.bloodGroup"] = bloodGroup;
-                }
-                if (age) {
-                    query.age = age;
-                }
-                if (gender) {
-                    query.gender = gender;
-                }
+                if (bloodGroup) query['metaData.patientData.bloodGroup'] = bloodGroup;
+                if (age) query.age = age;
+                if (gender) query.gender = gender;
     
                 // Fetch all patients based on the query
-                const patients = await User.find(query).select("-password"); 
+                const patients = await User.find(query).select('-password');
                 if (patients.length > 0) {
-                    const formattedPatients = patients.map(patient => ({
-                        id: patient._id,
-                        fullName: patient.fullName,
-                        email: patient.email,
-                        phone: patient.phone,
-                        gender: patient.gender,
-                        age: patient.age,
-                        bloodGroup: patient.metaData?.patientData?.bloodGroup,
-                        address: patient.address,
-                        metaData: patient.metaData,
-                        createdAt: patient.createdAt
+                    const formattedPatients = patients.map(({ _id, fullName, email, phone, gender, age, metaData, address, createdAt }) => ({
+                        id: _id,
+                        fullName,
+                        email,
+                        phone,
+                        gender,
+                        age,
+                        bloodGroup: metaData?.patientData?.bloodGroup,
+                        address,
+                        metaData,
+                        createdAt
                     }));
-                    return ResponseService.send(res, StatusCodes.OK, "Patients fetched successfully", 1, formattedPatients);
+    
+                    return ResponseService.send(res, StatusCodes.OK, 'Patients fetched successfully', 1, formattedPatients);
                 } else {
-                    return ResponseService.send(res, StatusCodes.NOT_FOUND, "No patients found", 0);
+                    return ResponseService.send(res, StatusCodes.NOT_FOUND, 'No patients found', 0);
                 }
+            }
+    
+            // Fetch a single patient by ID
+            const patient = await User.findOne({ _id: id, role: 'patient', isActive: true }).select('-password');
+            if (patient) {
+                const { _id, fullName, email, phone, gender, age, metaData, address, createdAt } = patient;
+                const formattedPatient = {
+                    id: _id,
+                    fullName,
+                    email,
+                    phone,
+                    gender,
+                    age,
+                    bloodGroup: metaData?.patientData?.bloodGroup,
+                    address,
+                    metaData,
+                    createdAt
+                };
+    
+                return ResponseService.send(res, StatusCodes.OK, 'Patient fetched successfully', 1, formattedPatient);
             } else {
-                // Fetch a single patient by ID
-                const patient = await User.findOne({ _id: id, role: 'patient', isActive: true }).select("-password");
-                if (patient) {
-                    const formattedPatient = {
-                        id: patient._id,
-                        fullName: patient.fullName,
-                        email: patient.email,
-                        phone: patient.phone,
-                        gender: patient.gender,
-                        age: patient.age,
-                        bloodGroup: patient.metaData?.patientData?.bloodGroup,
-                        address: patient.address,
-                        metaData: patient.metaData,
-                        createdAt: patient.createdAt
-                    };
-                    return ResponseService.send(res, StatusCodes.OK, "Patient fetched successfully", 1, formattedPatient);
-                } else {
-                    return ResponseService.send(res, StatusCodes.NOT_FOUND, "Patient not found", 0);
-                }
+                return ResponseService.send(res, StatusCodes.NOT_FOUND, 'Patient not found', 0);
             }
         } catch (error) {
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 'error');
@@ -262,7 +281,7 @@ class PatientController {
 
     async getBillsforPatient(req, res) {
         try {
-            const { id } = req.user; 
+            const { id } = req.user;
             const { status } = req.query;
     
             // Validate input
@@ -273,38 +292,38 @@ class PatientController {
             // Build the query object
             const query = { patientId: id };
     
-            // If a status is provided, add it to the query
+            // If a status is provided, validate and add it to the query
             if (status) {
-                if (status !== "paid" && status !== "unpaid") {
+                if (!['paid', 'unpaid'].includes(status)) {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid status value", 0);
                 }
-                query.status = status === "paid"; 
+                query.status = status === "paid"; // True for 'paid', false for 'unpaid'
             }
     
             // Fetch bills based on the query
             const billsData = await billModel.find(query)
-                .sort({ createdAt: -1 }) 
+                .sort({ createdAt: -1 })
                 .populate("hospitalId", "name")
-                .populate("patientId", "fullName email phone age gender address")
-            
+                .populate("patientId", "fullName email phone age gender address");
+    
             // Map the data to return in a structured format
-            const bills = billsData.map((bill) => ({
-                billNumber: bill.billNumber,
-                billId: bill._id,
-                status: bill.status ? "Paid" : "Unpaid",
-                date: new Date(bill.date).toLocaleDateString("en-US", {
+            const bills = billsData.map(({ billNumber, _id, status, date, time, totalAmount, hospitalId, patientId }) => ({
+                billNumber,
+                billId: _id,
+                status: status ? "Paid" : "Unpaid",
+                date: new Date(date).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "short",
                     day: "numeric",
-                }), 
-                time: bill.time,
-                totalAmount: bill.totalAmount,
-                hospitalName: bill.hospitalId?.name || "N/A",
-                patientName: bill.patientId?.fullName || "N/A",
+                }),
+                time,
+                totalAmount,
+                hospitalName: hospitalId?.name || "N/A",
+                patientName: patientId?.fullName || "N/A",
             }));
     
             // Return the result
-            return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, bills );
+            return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, bills);
         } catch (error) {
             console.error("Error fetching bills:", error);
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
@@ -315,7 +334,7 @@ class PatientController {
         try {
             // Fetch all hospital data
             const hospitalData = await Hospital.find();
-            if (!hospitalData || hospitalData.length === 0) {
+            if (!hospitalData?.length) {
                 return ResponseService.send(
                     res,
                     StatusCodes.NOT_FOUND,
@@ -330,7 +349,7 @@ class PatientController {
                 .populate("hospitalId", "name worksiteLink address zipcode")
                 .select("fullName address hospitalId metaData.doctorData.speciality");
     
-            if (!doctorData || doctorData.length === 0) {
+            if (!doctorData?.length) {
                 return ResponseService.send(
                     res,
                     StatusCodes.NOT_FOUND,
@@ -341,23 +360,23 @@ class PatientController {
             }
     
             // Transform the doctorData using a map loop
-            const transformedDoctorData = doctorData.map(doctor => ({
-                id: doctor._id,
-                fullName: doctor.fullName,
-                speciality: doctor.metaData?.doctorData?.speciality || "N/A",
+            const transformedDoctorData = doctorData.map(({ _id, fullName, address, hospitalId, metaData }) => ({
+                id: _id,
+                fullName,
+                speciality: metaData?.doctorData?.speciality || "N/A",
                 address: {
-                    country: doctor.address?.country || "N/A",
-                    state: doctor.address?.state || "N/A",
-                    city: doctor.address?.city || "N/A",
-                    zipCode: doctor.address?.zipCode || "N/A",
-                    fullAddress: doctor.address?.fullAddress || "N/A"
+                    country: address?.country || "N/A",
+                    state: address?.state || "N/A",
+                    city: address?.city || "N/A",
+                    zipCode: address?.zipCode || "N/A",
+                    fullAddress: address?.fullAddress || "N/A"
                 },
                 hospital: {
-                    id: doctor.hospitalId?._id || null,
-                    name: doctor.hospitalId?.name || "N/A",
-                    address: doctor.hospitalId?.address || "N/A",
-                    zipcode: doctor.hospitalId?.zipcode || "N/A",
-                    worksiteLink: doctor.hospitalId?.worksiteLink || "N/A"
+                    id: hospitalId?._id || null,
+                    name: hospitalId?.name || "N/A",
+                    address: hospitalId?.address || "N/A",
+                    zipcode: hospitalId?.zipcode || "N/A",
+                    worksiteLink: hospitalId?.worksiteLink || "N/A"
                 }
             }));
     
@@ -367,7 +386,7 @@ class PatientController {
                 StatusCodes.OK,
                 "Doctor and hospital fetched successfully",
                 1,
-                {  doctorData: transformedDoctorData }
+                { doctorData: transformedDoctorData }
             );
         } catch (error) {
             // Handle unexpected errors

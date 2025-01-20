@@ -10,216 +10,151 @@ class BillController {
 
   async createBillManualy(req, res) {
     try {
-        const {
-            appointmentId,
-            discount,
-            tax: customTax,
-            paymentType,
-            description,
-            insuranceDetails,
-            notes,
-            status,
-        } = req.body;
+      const {
+          appointmentId,
+          discount,
+          tax: customTax,
+          paymentType,
+          description,
+          insuranceDetails,
+          notes,
+          status,
+      } = req.body;
 
-        // Ensure required fields are provided
-        if (!appointmentId) {
-            return ResponseService.send(
-                res,
-                StatusCodes.BAD_REQUEST,
-                "Missing required field: appointmentId.",
-                0
-            );
-        }
+      // Validate required fields
+      if (!appointmentId) {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Missing required field: appointmentId.", 0);
+      }
 
-        const isBill = await Bill.findOne({ appointmentId: appointmentId });
-        if (isBill) {
-            return ResponseService.send(
-                res,
-                StatusCodes.BAD_REQUEST,
-                "Bill already exists.",
-                0
-            );
-        }
+      const existingBill = await Bill.findOne({ appointmentId });
+      if (existingBill) {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Bill already exists.", 0);
+      }
 
-        // Fetch appointment details
-        const appointment = await AppointmentModel.findById(appointmentId).populate("patientId doctorId");
-        if (!appointment) {
-            return ResponseService.send(
-                res,
-                StatusCodes.NOT_FOUND,
-                "Appointment not found.",
-                0
-            );
-        }
+      // Fetch appointment details
+      const appointment = await AppointmentModel.findById(appointmentId).populate("patientId doctorId");
+      if (!appointment) {
+          return ResponseService.send(res, StatusCodes.NOT_FOUND, "Appointment not found.", 0);
+      }
 
-        const { patientId, doctorId, hospitalId, type: appointmentType } = appointment;
+      const { patientId, doctorId, hospitalId, type: appointmentType } = appointment;
 
-        // Validate payment type
-        if (req.user.role !== "receptionist" && paymentType === "cash" && appointmentType === "online") {
-            return ResponseService.send(
-                res,
-                StatusCodes.BAD_REQUEST,
-                "Invalid payment type.",
-                0
-            );
-        }
+      // Validate payment type
+      if (req.user.role !== "receptionist" && paymentType === "cash" && appointmentType === "online") {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
+      }
 
-        // Fetch consultation rate
-        const doctor = await User.findById(doctorId);
-        if (!doctor) {
-            return ResponseService.send(
-                res,
-                StatusCodes.NOT_FOUND,
-                "Doctor not found.",
-                0
-            );
-        }
+      // Fetch consultation rate
+      const doctor = await User.findById(doctorId);
+      if (!doctor) {
+          return ResponseService.send(res, StatusCodes.NOT_FOUND, "Doctor not found.", 0);
+      }
 
-        let amount = 0;
-        if (appointmentType === "onsite") {
-            amount = doctor.metaData.doctorData.consultationRate || 0;
-        } else if (appointmentType === "online") {
-            amount = doctor.metaData.doctorData.onlineConsultationRate || 0;
-        } else {
-            return ResponseService.send(
-                res,
-                StatusCodes.BAD_REQUEST,
-                "Invalid appointment type.",
-                0
-            );
-        }
+      const consultationRate = appointmentType === "onsite"
+          ? doctor.metaData?.doctorData?.consultationRate || 0
+          : appointmentType === "online"
+          ? doctor.metaData?.doctorData?.onlineConsultationRate || 0
+          : null;
 
-        // Validate discount and tax
-        if (discount && (discount < 0 || discount > 100)) {
-            return ResponseService.send(
-                res,
-                StatusCodes.BAD_REQUEST,
-                "Discount must be between 0 and 100.",
-                0
-            );
-        }
+      if (consultationRate === null) {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid appointment type.", 0);
+      }
 
-        const tax = customTax !== undefined ? customTax : 18; 
-        if (tax < 0) {
-            return ResponseService.send(
-                res,
-                StatusCodes.BAD_REQUEST,
-                "Tax cannot be negative.",
-                0
-            );
-        }
+      // Validate discount and tax
+      if (discount && (discount < 0 || discount > 100)) {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Discount must be between 0 and 100.", 0);
+      }
 
-        // Validate extra charges from description
-        let extraCharges = 0;
-        if (description && Array.isArray(description)) {
-            description.forEach((item) => {
-                if (typeof item.value === "number") {
-                    extraCharges += item.value;
-                } else {
-                    return ResponseService.send(
-                        res,
-                        StatusCodes.BAD_REQUEST,
-                        "Each description entry must have a numeric value.",
-                        0
-                    );
+      const tax = customTax !== undefined ? customTax : 18;
+      if (tax < 0) {
+          return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Tax cannot be negative.", 0);
+      }
+
+      // Calculate extra charges
+      const extraCharges = Array.isArray(description)
+          ? description.reduce((acc, item) => {
+                if (typeof item.value !== "number") {
+                    throw new Error("Each description entry must have a numeric value.");
                 }
-            });
-        }
+                return acc + item.value;
+            }, 0)
+          : 0;
 
-        // Validate insurance details
-        let insuranceId = null;
-        let dueAmount = 0; 
-        let totalAmount = 0; 
-        
-        const discountedAmount = (amount + extraCharges) - ((amount + extraCharges) * (discount || 0)) / 100;
-        totalAmount = discountedAmount + (discountedAmount * tax) / 100;
+      // Calculate total amount
+      const baseAmount = consultationRate + extraCharges;
+      const discountedAmount = baseAmount - (baseAmount * (discount || 0)) / 100;
+      const totalAmount = discountedAmount + (discountedAmount * tax) / 100;
 
-        if (paymentType === "Insurance") {
-            const { insuranceCompany, insurancePlan, claimAmount, claimedAmount } = insuranceDetails || {};
+      // Handle insurance details
+      let insuranceId = null;
+      let dueAmount = 0;
 
-            if (!insuranceCompany || !insurancePlan || claimAmount === undefined || claimedAmount === undefined) {
-                return ResponseService.send(
-                    res,
-                    StatusCodes.BAD_REQUEST,
-                    "Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",
-                    0
-                );
-            }
+      if (paymentType === "Insurance") {
+          const { insuranceCompany, insurancePlan, claimAmount, claimedAmount } = insuranceDetails || {};
 
-            if (claimAmount < claimedAmount) {
-                return ResponseService.send(
-                    res,
-                    StatusCodes.BAD_REQUEST,
-                    "Claim amount cannot be less than claimed amount.",
-                    0
-                );
-            }
+          if (!insuranceCompany || !insurancePlan || claimAmount === undefined || claimedAmount === undefined) {
+              return ResponseService.send(
+                  res,
+                  StatusCodes.BAD_REQUEST,
+                  "Incomplete insurance details. Provide insuranceCompany, insurancePlan, claimAmount, and claimedAmount.",
+                  0
+              );
+          }
 
-            // Create insurance entry
-            const newInsurance = new Insurance({
-                patientId,
-                insuranceCompany,
-                insurancePlan,
-                claimAmount,
-                claimedAmount,
-                
-            });
+          if (claimAmount < claimedAmount) {
+              return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Claim amount cannot be less than claimed amount.", 0);
+          }
 
-            const savedInsurance = await newInsurance.save();
-            insuranceId = savedInsurance._id;
+          const newInsurance = new Insurance({
+              patientId,
+              insuranceCompany,
+              insurancePlan,
+              claimAmount,
+              claimedAmount,
+          });
 
-            // Calculate due amount if claimed amount is less than total amount
-            if (claimedAmount < totalAmount) {
-                dueAmount = totalAmount - claimedAmount;
-            }
-        }
+          const savedInsurance = await newInsurance.save();
+          insuranceId = savedInsurance._id;
 
-        // Create bill
-        const billData = {
-            appointmentId,
-            patientId,
-            doctorId,
-            hospitalId,
-            amount,
-            discount,
-            tax,
-            totalAmount,
-            dueAmount,
-            paymentType,
-            insuranceId,
-            description,
-            notes,
-            paymentStatus: status,
-            date: new Date(),
-            time: new Date().toLocaleTimeString(),
-        };
+          if (claimedAmount < totalAmount) {
+              dueAmount = totalAmount - claimedAmount;
+          }
+      }
 
-        const newBill = new Bill(billData);
-        await newBill.save();
-        
-        await sendNotification({
-          type: 'Bill',
-          message: `Bill Created Succesfully: ${newBill.date} at ${newBill.time}`,
-          hospitalId: hospitalId,
+      // Create and save bill
+      const billData = {
+          appointmentId,
+          patientId,
+          doctorId,
+          hospitalId,
+          amount: consultationRate,
+          discount,
+          tax,
+          totalAmount,
+          dueAmount,
+          paymentType,
+          insuranceId,
+          description,
+          notes,
+          paymentStatus: status,
+          date: new Date(),
+          time: new Date().toLocaleTimeString(),
+      };
+
+      const newBill = await new Bill(billData).save();
+
+      await sendNotification({
+          type: "Bill",
+          message: `Bill created successfully on ${newBill.date} at ${newBill.time}`,
+          hospitalId,
           targetUsers: patientId,
-        });
+      });
 
-        return ResponseService.send(
-            res,
-            StatusCodes.CREATED,
-            "Bill created successfully.",
-            1,
-            newBill
-        );
-    } catch (error) {
-        console.error("Error creating bill manually:", error);
-        return ResponseService.send(
-            res,
-            StatusCodes.INTERNAL_SERVER_ERROR,
-            error.message,
-            0
-        );
-    }
+      return ResponseService.send(res, StatusCodes.CREATED, "Bill created successfully.", 1, newBill);
+  } catch (error) {
+      console.error("Error creating bill manually:", error);
+      return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
+  }
 }
 
 
@@ -244,7 +179,7 @@ class BillController {
         status,
         notes,
       } = req.body;
-
+  
       // Fetch the bill from the database
       const bill = await Bill.findById(billId);
       if (!bill) {
@@ -255,7 +190,7 @@ class BillController {
           0
         );
       }
-
+  
       // Update amount
       if (amount !== undefined) {
         if (amount < 0) {
@@ -268,7 +203,7 @@ class BillController {
         }
         bill.amount = amount;
       }
-
+  
       // Update discount
       if (discount !== undefined) {
         if (discount < 0 || discount > 100) {
@@ -281,7 +216,7 @@ class BillController {
         }
         bill.discount = discount;
       }
-
+  
       // Update tax
       if (tax !== undefined) {
         if (tax < 0) {
@@ -294,7 +229,7 @@ class BillController {
         }
         bill.tax = tax;
       }
-
+  
       // Update description
       if (description !== undefined) {
         if (!Array.isArray(description)) {
@@ -317,7 +252,7 @@ class BillController {
         }
         bill.description = description;
       }
-
+  
       // Handle insurance logic
       if (paymentType === "Insurance") {
         if (
@@ -334,7 +269,7 @@ class BillController {
             0
           );
         }
-
+  
         if (insuranceDetails.claimAmount < insuranceDetails.claimedAmount) {
           return ResponseService.send(
             res,
@@ -343,7 +278,7 @@ class BillController {
             0
           );
         }
-
+  
         if (bill.insuranceId) {
           // Update existing insurance
           const insurance = await Insurance.findById(bill.insuranceId);
@@ -355,7 +290,7 @@ class BillController {
               0
             );
           }
-
+  
           insurance.insuranceCompany = insuranceDetails.insuranceCompany;
           insurance.insurancePlan = insuranceDetails.insurancePlan;
           insurance.claimAmount = insuranceDetails.claimAmount;
@@ -370,12 +305,12 @@ class BillController {
             claimAmount: insuranceDetails.claimAmount,
             claimedAmount: insuranceDetails.claimedAmount,
           });
-
+  
           const savedInsurance = await newInsurance.save();
           bill.insuranceId = savedInsurance._id;
         }
       }
-
+  
       // Update payment type
       if (paymentType !== undefined) {
         if (!["Online", "Cash", "Insurance"].includes(paymentType)) {
@@ -388,7 +323,7 @@ class BillController {
         }
         bill.paymentType = paymentType;
       }
-
+  
       // Update status
       if (status !== undefined) {
         if (!["Unpaid", "Paid"].includes(status)) {
@@ -401,7 +336,7 @@ class BillController {
         }
         bill.paymentStatus = status;
       }
-
+  
       // Recalculate total amount if relevant fields are updated
       if (amount !== undefined || discount !== undefined || tax !== undefined) {
         const baseAmount = bill.amount || 0;
@@ -411,10 +346,10 @@ class BillController {
           discountedAmount + (discountedAmount * (bill.tax || 0)) / 100;
         bill.totalAmount = totalAmount;
       }
-
+  
       // Save updated bill
       await bill.save();
-
+  
       return ResponseService.send(
         res,
         StatusCodes.OK,
@@ -432,54 +367,61 @@ class BillController {
       );
     }
   }
+  
 
 
 
   async getBill(req, res) {
     try {
       const { id } = req.query;
-
-      // Case where no bill ID is provided, fetch all bills
-      if (!id || id.trim() === '') {
+  
+      // Fetch all bills if no ID is provided
+      if (!id?.trim()) {
         const bills = await Bill.find()
           .populate('patientId', 'fullName email phone age gender address')
           .populate('doctorId', 'fullName specialization onlineConsultationRate description')
           .populate('insuranceId')
           .populate('appointmentId', 'date appointmentTime status dieseas_name');
-
-        if (bills && bills.length > 0) {
+  
+        if (bills?.length) {
           return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, bills);
-        } else {
-          return ResponseService.send(res, StatusCodes.NOT_FOUND, "No bills found", 0);
         }
+  
+        return ResponseService.send(res, StatusCodes.NOT_FOUND, "No bills found", 0);
       }
-
+  
       // Fetch the bill by billNumber
       const bill = await Bill.findOne({ billNumber: id })
         .populate('patientId', 'fullName email gender age phone address')
-        .populate('doctorId', 'fullName metadata.doctorData.specialization metadata.doctorData.description metadata.doctorData.onlineConsultationRate metadata.doctorData.consultationRate')
+        .populate(
+          'doctorId',
+          'fullName metadata.doctorData.specialization metadata.doctorData.description metadata.doctorData.onlineConsultationRate metadata.doctorData.consultationRate'
+        )
         .populate('appointmentId', 'date appointmentTime status dieseas_name');
-
-      let formattedAddress = null;
-      if (bill && bill.patientId && bill.patientId.address) {
-        const address = bill.patientId.address;
-        formattedAddress = `${address.fullAddress}, ${address.city}, ${address.state}, ${address.country}, ${address.zipCode}`;
-
-        // Optionally remove the original address field
-        delete bill.patientId.address;
-      }
-
-      // Send response with formattedAddress as top-level data
-      if (bill) {
-        const responseData = {
-          ...bill.toObject(), // Convert bill object to plain JS object
-          formattedAddress // Include formattedAddress in top-level data
-        };
-        return ResponseService.send(res, StatusCodes.OK, "Bill fetched successfully", 1, responseData);
-      } else {
+  
+      if (!bill) {
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "Bill not found", 0);
       }
+  
+      // Format the patient's address
+      const formattedAddress = bill.patientId?.address
+        ? `${bill.patientId.address.fullAddress}, ${bill.patientId.address.city}, ${bill.patientId.address.state}, ${bill.patientId.address.country}, ${bill.patientId.address.zipCode}`
+        : null;
+  
+      // Optionally remove the original address field
+      if (bill.patientId?.address) {
+        delete bill.patientId.address;
+      }
+  
+      // Add formattedAddress to the response
+      const responseData = {
+        ...bill.toObject(), // Convert Mongoose document to plain JavaScript object
+        formattedAddress,
+      };
+  
+      return ResponseService.send(res, StatusCodes.OK, "Bill fetched successfully", 1, responseData);
     } catch (error) {
+      console.error("Error fetching bill:", error);
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
   }
@@ -487,56 +429,53 @@ class BillController {
   async getBillByStatus(req, res) {
     try {
       const { status } = req.query;
-      const hospitalId = req.user.hospitalId; // Extract hospitalId from the request
-
-      // Check if status is provided
+      const { hospitalId } = req.user; // Destructure hospitalId from the request user
+  
+      // Validate the status parameter
       if (!status) {
         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Status is required", 0);
       }
-
-      // Validate the status value
+  
       const validStatuses = ["Unpaid", "Paid"];
       if (!validStatuses.includes(status)) {
         return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid status value", 0);
       }
-
-      // Convert status to boolean for database query
-      const statusBool = status === "Paid";
-
-      // Fetch bills with the given status and hospitalId
-      const bills = await Bill.find({ paymentStatus: statusBool, hospitalId })
+  
+      // Map status to boolean for the database query
+      const paymentStatus = status === "Paid";
+  
+      // Fetch bills based on status and hospitalId
+      const bills = await Bill.find({ paymentStatus, hospitalId })
         .populate("patientId", "fullName email phone")
         .populate("doctorId", "fullName")
         .populate("appointmentId", "dieseas_name date appointmentTime status")
-        .select("billNumber status date time appointmentId");
-
-      // Check if bills were found
-      if (!bills || bills.length === 0) {
+        .select("billNumber paymentStatus date time appointmentId");
+  
+      if (!bills?.length) {
         return ResponseService.send(res, StatusCodes.NOT_FOUND, "No bills found", 0);
       }
-
-      // Format the bills response
-      const formattedBills = bills.map(bill => ({
-        billNumber: bill.billNumber,
-        patientName: bill.patientId?.fullName || "N/A",
-        doctorName: bill.doctorId?.fullName || "N/A",
-        diseaseName: bill.appointmentId?.dieseas_name || "N/A",
-        phoneNumber: bill.patientId?.phone || "N/A",
-        status: bill.paymentStatus ? "Paid" : "Unpaid",
-        billDate: new Date(bill.date).toLocaleDateString("en-US", {
+  
+      // Format the bills for response
+      const formattedBills = bills.map(({ billNumber, patientId, doctorId, appointmentId, paymentStatus, date, time }) => ({
+        billNumber,
+        patientName: patientId?.fullName || "N/A",
+        doctorName: doctorId?.fullName || "N/A",
+        diseaseName: appointmentId?.dieseas_name || "N/A",
+        phoneNumber: patientId?.phone || "N/A",
+        status: paymentStatus ? "Paid" : "Unpaid",
+        billDate: new Date(date).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
           day: "numeric",
         }),
-        time: bill.time,
+        time,
       }));
-
-      // Return the count of bills along with the formatted bills
+  
+      // Return the response with the count and formatted bills
       return ResponseService.send(res, StatusCodes.OK, "Bills fetched successfully", 1, {
         count: bills.length,
         bills: formattedBills,
       });
-
     } catch (error) {
       console.error("Error fetching bills:", error);
       return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);

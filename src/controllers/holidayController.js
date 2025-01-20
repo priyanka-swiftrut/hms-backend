@@ -10,15 +10,12 @@ class HolidayController {
     async createHoliday(req, res) {
         try {
             const { hospitalId, id: userId } = req.user;
+
             if (!hospitalId || !userId) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "User or Hospital ID is missing", 0);
             }
 
-            const userdata = await User.findOne({
-                _id: userId,
-                hospitalId,
-                isActive: true
-            });
+            const userdata = await User.findOne({ _id: userId, hospitalId, isActive: true });
 
             if (!userdata) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "User not found or inactive", 0);
@@ -40,15 +37,9 @@ class HolidayController {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Holiday for this date already exists", 0);
             }
 
-            const holiday = new holidayModel({
-                userId,
-                hospitalId,
-                date,
-                session,
-                reason
-            });
-
+            const holiday = new holidayModel({ userId, hospitalId, date, session, reason });
             await holiday.save();
+
             return ResponseService.send(res, StatusCodes.OK, "Holiday created successfully", 1, holiday);
         } catch (error) {
             console.error("Error in createHoliday:", error);
@@ -60,7 +51,7 @@ class HolidayController {
     async getHolidays(req, res) {
         try {
             const { hospitalId, id: userId } = req.user;
-            const { id: holidayId } = req.query;
+            const { holidayId } = req.query;
 
             if (!hospitalId) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
@@ -104,8 +95,8 @@ class HolidayController {
             }
 
             const holiday = await holidayModel.findById(holidayId);
-            
-            if (!holiday ) {
+
+            if (!holiday) {
                 return ResponseService.send(res, StatusCodes.NOT_FOUND, "Holiday not found", 0);
             }
 
@@ -142,6 +133,7 @@ class HolidayController {
             }
 
             await holiday.deleteOne();
+
             return ResponseService.send(res, StatusCodes.OK, "Holiday deleted successfully", 1);
         } catch (error) {
             console.error("Error in deleteHoliday:", error);
@@ -150,4 +142,4 @@ class HolidayController {
     }
 }
 
-export default  HolidayController;
+export default HolidayController;
