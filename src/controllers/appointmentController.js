@@ -770,7 +770,7 @@ async chatContext(req, res) {
         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
     }
 }
-
+  
 }
 
 export default AppointmentController;
