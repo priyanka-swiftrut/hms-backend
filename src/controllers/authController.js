@@ -66,8 +66,6 @@ class AuthController {
     async ForgotPassword(req, res) {
         try {
             const { identifier } = req.body;
-            console.log(identifier);
-            
             if (!identifier) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Identifier (email or phone number) is required", 0);
             }
@@ -119,9 +117,7 @@ class AuthController {
             }
     
             let response;
-            const receievdOtp = parseInt(otp)
-            console.log(typeof OTP, typeof receievdOtp);
-             
+            const receievdOtp = parseInt(otp)             
             if (identifier.includes("@")) {
                 if (OTP.toString() === otp) {
                     return ResponseService.send(res, StatusCodes.OK, "OTP Verified Successfully 🎉", 1);
