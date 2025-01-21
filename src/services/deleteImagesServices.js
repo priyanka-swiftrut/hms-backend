@@ -1,3 +1,5 @@
+import cloudinary from "cloudinary";
+
 const deleteImage = async (path, folder = 'profileImages') => {
     if (path) {
         const publicId = path.split("/").pop().split(".")[0];

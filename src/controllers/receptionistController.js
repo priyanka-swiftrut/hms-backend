@@ -207,7 +207,8 @@ class ReceptionistController {
     async getreceptionist(req, res) {
         try {
             if (req.query.id === '' || req.query.id === undefined || req.query.id === null) {
-                const receptionist = await User.find({ role: 'receptionist', isActive: true });
+                const receptionist = await User.find({ role: 'receptionist', isActive: true })
+                .populate('hospitalId', 'name');
                 if (receptionist) {
                     return ResponseService.send(res, StatusCodes.OK, "receptionist fetched successfully", 1, receptionist);
                 } else {
@@ -215,8 +216,9 @@ class ReceptionistController {
                 }
             }
             else {
-                const receptionist = await User.findById({ _id: req.query.id, role: 'receptionist' });
-                if (receptionist) {
+                const receptionist = await User.findById({ _id: req.query.id, role: 'receptionist' })
+                .populate('hospitalId', 'name');
+                if (receptionist) {                    
                     return ResponseService.send(res, StatusCodes.OK, "receptionist fetched successfully", 1, receptionist);
                 } else {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Failed to fetch receptionist", 0);

@@ -145,9 +145,6 @@ const UserSchema = new mongoose.Schema({
             },
             emergencyContactNo: {
                 type: String,
-                required: function () {
-                    return this.role === "doctor";
-                },
             },
             signature: {
                 type: String,
@@ -157,15 +154,9 @@ const UserSchema = new mongoose.Schema({
             },
             hospitalName: {
                 type: String,
-                required: function () {
-                    return this.role === "doctor";
-                },
             },
             hospitalAddress: {
                 type: String,
-                required: function () {
-                    return this.role === "doctor";
-                },
             },
         },
         patientData: {
