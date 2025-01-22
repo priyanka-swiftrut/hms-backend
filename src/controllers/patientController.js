@@ -297,7 +297,7 @@ class PatientController {
                 if (!['paid', 'unpaid'].includes(status)) {
                     return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid status value", 0);
                 }
-                query.status = status === "paid"; // True for 'paid', false for 'unpaid'
+                query.paymentStatus = status === "paid"; // True for 'paid', false for 'unpaid'
             }
     
             // Fetch bills based on the query
@@ -307,19 +307,20 @@ class PatientController {
                 .populate("patientId", "fullName email phone age gender address");
     
             // Map the data to return in a structured format
-            const bills = billsData.map(({ billNumber, _id, status, date, time, totalAmount, hospitalId, patientId }) => ({
+            const bills = billsData.map(({ billNumber, _id, paymentStatus, date, time, totalAmount, hospitalId, patientId }) => ({
                 billNumber,
                 billId: _id,
-                status: status ? "Paid" : "Unpaid",
+                status: paymentStatus ? "Paid" : "Unpaid",
                 date: new Date(date).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "short",
                     day: "numeric",
                 }),
                 time,
-                totalAmount,
+                totalAmount ,
                 hospitalName: hospitalId?.name || "N/A",
                 patientName: patientId?.fullName || "N/A",
+                paymentStatus: paymentStatus ? "Paid" : "Unpaid",
             }));
     
             // Return the result

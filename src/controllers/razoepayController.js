@@ -1,6 +1,7 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import User from '../models/User.model.js';
+import Bill from '../models/Bill.model.js';
 import Appointment from '../models/Appointment.model.js';
 import ResponseService from '../services/response.services.js';
 import { StatusCodes } from 'http-status-codes';
@@ -15,23 +16,69 @@ const razorpay = new Razorpay({
 // Create order
 export const createOrder = async (req, res) => {
     try {
-        const { appointmentType, doctorId, paymentType, insuranceDetails } = req.body;
+        const { appointmentType, doctorId, paymentType, insuranceDetails, billId } = req.body;
 
-        // Validate required fields
+        // Handle scenario with `billId`
+        if (billId) {
+            const bill = await Bill.findById(billId);
+            if (!bill) {
+                return ResponseService.send(res, StatusCodes.NOT_FOUND, "Bill not found.", 0);
+            }
+
+            const { insuranceId, dueAmount, totalAmount } = bill;
+
+            let amountToPay = 0;
+
+            if (insuranceId) {
+                // Use `dueAmount` if insuranceId is provided
+                if (!dueAmount) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Due amount is missing for the bill.", 0);
+                }
+                amountToPay = dueAmount;
+            } else {
+                // Use `totalAmount` if insuranceId is not provided
+                if (!totalAmount) {
+                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Total amount is missing for the bill.", 0);
+                }
+                amountToPay = totalAmount;
+            }
+
+            // Create Razorpay order for the amount to be paid
+            const options = {
+                amount: Math.round(amountToPay * 100), // Convert to paise
+                currency: "INR",
+                receipt: "receipt_" + Date.now(),
+            };
+
+            console.log("Order options:", options);
+
+            const order = await razorpay.orders.create(options);
+            console.log("Order created successfully:", order);
+
+            return ResponseService.send(
+                res,
+                StatusCodes.OK,
+                {
+                    order,
+                    amountToPayInRupees: amountToPay,
+                },
+                1
+            );
+        }
+
+        // Original logic for creating order without `billId`
         if (!appointmentType || !doctorId || !paymentType) {
             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid request data.", 0);
         }
 
-        // Find the doctor
         const doctor = await User.findById(doctorId);
         if (!doctor) {
             return ResponseService.send(res, StatusCodes.NOT_FOUND, "Doctor not found.", 0);
         }
 
-        // Calculate amount and tax
         let amount = 0;
         let tax = 0;
-        
+
         if (appointmentType === "online") {
             amount = doctor.metaData.doctorData.onlineConsultationRate;
             tax = amount * 0.18; // 18% tax
@@ -42,12 +89,10 @@ export const createOrder = async (req, res) => {
             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid appointment type.", 0);
         }
 
-        const totalAmount = Math.round((amount + tax) * 100); // Convert to paise (smallest currency unit)
+        const totalAmount = Math.round((amount + tax) * 100); // Convert to paise
 
         if (paymentType === "Insurance") {
             const { claimAmount, claimedAmount } = insuranceDetails || {};
-            
-            // Validate insurance details
             if (claimAmount === undefined || claimedAmount === undefined) {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Insurance details are incomplete.", 0);
             }
@@ -55,51 +100,39 @@ export const createOrder = async (req, res) => {
                 return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Claim amount cannot be less than claimed amount.", 0);
             }
 
-            // Calculate the remaining amount to be paid by the user
             let dueAmount = 0;
             if (claimedAmount < totalAmount) {
                 dueAmount = totalAmount - claimedAmount;
             }
 
             if (dueAmount > 0) {
-                // Create Razorpay order for the remaining amount
                 const options = {
-                    amount: dueAmount, // Remaining amount in paise
+                    amount: dueAmount,
                     currency: "INR",
                     receipt: "receipt_" + Date.now(),
                 };
 
-                console.log("Order options:", options);
-
                 const order = await razorpay.orders.create(options);
-                console.log("Order created successfully:", order);
-
                 return ResponseService.send(res, StatusCodes.OK, {
                     order,
-                    dueAmountInRupees: dueAmount / 100, // Return due amount in rupees
+                    dueAmountInRupees: dueAmount / 100,
                     paymentCoveredByInsurance: claimedAmount / 100,
-                } ,1 );
+                }, 1);
             } else {
-                // Full amount is covered by insurance
                 return ResponseService.send(res, StatusCodes.OK, {
                     message: "Total amount covered by insurance.",
                     paymentCoveredByInsurance: claimedAmount / 100,
-                } , 1);
+                }, 1);
             }
         } else if (paymentType === "Direct") {
-            // Handle direct payment via Razorpay
             const options = {
-                amount: totalAmount, // Total amount in paise
+                amount: totalAmount,
                 currency: "INR",
                 receipt: "receipt_" + Date.now(),
             };
 
-            console.log("Order options:", options);
-
             const order = await razorpay.orders.create(options);
-            console.log("Order created successfully:", order);
-
-            return ResponseService.send(res, StatusCodes.OK, { order, totalAmountInRupees: totalAmount / 100 } , 1);
+            return ResponseService.send(res, StatusCodes.OK, { order, totalAmountInRupees: totalAmount / 100 }, 1);
         } else {
             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid payment type.", 0);
         }
@@ -112,17 +145,18 @@ export const createOrder = async (req, res) => {
 
 
 
+
 // Verify payment
 export const verifyPayment = async (req, res) => {
     try {
-        const {
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature
+        const { 
+            razorpay_order_id, 
+            razorpay_payment_id, 
+            razorpay_signature, 
+            billId 
         } = req.body;
 
-        console.log(razorpay_order_id, razorpay_payment_id, razorpay_signature , "--------------");
-        
+        console.log(razorpay_order_id, razorpay_payment_id, razorpay_signature, "--------------");
 
         // Create a signature to verify the payment
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
@@ -133,12 +167,38 @@ export const verifyPayment = async (req, res) => {
 
         if (razorpay_signature === expectedSign) {
             // Payment is verified
+            if (billId) {
+                // Update the bill's paymentStatus to true
+                const bill = await Bill.findById(billId);
+                if (!bill) {
+                    return ResponseService.send(res, StatusCodes.NOT_FOUND, "Bill not found.", 0);
+                }
 
-            return ResponseService.send(res, StatusCodes.OK, { verified: true, message: "Payment verified successfully" } , 1);
+                // Update the payment status
+                bill.paymentStatus = true;
+                await bill.save();
+
+                return ResponseService.send(
+                    res,
+                    StatusCodes.OK,
+                    { verified: true, message: "Payment verified and bill status updated successfully" },
+                    1
+                );
+            } else {
+                // No billId provided, just return verification success
+                return ResponseService.send(
+                    res,
+                    StatusCodes.OK,
+                    { verified: true, message: "Payment verified successfully" },
+                    1
+                );
+            }
         } else {
+            // Invalid signature
             return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Invalid signature", 0);
         }
     } catch (error) {
+        console.error("Error verifying payment:", error);
         return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
-        }
-}
+    }
+};
