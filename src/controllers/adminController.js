@@ -9,6 +9,7 @@ import EmailService from '../services/email.service.js';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import deleteImage from '../services/deleteImagesServices.js';
+import { type } from 'os';
 
 class AdminController {
 
@@ -176,99 +177,110 @@ class AdminController {
     async createDoctor(req, res) {
         try {
             const { user, files, body } = req;
-            const { email, firstName, lastName, phone, age, gender, workon, country, state, city, zipCode, fullAddress, qualification, speciality, morningSession, eveningSession, duration, experience, description, onlineConsultationRate, worksiteLink, consultationRate, emergencyContactNo, workOn, hospitalName, hospitalAddress } = body;
+            const {
+                email,
+                firstName,
+                lastName,
+                phone,
+                age,
+                gender,
+                workon,
+                country,
+                state,
+                city,
+                zipCode,
+                fullAddress,
+                qualification,
+                speciality,
+                morningSession,
+                eveningSession,
+                duration,
+                experience,
+                description,
+                onlineConsultationRate,
+                worksiteLink,
+                consultationRate,
+                emergencyContactNo,
+                workOn,
+                hospitalName,
+                hospitalAddress
+            } = body;
+            
 
+            
+            // Check if the user is admin
             if (!user || user.role !== "admin") {
                 await deleteImage(files?.profilePicture?.[0]?.path, "profileImages");
                 await deleteImage(files?.signature?.[0]?.path, "signatureImages");
                 return ResponseService.send(res, StatusCodes.FORBIDDEN, "Access denied. Admin only.", 0);
             }
-
-            if (!body || Object.keys(body).length === 0) {
+    
+            // Check if signature file is provided
+            if (!files?.signature?.[0]?.path) {
                 await deleteImage(files?.profilePicture?.[0]?.path, "profileImages");
-                await deleteImage(files?.signature?.[0]?.path, "signatureImages");
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Request body is empty", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Signature file is required", 0);
             }
-
-            const existingUser = await User.findOne({ email });
-            if (existingUser) {
-                await deleteImage(files?.profilePicture?.[0]?.path, "profileImages");
-                await deleteImage(files?.signature?.[0]?.path, "signatureImages");
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Email already exists", 0);
-            }
-
-            const { hospitalId } = user;
-            if (!hospitalId) {
-                await deleteImage(files?.profilePicture?.[0]?.path, "profileImages");
-                await deleteImage(files?.signature?.[0]?.path, "signatureImages");
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Hospital ID is required", 0);
-            }
-
+    
             // Validate experience and age
-            if (experience > age) {
+
+            if (Number(experience) > Number(age)) {
                 await deleteImage(files?.profilePicture?.[0]?.path, "profileImages");
                 await deleteImage(files?.signature?.[0]?.path, "signatureImages");
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Experience cannot be greater than age", 0);
+                return ResponseService.send(res, StatusCodes.BAD_REQUEST, `Experience (${experience}) cannot be greater than age (${age})`, 0);
             }
-
+    
+            // Generate a random password and hash it
             const password = crypto.randomBytes(8).toString("hex");
             const hashedPassword = await bcrypt.hash(password, 10);
-
+    
+            // Prepare doctorData object dynamically
+            const doctorData = {
+                qualification,
+                speciality,
+                morningSession,
+                eveningSession,
+                duration,
+                experience,
+                description,
+                onlineConsultationRate,
+                worksiteLink,
+                workOn,
+                consultationRate,
+                signature: files?.signature?.[0]?.path,
+            };
+    
+            // Add optional fields if they are provided
+            if (emergencyContactNo) doctorData.emergencyContactNo = emergencyContactNo;
+            if (hospitalName) doctorData.hospitalName = hospitalName;
+            if (hospitalAddress) doctorData.hospitalAddress = hospitalAddress;
+    
+            // Create a new doctor object
             const newDoctor = {
                 fullName: `${firstName} ${lastName}`,
                 email,
                 phone,
                 age,
                 gender,
-                hospitalId,
+                hospitalId: user.hospitalId,
                 workon,
                 address: { country, state, city, zipCode, fullAddress },
                 role: "doctor",
                 password: hashedPassword,
-                metaData: {
-                    doctorData: {
-                        qualification,
-                        speciality,
-                        morningSession,
-                        eveningSession,
-                        duration,
-                        experience,
-                        description,
-                        onlineConsultationRate,
-                        worksiteLink,
-                        consultationRate,
-                        emergencyContactNo,
-                        workOn,
-                        hospitalName,
-                        hospitalAddress
-                    }
-                },
+                metaData: { doctorData },
                 profilePicture: files?.profilePicture?.[0]?.path,
-                metaData: {
-                    doctorData: {
-                        signature: files?.signature?.[0]?.path
-                    }
-                }
             };
-
+    
+            // Save the doctor to the database
             const doctor = new User(newDoctor);
             await doctor.save();
-
-            if (doctor) {
-                try {
-                    const emailHtml = EmailService.registrationTemplate(doctor.fullName, doctor.email, password);
-                    await EmailService.sendEmail(doctor.email, "Doctor Registration Successful ✔", emailHtml);
-                    return ResponseService.send(res, StatusCodes.OK, "Doctor Registered Successfully", 1, doctor);
-                } catch (emailError) {
-                    return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Doctor registered, but email sending failed", 0);
-                }
-            } else {
-                await deleteImage(files?.profilePicture?.[0]?.path, "profileImages");
-                await deleteImage(files?.signature?.[0]?.path, "signatureImages");
-                return ResponseService.send(res, StatusCodes.BAD_REQUEST, "Something went wrong", 0);
-            }
-
+    
+            // Send a registration email
+            const emailHtml = EmailService.registrationTemplate(doctor.fullName, doctor.email, password);
+            await EmailService.sendEmail(doctor.email, "Doctor Registration Successful ✔", emailHtml);
+    
+            return ResponseService.send(res, StatusCodes.OK, "Doctor Registered Successfully", 1, doctor);
         } catch (error) {
+            // Handle errors and clean up
             await deleteImage(req.files?.profilePicture?.[0]?.path, "profileImages");
             await deleteImage(req.files?.signature?.[0]?.path, "signatureImages");
             return ResponseService.send(res, StatusCodes.INTERNAL_SERVER_ERROR, error.message, 0);
