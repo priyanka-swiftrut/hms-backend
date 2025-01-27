@@ -12,7 +12,8 @@ import deleteImage from '../services/deleteImagesServices.js';
 import { type } from 'os';
 
 class AdminController {
-
+     
+    
     async Register(req, res) {
         try {
             const { body, files } = req;
