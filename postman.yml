@@ -1153,7 +1153,7 @@ paths:
           description: Successful response
           content:
             application/json: {}
-  /api/pateint/createAppointment:
+  /api/patient/createAppointment:
     post:
       tags:
         - Patient Pannel > appointment manegment
