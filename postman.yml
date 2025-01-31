@@ -3,7 +3,7 @@ info:
   title: HMS
   version: 1.0.0
 servers:
-  - url: http://{{base_url}}
+  - url: http://localhost:5000
 components:
   securitySchemes:
     bearerAuth:
@@ -29,9 +29,8 @@ tags:
   - name: Doctor pannel > teleconsulation
   - name: Doctor pannel > chat manegment
   - name: Doctor pannel > Holiday
-  - name: Doctor pannel > media folder
   - name: Patient Pannel
-  - name: Patient Pannel > crud of patient
+  - name: Patient Pannel > Patient registration
   - name: Patient Pannel > patient profile
   - name: Patient Pannel > patient deshboard
   - name: Patient Pannel > appointment manegment
@@ -132,8 +131,8 @@ paths:
           description: Successful response
           content:
             application/json: {}
-  /api/admin/editAdmin:
-    post:
+  /api/admin/editUser:
+    put:
       tags:
         - Admin Pannel > Admin Profile
       summary: editAdmin
@@ -143,8 +142,7 @@ paths:
             schema:
               type: object
               example:
-                firstName: dhairy
-                lastName: dobariya
+                age: 38
       security:
         - bearerAuth: []
       responses:
@@ -165,7 +163,7 @@ paths:
           content:
             application/json: {}
   /api/admin/changePassword:
-    post:
+    patch:
       tags:
         - Admin Pannel > Admin Profile
       summary: change password
@@ -175,7 +173,7 @@ paths:
             schema:
               type: object
               example:
-                oldPassword: '1234567'
+                currentPassword: '1234567'
                 newPassword: '123456'
                 confirmPassword: '123456'
       security:
@@ -185,18 +183,20 @@ paths:
           description: Successful response
           content:
             application/json: {}
-  /api/admin/getPaginatedAppointments:
+
+  /api/admin/getAppointment?filter=today:
     get:
       tags:
         - Admin Pannel > deshboard
-      summary: today appointment
+      summary: Fetch appointments based on filter type
       security:
         - bearerAuth: []
       responses:
         '200':
           description: Successful response
           content:
-            application/json: {}
+            application/json: {}          
+
   /api/admin/getDashboardData:
     get:
       tags:
@@ -258,10 +258,10 @@ paths:
                   example: savaliya
                 email:
                   type: string
-                  example: 12e2@yopmail.com
+                  example: n@yopmail.com
                 phone:
                   type: number
-                  example: '+917781994250'
+                  example: '+917781994333'
                 age:
                   type: integer
                   example: '30'
@@ -288,7 +288,7 @@ paths:
                   example: bcom
                 emergencyContactNo:
                   type: number
-                  example: '+914564562371'
+                  example: '+914564562111'
                 workingTime:
                   type: integer
                   example: '10'
@@ -329,11 +329,20 @@ paths:
           description: Successful response
           content:
             application/json: {}
-  /api/admin/editReceptionist/id:
-    get:
+  /api/admin/editReceptionist/677046bcceabc6c708235294:
+    put:
       tags:
         - Admin Pannel > Receptionist manegment
       summary: edit receptionist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                age: 55
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Successful response
@@ -438,8 +447,8 @@ paths:
           description: Successful response
           content:
             application/json: {}
-  /api/admin/editDoctor/id:
-    post:
+  /api/admin/editDoctor/6770443dceabc6c708235256:
+    put:
       tags:
         - Admin Pannel > Doctor Manegement
       summary: edit doctor
@@ -449,7 +458,7 @@ paths:
             schema:
               type: object
               example:
-                name: ''
+                age: 22
       security:
         - bearerAuth: []
       responses:
@@ -491,20 +500,23 @@ paths:
     get:
       tags:
         - Admin Pannel > Patient manegment
-      summary: get canceld appointment
+      summary: Fetch appointments based on filter type
       security:
         - bearerAuth: []
       parameters:
         - name: filter
           in: query
+          description: Filter appointments by type
+          required: true
           schema:
             type: string
-          example: cancel
+            enum: [today, previous, upcoming, cancel]
       responses:
         '200':
           description: Successful response
           content:
-            application/json: {}
+            application/json: {}    
+  
   /api/admin/getpatientfromappointment/6770536bdb689d0244a27a3a:
     get:
       tags:
@@ -516,7 +528,7 @@ paths:
         '200':
           description: Successful response
           content:
-            application/json: {}
+            application/json: {} 
   /api/admin/createBill:
     post:
       tags:
@@ -552,7 +564,7 @@ paths:
           content:
             application/json: {}
   /api/admin/editBill/67731c996e45c588ea82bda6:
-    post:
+    put:
       tags:
         - Admin Pannel > Billing manegment
       summary: edit bill
@@ -649,7 +661,7 @@ paths:
           content:
             application/json: {}
   /api/doctor/editUser:
-    post:
+    put:
       tags:
         - Doctor pannel > Doctor Profile
       summary: edit doctor
@@ -659,7 +671,7 @@ paths:
             schema:
               type: object
               example:
-                age: 32
+                age: 30
       security:
         - bearerAuth: []
       responses:
@@ -680,7 +692,7 @@ paths:
           content:
             application/json: {}
   /api/doctor/changePassword:
-    post:
+    patch:
       tags:
         - Doctor pannel > Doctor Profile
       summary: change password
@@ -710,12 +722,18 @@ paths:
           description: Successful response
           content:
             application/json: {}
-    post:
+    put:
       tags:
         - Doctor pannel > appointment manegment
       summary: editAppointment
       requestBody:
-        content: {}
+        content:
+          application/json:
+            schema:
+              type: object
+              example: ''
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Successful response
@@ -724,19 +742,49 @@ paths:
   /api/doctor/getAppointment:
     get:
       tags:
-        - Doctor pannel > Prescription manegment > create prescription
-      summary: date wise appointment
+        - Doctor pannel > appointment manegment
+      summary: Fetch appointments based on filter type
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: filter
+          in: query
+          description: Filter appointments by type
+          required: true
+          schema:
+            type: string
+            enum: [today, previous, upcoming, cancel]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {} 
+  /api/doctor/getDoctorSession:
+    get:
+      tags:
+        - Doctor pannel > appointment manegment
+      summary: Get doctor session by date
+      security:
+        - bearerAuth: []
       parameters:
         - name: date
           in: query
+          description: Date for which the doctor session is requested (YYYY-MM-DD format)
+          required: true
           schema:
             type: string
-          example: '2025-01-04'
+            format: date
       responses:
         '200':
           description: Successful response
           content:
             application/json: {}
+        '400':
+          description: Bad request (invalid date format)
+        '401':
+          description: Unauthorized (missing or invalid token)
+        '404':
+          description: Doctor session not found   
   /api/doctor/getPatientRecord:
     get:
       tags:
@@ -797,7 +845,7 @@ paths:
           content:
             application/json: {}
   /api/doctor/edit:
-    post:
+    put:
       tags:
         - Doctor pannel > Prescription manegment > create prescription
       summary: edit prescription
@@ -931,22 +979,10 @@ paths:
           description: Successful response
           content:
             application/json: {}
-  /api/doctor/appointments/6780309cd5dccd45a50e4a5a/records:
-    post:
-      tags:
-        - Doctor pannel > media folder
-      summary: add records Copy
-      requestBody:
-        content: {}
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json: {}
   /api/registerPatient:
     post:
       tags:
-        - Patient Pannel > crud of patient
+        - Patient Pannel > Patient registration
       summary: create  patient
       requestBody:
         content:
@@ -954,10 +990,10 @@ paths:
             schema:
               type: object
               example:
-                firstName: Priyanka
-                lastName: Dudhat
-                email: priyanka@yopmail.com
-                phone: '+914587854587'
+                firstName: patient
+                lastName: patient
+                email: patient@yopmail.com
+                phone: '+918880075554'
                 age: 28
                 height: 175
                 weight: 70
@@ -972,23 +1008,15 @@ paths:
                 password: '123456'
                 confirmPassword: '123456'
                 hospitalId: ''
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json: {}
-  /api/patient/delete:
-    delete:
-      tags:
-        - Patient Pannel > crud of patient
-      summary: delete patient
+                phoneCode: '544'
+                termsAccepted: true
       responses:
         '200':
           description: Successful response
           content:
             application/json: {}
   /api/patient/editUser:
-    post:
+    put:
       tags:
         - Patient Pannel > patient profile
       summary: edit patient
@@ -1087,14 +1115,22 @@ paths:
     get:
       tags:
         - Patient Pannel > appointment manegment
-      summary: get appointment
+      summary: Fetch appointments based on filter type
       security:
         - bearerAuth: []
+      parameters:
+        - name: filter
+          in: query
+          description: Filter appointments by type
+          required: true
+          schema:
+            type: string
+            enum: [today, previous, upcoming, cancel]
       responses:
         '200':
           description: Successful response
           content:
-            application/json: {}
+            application/json: {} 
   /api/patient/getDoctor:
     get:
       tags:
@@ -1178,7 +1214,7 @@ paths:
           content:
             application/json: {}
   /api/patient/editAppointment/67744fd01f1da21fd5094949:
-    post:
+    put:
       tags:
         - Patient Pannel > appointment manegment
       summary: editAppointment
@@ -1330,7 +1366,7 @@ paths:
           content:
             application/json: {}
   /api/receptionist/changePassword:
-    post:
+    patch:
       tags:
         - Receptionist Pannel > receptionist profile
       summary: change password
@@ -1349,10 +1385,10 @@ paths:
           content:
             application/json: {}
   /api/receptionist/editUser:
-    post:
+    put:
       tags:
         - Receptionist Pannel > receptionist profile
-      summary: edit receptionist
+      summary: edit receptionist Copy
       requestBody:
         content:
           application/json:
@@ -1455,20 +1491,22 @@ paths:
     get:
       tags:
         - Receptionist Pannel > appointment manegment
-      summary: get canceld appointment
+      summary: Fetch appointments based on filter type
       security:
         - bearerAuth: []
       parameters:
         - name: filter
           in: query
+          description: Filter appointments by type
+          required: true
           schema:
             type: string
-          example: cancel
+            enum: [today, previous, upcoming, cancel]
       responses:
         '200':
           description: Successful response
           content:
-            application/json: {}
+            application/json: {} 
   /api/receptionist/getpatientfromappointment/6770536bdb689d0244a27a3a:
     get:
       tags:
@@ -1518,6 +1556,17 @@ paths:
             application/json: {}
   /api/receptionist/editAppointment:
     post:
+      tags:
+        - Receptionist Pannel > appointment manegment > patient for appointment
+      summary: edit appointment
+      requestBody:
+        content: {}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    put:
       tags:
         - Receptionist Pannel > appointment manegment
       summary: edit appointment
@@ -1621,7 +1670,7 @@ paths:
           content:
             application/json: {}
   /api/auth/reset-password:
-    post:
+    patch:
       tags:
         - forget-password
       summary: reset-password
@@ -1631,7 +1680,7 @@ paths:
             schema:
               type: object
               example:
-                email: mohit@yopmail.com
+                email: dishan3t@yopmail.com
                 password: '123456'
                 confirmPassword: '123456'
       responses:
@@ -1650,7 +1699,7 @@ paths:
             schema:
               type: object
               example:
-                email: dishan3t@yopmail.com
+                identifier: dhairydobaryia@gmail.com
                 password: '123456'
       security:
         - bearerAuth: []

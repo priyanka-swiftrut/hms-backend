@@ -15,12 +15,15 @@ class AppointmentController {
     
     async createAppointment(req, res) {
         try {
+            console.log("hii-1");
+            
             const { doctorId, date, appointmentTime, type, patient_issue, dieseas_name, city, state, country, paymentType, paymentStatus, insuranceDetails } = req.body;
-            const { role, id: patientId } = req.user;
+            let { role, id: patientId } = req.user;
 
             if (role === "receptionist") {
                 patientId = req.body.patientId;
             }
+            console.log("hii-2");
 
             const doctor = await User.findById(doctorId);
             if (!doctor) {
