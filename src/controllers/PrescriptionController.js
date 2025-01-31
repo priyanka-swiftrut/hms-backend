@@ -177,7 +177,7 @@ class PrescriptionController {
       let prescriptions = await Prescription.find(prescriptionQuery)
           .populate("patientId", "fullName gender address age phone")
           .populate("doctorId", "fullName metaData.doctorData.speciality metaData.doctorData.signature")
-          .populate("appointmentId", "dieseas_name type appintmentTime date")
+          .populate("appointmentId", "dieseas_name type appointmentTime date")
           .populate("hospitalId", "name");
 
       prescriptions = prescriptions.map((prescription) => {
